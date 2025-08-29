@@ -8,10 +8,13 @@ require('./models/User');
 require('./models/Event');
 require('./models/EventCategory');
 require('./models/EventTag');
+require('./models/Order');
+require('./models/Ticket');
 
 // Import routes
 const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
+const orderRoutes = require('./routes/orders');
 const testRoutes = require('./routes/test');
 
 const app = express();
@@ -75,6 +78,9 @@ app.use('/api/organizer', organizerRoutes);
 // User routes (protected)
 const userRoutes = require('./routes/user');
 app.use('/api/user', userRoutes);
+
+// Order routes
+app.use('/api/orders', orderRoutes);
 
 // Test routes
 app.use('/api/test', testRoutes);

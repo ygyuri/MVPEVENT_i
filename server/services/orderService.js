@@ -1,0 +1,362 @@
+const Order = require('../models/Order');
+const Ticket = require('../models/Ticket');
+const Event = require('../models/Event');
+const mpesaService = require('./mpesaService');
+const emailService = require('./emailService');
+
+class OrderService {
+  // Calculate service fee (5% of subtotal)
+  calculateServiceFee(subtotal) {
+    return Math.round(subtotal * 0.05);
+  }
+
+  // Calculate total amount
+  calculateTotal(subtotal, serviceFee) {
+    return subtotal + serviceFee;
+  }
+
+  // Validate ticket availability
+  async validateTicketAvailability(items) {
+    const validationResults = [];
+
+    for (const item of items) {
+      const event = await Event.findById(item.eventId);
+      
+      if (!event) {
+        validationResults.push({
+          eventId: item.eventId,
+          valid: false,
+          error: 'Event not found'
+        });
+        continue;
+      }
+
+      // Check if event is published
+      if (event.status !== 'published') {
+        validationResults.push({
+          eventId: item.eventId,
+          valid: false,
+          error: 'Event is not available for purchase'
+        });
+        continue;
+      }
+
+      // Check capacity
+      if (event.capacity && (event.currentAttendees + item.quantity) > event.capacity) {
+        validationResults.push({
+          eventId: item.eventId,
+          valid: false,
+          error: `Only ${event.capacity - event.currentAttendees} tickets remaining`
+        });
+        continue;
+      }
+
+      // Check if ticket type exists and has sufficient quantity
+      const ticketType = event.ticketTypes.find(t => t.name === item.ticketType);
+      if (!ticketType) {
+        validationResults.push({
+          eventId: item.eventId,
+          valid: false,
+          error: 'Ticket type not found'
+        });
+        continue;
+      }
+
+      if (ticketType.quantity && ticketType.quantity < item.quantity) {
+        validationResults.push({
+          eventId: item.eventId,
+          valid: false,
+          error: `Only ${ticketType.quantity} tickets available for ${item.ticketType}`
+        });
+        continue;
+      }
+
+      validationResults.push({
+        eventId: item.eventId,
+        valid: true,
+        event: event
+      });
+    }
+
+    return validationResults;
+  }
+
+  // Create order with calculated pricing
+  async createOrder(orderData) {
+    try {
+      // Validate ticket availability
+      const validationResults = await this.validateTicketAvailability(orderData.items);
+      const invalidItems = validationResults.filter(result => !result.valid);
+      
+      if (invalidItems.length > 0) {
+        throw new Error(`Ticket validation failed: ${invalidItems.map(item => item.error).join(', ')}`);
+      }
+
+      // Calculate pricing
+      const subtotal = orderData.items.reduce((sum, item) => sum + item.subtotal, 0);
+      const serviceFee = this.calculateServiceFee(subtotal);
+      const total = this.calculateTotal(subtotal, serviceFee);
+
+      // Create order
+      const order = new Order({
+        customer: orderData.customer,
+        items: orderData.items,
+        pricing: {
+          subtotal,
+          serviceFee,
+          total,
+          currency: 'KES'
+        },
+        metadata: {
+          ipAddress: orderData.ipAddress,
+          userAgent: orderData.userAgent,
+          source: orderData.source || 'web'
+        }
+      });
+
+      await order.save();
+      console.log('✅ Order created:', order.orderNumber);
+      
+      return order;
+    } catch (error) {
+      console.error('❌ Failed to create order:', error.message);
+      throw error;
+    }
+  }
+
+  // Initiate payment
+  async initiatePayment(orderId, phoneNumber) {
+    try {
+      const order = await Order.findById(orderId);
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      if (order.status !== 'pending') {
+        throw new Error('Order is not in pending status');
+      }
+
+      // Initiate MPESA STK Push
+      const paymentResult = await mpesaService.initiateSTKPush(
+        phoneNumber,
+        order.pricing.total,
+        order.orderNumber,
+        'Event Ticket Purchase'
+      );
+
+      if (!paymentResult.success) {
+        throw new Error(paymentResult.error || 'Payment initiation failed');
+      }
+
+      // Update order with payment details
+      order.payment.mpesaRequestId = paymentResult.checkoutRequestId;
+      order.payment.mpesaMerchantRequestId = paymentResult.merchantRequestId;
+      order.payment.status = 'processing';
+      
+      await order.save();
+
+      return {
+        success: true,
+        checkoutRequestId: paymentResult.checkoutRequestId,
+        merchantRequestId: paymentResult.merchantRequestId,
+        customerMessage: paymentResult.customerMessage,
+        orderNumber: order.orderNumber
+      };
+
+    } catch (error) {
+      console.error('❌ Payment initiation failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Process payment callback
+  async processPaymentCallback(callbackData) {
+    try {
+      // Validate callback
+      if (!mpesaService.validateCallback(callbackData)) {
+        throw new Error('Invalid callback data');
+      }
+
+      // Process callback data
+      const transactionData = mpesaService.processCallback(callbackData);
+      
+      // Find order by checkout request ID
+      const order = await Order.findOne({
+        'payment.mpesaRequestId': transactionData.checkoutRequestId
+      });
+
+      if (!order) {
+        throw new Error('Order not found for callback');
+      }
+
+      // Update payment details
+      order.payment.mpesaResultCode = transactionData.resultCode;
+      order.payment.mpesaResultDesc = transactionData.resultDesc;
+      order.payment.mpesaTransactionId = transactionData.transactionId;
+
+      // Check if payment was successful
+      if (transactionData.resultCode === '0') {
+        order.payment.status = 'completed';
+        order.payment.paidAt = new Date();
+        order.status = 'paid';
+        
+        // Create tickets
+        const tickets = await this.createTickets(order);
+        
+        // Send emails
+        await this.sendOrderEmails(order, tickets);
+        
+        console.log('✅ Payment completed successfully:', order.orderNumber);
+      } else {
+        order.payment.status = 'failed';
+        order.status = 'cancelled';
+        
+        // Send failure email
+        await emailService.sendPaymentFailureEmail(order, transactionData.resultDesc);
+        
+        console.log('❌ Payment failed:', order.orderNumber);
+      }
+
+      await order.save();
+      
+      return {
+        success: true,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        resultCode: transactionData.resultCode,
+        resultDesc: transactionData.resultDesc
+      };
+
+    } catch (error) {
+      console.error('❌ Payment callback processing failed:', error.message);
+      throw error;
+    }
+  }
+
+  // Create tickets for order
+  async createTickets(order) {
+    const tickets = [];
+
+    for (const item of order.items) {
+      for (let i = 0; i < item.quantity; i++) {
+        const ticket = new Ticket({
+          orderId: order._id,
+          eventId: item.eventId,
+          holder: {
+            firstName: order.customer.firstName,
+            lastName: order.customer.lastName,
+            email: order.customer.email,
+            phone: order.customer.phone
+          },
+          ticketType: item.ticketType,
+          price: item.unitPrice,
+          metadata: {
+            purchaseDate: new Date(),
+            validFrom: new Date(),
+            validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // Valid for 1 year
+          }
+        });
+
+        await ticket.save();
+        tickets.push(ticket);
+      }
+    }
+
+    console.log(`✅ Created ${tickets.length} tickets for order ${order.orderNumber}`);
+    return tickets;
+  }
+
+  // Send order emails
+  async sendOrderEmails(order, tickets) {
+    try {
+      // Send purchase receipt
+      await emailService.sendPurchaseReceipt(order, tickets);
+
+      // Send individual ticket emails
+      const eventIds = [...new Set(tickets.map(ticket => ticket.eventId))];
+      const events = await Event.find({ _id: { $in: eventIds } });
+      const eventMap = events.reduce((map, event) => {
+        map[event._id.toString()] = event;
+        return map;
+      }, {});
+
+      for (const ticket of tickets) {
+        const event = eventMap[ticket.eventId.toString()];
+        if (event) {
+          await emailService.sendTicketEmail(ticket, event);
+        }
+      }
+
+      console.log('✅ Order emails sent successfully');
+    } catch (error) {
+      console.error('❌ Failed to send order emails:', error.message);
+      // Don't throw error as this is not critical for order completion
+    }
+  }
+
+  // Get order by ID
+  async getOrderById(orderId) {
+    try {
+      const order = await Order.findById(orderId)
+        .populate('items.eventId', 'title dates location')
+        .populate('customer.userId', 'firstName lastName email');
+      
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      return order;
+    } catch (error) {
+      console.error('❌ Failed to get order:', error.message);
+      throw error;
+    }
+  }
+
+  // Get order by order number
+  async getOrderByNumber(orderNumber) {
+    try {
+      const order = await Order.findOne({ orderNumber })
+        .populate('items.eventId', 'title dates location')
+        .populate('customer.userId', 'firstName lastName email');
+      
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      return order;
+    } catch (error) {
+      console.error('❌ Failed to get order:', error.message);
+      throw error;
+    }
+  }
+
+  // Get user orders
+  async getUserOrders(userId, page = 1, limit = 10) {
+    try {
+      const skip = (page - 1) * limit;
+      
+      const orders = await Order.find({ 'customer.userId': userId })
+        .populate('items.eventId', 'title dates location')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
+      const total = await Order.countDocuments({ 'customer.userId': userId });
+
+      return {
+        orders,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      };
+    } catch (error) {
+      console.error('❌ Failed to get user orders:', error.message);
+      throw error;
+    }
+  }
+}
+
+module.exports = new OrderService();

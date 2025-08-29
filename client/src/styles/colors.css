@@ -1,0 +1,227 @@
+/* 🎨 Web3 Color Scheme - Event-i Application */
+
+:root {
+  /* Primary Colors */
+  --primary-blue: #3B82F6;
+  --primary-blue-hover: #2563EB;
+  --primary-blue-dark: #1E40AF;
+  --light-blue: #60A5FA;
+  --light-blue-hover: #3B82F6;
+  --deep-blue: #1E40AF;
+  --deep-blue-hover: #1E3A8A;
+  
+  /* Complementary Colors */
+  --cyan: #06B6D4;
+  --cyan-hover: #0891B2;
+  --electric-blue: #00D4FF;
+  --electric-blue-hover: #00B8E6;
+  --indigo: #6366F1;
+  --indigo-hover: #4F46E5;
+  
+  /* Backgrounds */
+  --bg-primary: linear-gradient(135deg, #111827 0%, #1E3A8A 50%, #111827 100%);
+  --bg-secondary: linear-gradient(135deg, #111827 0%, #1E40AF 50%, #111827 100%);
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-card-hover: rgba(255, 255, 255, 0.08);
+  
+  /* Text Colors */
+  --text-primary: #FFFFFF;
+  --text-secondary: #E5E7EB;
+  --text-muted: #9CA3AF;
+  --text-blue: #60A5FA;
+  --text-blue-light: #93C5FD;
+  --text-blue-dark: #3B82F6;
+  --text-cyan: #06B6D4;
+  --text-cyan-light: #22D3EE;
+  
+  /* Interactive Elements */
+  --btn-primary: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%);
+  --btn-primary-hover: linear-gradient(135deg, #2563EB 0%, #0891B2 100%);
+  --btn-secondary: rgba(255, 255, 255, 0.1);
+  --btn-secondary-hover: rgba(255, 255, 255, 0.2);
+  --btn-disabled: #6B7280;
+  --btn-disabled-text: #9CA3AF;
+  
+  /* Form Elements */
+  --input-border: rgba(59, 130, 246, 0.3);
+  --input-border-focus: #3B82F6;
+  --input-border-error: #EF4444;
+  --input-bg: rgba(255, 255, 255, 0.1);
+  --input-bg-focus: rgba(59, 130, 246, 0.1);
+  
+  /* Status Colors */
+  --success: #10B981;
+  --success-light: #34D399;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --success-border: rgba(16, 185, 129, 0.3);
+  --warning: #F59E0B;
+  --warning-light: #FBBF24;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --warning-border: rgba(245, 158, 11, 0.3);
+  --error: #EF4444;
+  --error-light: #F87171;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --error-border: rgba(239, 68, 68, 0.3);
+  
+  /* Component Colors */
+  --card-bg: rgba(255, 255, 255, 0.05);
+  --card-border: rgba(255, 255, 255, 0.1);
+  --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --card-hover-bg: rgba(255, 255, 255, 0.08);
+  --card-hover-border: rgba(59, 130, 246, 0.2);
+  
+  /* Blob Colors */
+  --blob-primary: rgba(59, 130, 246, 0.2);
+  --blob-secondary: rgba(6, 182, 212, 0.2);
+  --blob-accent: rgba(99, 102, 241, 0.2);
+  
+  /* Navigation & Headers */
+  --nav-bg: rgba(17, 24, 39, 0.95);
+  --nav-border: rgba(59, 130, 246, 0.2);
+  --header-primary: #FFFFFF;
+  --header-secondary: #60A5FA;
+}
+
+/* Utility Classes for Common Color Combinations */
+.bg-web3-primary {
+  background: var(--bg-primary);
+}
+
+.bg-web3-secondary {
+  background: var(--bg-secondary);
+}
+
+.bg-web3-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--card-border);
+}
+
+.bg-web3-card-hover {
+  background: var(--bg-card-hover);
+  border: 1px solid var(--card-hover-border);
+}
+
+.text-web3-primary {
+  color: var(--text-primary);
+}
+
+.text-web3-secondary {
+  color: var(--text-secondary);
+}
+
+.text-web3-blue {
+  color: var(--text-blue);
+}
+
+.text-web3-cyan {
+  color: var(--text-cyan);
+}
+
+.btn-web3-primary {
+  background: var(--btn-primary);
+  color: var(--text-primary);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
+  transition: all 0.3s ease;
+}
+
+.btn-web3-primary:hover {
+  background: var(--btn-primary-hover);
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
+}
+
+.btn-web3-secondary {
+  background: var(--btn-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--card-border);
+  transition: all 0.3s ease;
+}
+
+.btn-web3-secondary:hover {
+  background: var(--btn-secondary-hover);
+  border-color: var(--card-hover-border);
+}
+
+.input-web3 {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.input-web3:focus {
+  background: var(--input-bg-focus);
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input-web3.error {
+  border-color: var(--input-border-error);
+}
+
+/* Blob Animation Classes */
+.blob-primary {
+  background: var(--blob-primary);
+  border-radius: 50%;
+  filter: blur(40px);
+  animation: blob-float 6s ease-in-out infinite;
+}
+
+.blob-secondary {
+  background: var(--blob-secondary);
+  border-radius: 50%;
+  filter: blur(40px);
+  animation: blob-float 6s ease-in-out infinite reverse;
+}
+
+.blob-accent {
+  background: var(--blob-accent);
+  border-radius: 50%;
+  filter: blur(40px);
+  animation: blob-float 8s ease-in-out infinite;
+}
+
+@keyframes blob-float {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+/* Glassmorphism Effect */
+.glass {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+
+.glass-hover:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--card-hover-border);
+}
+
+/* Status Color Classes */
+.status-success {
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  color: var(--success);
+}
+
+.status-warning {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  color: var(--warning);
+}
+
+.status-error {
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error);
+}

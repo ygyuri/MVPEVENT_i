@@ -3,12 +3,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import eventsReducer from './slices/eventsSlice';
 import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
+import checkoutReducer from './slices/checkoutSlice';
 
 export const store = configureStore({
   reducer: {
     events: eventsReducer,
     auth: authReducer,
     ui: uiReducer,
+    checkout: checkoutReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

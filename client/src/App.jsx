@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import Events from './pages/Events'
+import Checkout from './pages/Checkout'
 import Notification from './components/Notification'
 import EventDetails from './pages/EventDetails'
 
@@ -46,11 +47,12 @@ function App() {
         />
       ))}
 
-      <main className="container mx-auto px-4 py-8">
+      <main>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/events" element={<Events />} />
           <Route path="/events/:slug" element={<EventDetails />} />
+          <Route path="/checkout" element={<Checkout />} />
         </Routes>
       </main>
     </div>

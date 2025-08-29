@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchEventDetails, fetchEventTickets, purchaseTickets } from '../store/slices/eventsSlice'
-import { Calendar, MapPin, Users, Ticket, ArrowLeft, Clock, Star, Shield, Zap, Globe, Wallet } from 'lucide-react'
+import { fetchEventDetails, fetchEventTickets } from '../store/slices/eventsSlice'
+import { addToCart } from '../store/slices/checkoutSlice'
+import { Calendar, MapPin, Users, Ticket, ArrowLeft, Clock, Star, Shield, Zap, Globe, Wallet, ShoppingCart } from 'lucide-react'
 
 const EventDetails = () => {
   const { slug } = useParams()
@@ -12,7 +13,7 @@ const EventDetails = () => {
   const { currentEvent, tickets, loading, error } = useSelector((state) => state.events)
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [quantity, setQuantity] = useState(1)
-  const [purchasing, setPurchasing] = useState(false)
+  const [addingToCart, setAddingToCart] = useState(false)
 
   useEffect(() => {
     if (slug) {
@@ -55,27 +56,29 @@ const EventDetails = () => {
     }).format(price)
   }
 
-  const handlePurchase = async () => {
+  const handleAddToCart = async () => {
     if (!selectedTicket || !currentEvent) return
     
     try {
-      setPurchasing(true)
-      await dispatch(purchaseTickets({
-        slug,
-        ticketTypeName: selectedTicket.name,
+      setAddingToCart(true)
+      dispatch(addToCart({
+        eventId: currentEvent._id,
+        eventTitle: currentEvent.title,
+        ticketType: selectedTicket.name,
+        price: selectedTicket.price || 0,
         quantity
-      })).unwrap()
+      }))
       
       // Show success message
-      alert(`🎉 Tickets purchased successfully! You'll receive a confirmation email shortly.`)
+      alert(`🎉 Added ${quantity} ${selectedTicket.name} ticket(s) to cart!`)
       
       // Reset form
       setQuantity(1)
       setSelectedTicket(tickets[0])
     } catch (error) {
-      alert(`❌ Purchase failed: ${error}`)
+      alert(`❌ Failed to add to cart: ${error}`)
     } finally {
-      setPurchasing(false)
+      setAddingToCart(false)
     }
   }
 
@@ -428,22 +431,40 @@ const EventDetails = () => {
                       </div>
 
                       <button
-                        onClick={handlePurchase}
-                        disabled={purchasing}
+                        onClick={handleAddToCart}
+                        disabled={addingToCart}
                         className="w-full bg-gradient-to-r from-primary-600 to-primary-700 text-white py-4 rounded-2xl font-semibold text-lg hover:from-primary-700 hover:to-primary-800 focus:ring-4 focus:ring-primary-500/30 transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {purchasing ? (
+                        {addingToCart ? (
                           <div className="flex items-center justify-center">
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
-                            Processing...
+                            Adding to Cart...
                           </div>
                         ) : (
-                          `Buy ${selectedTicket.name}`
+                          <div className="flex items-center justify-center">
+                            <ShoppingCart className="w-5 h-5 mr-2" />
+                            Add to Cart
+                          </div>
                         )}
                       </button>
 
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() => navigate('/checkout')}
+                          className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-2xl font-semibold hover:bg-gray-200 transition-all duration-200"
+                        >
+                          View Cart
+                        </button>
+                        <button
+                          onClick={() => navigate('/checkout')}
+                          className="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 text-white py-3 rounded-2xl font-semibold hover:from-green-700 hover:to-emerald-800 transition-all duration-200"
+                        >
+                          Checkout Now
+                        </button>
+                      </div>
+
                       <p className="text-xs text-gray-500 text-center">
-                        🔒 Secure payment powered by Web3 technology
+                        🛒 Add to cart and checkout with MPESA
                       </p>
                     </div>
                   )}
