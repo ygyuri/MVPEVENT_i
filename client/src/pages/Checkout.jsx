@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { Cart, User, CreditCard, CheckCircle } from 'lucide-react';
+import { ShoppingCart, User, CreditCard, CheckCircle } from 'lucide-react';
 import CartComponent from '../components/Cart';
 import CustomerInfoForm from '../components/CustomerInfoForm';
 import MpesaPayment from '../components/MpesaPayment';
@@ -10,7 +10,7 @@ const Checkout = () => {
   const { checkoutStep } = useSelector((state) => state.checkout);
 
   const steps = [
-    { id: 'cart', label: 'Cart', icon: Cart, description: 'Review your selections' },
+    { id: 'cart', label: 'Cart', icon: ShoppingCart, description: 'Review your selections' },
     { id: 'customer-info', label: 'Customer Info', icon: User, description: 'Enter your details' },
     { id: 'payment', label: 'Payment', icon: CreditCard, description: 'Complete payment' },
     { id: 'confirmation', label: 'Confirmation', icon: CheckCircle, description: 'Order confirmed' }
