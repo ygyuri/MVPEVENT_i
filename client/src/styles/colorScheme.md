@@ -1,343 +1,360 @@
-# 🎨 Web3 Color Scheme Guide
+# 🎨 Web3 Color Scheme Guide - Event-i Application
 
-## Overview
-This document defines the consistent color palette for the Event-i application, emphasizing a modern Web3 aesthetic with blue as the primary color. All components must reference these colors to maintain UI consistency.
+## 🌟 Overview
 
-## 🌈 Primary Color Palette
+This guide defines the comprehensive color palette and design system for the Event-i application, featuring a modern Web3 aesthetic with **blue as the primary color**. The system supports both **light mode (white Web3 feel)** and **dark mode (blue Web3 feel)** for optimal user experience.
 
-### **Core Blues (Primary Brand Colors)**
+## 🎯 Color Philosophy
+
+- **Primary Focus**: Blue-based palette for trust, technology, and innovation
+- **Web3 Aesthetic**: Glassmorphism, gradients, and subtle animations
+- **Accessibility**: High contrast ratios and clear visual hierarchy
+- **Dual Mode**: Seamless switching between light and dark themes
+- **Consistency**: Unified color usage across all components
+
+## 🌈 Color Palette
+
+### Primary Colors (Blue Focus)
 ```css
 /* Primary Blue - Main brand color, buttons, links */
 --primary-blue: #3B82F6
 --primary-blue-hover: #2563EB
 --primary-blue-dark: #1E40AF
 
-/* Light Blue - Highlights, accents, secondary elements */
+/* Light Blue - Secondary elements, highlights */
 --light-blue: #60A5FA
 --light-blue-hover: #3B82F6
 
-/* Deep Blue - Depth, contrast, dark elements */
+/* Deep Blue - Dark mode backgrounds, emphasis */
 --deep-blue: #1E40AF
 --deep-blue-hover: #1E3A8A
 ```
 
-### **Cyan/Teal (Complementary to Blue)**
+### Complementary Colors
 ```css
-/* Cyan - Modern tech feel, interactive elements */
+/* Cyan - Accents, secondary actions */
 --cyan: #06B6D4
 --cyan-hover: #0891B2
 
-/* Electric Blue - Bright accents, highlights */
+/* Electric Blue - Interactive elements */
 --electric-blue: #00D4FF
 --electric-blue-hover: #00B8E6
-```
 
-### **Indigo (Sophisticated Purple-Blue)**
-```css
-/* Indigo - Rich accents, sophisticated touches */
+/* Indigo - Tertiary elements */
 --indigo: #6366F1
 --indigo-hover: #4F46E5
 ```
 
-## 🎯 Background Colors
-
-### **Dark Gradients (Primary Backgrounds)**
+### Neutral Colors
 ```css
-/* Main background gradient */
+/* Light Mode Neutrals */
+--gray-50: #F8FAFC
+--gray-100: #F1F5F9
+--gray-200: #E2E8F0
+--gray-300: #CBD5E1
+--gray-400: #94A3B8
+--gray-500: #64748B
+--gray-600: #475569
+--gray-700: #334155
+--gray-800: #1E293B
+--gray-900: #0F172A
+
+/* Dark Mode Neutrals */
+--slate-800: #1E293B
+--slate-900: #0F172A
+--slate-950: #020617
+```
+
+## 🌓 Theme Modes
+
+### Light Mode (White Web3 Feel)
+- **Background**: Clean white gradients with subtle blue tints
+- **Cards**: Semi-transparent white with blue borders
+- **Text**: Dark grays for readability
+- **Accents**: Blue and cyan for interactive elements
+- **Mood**: Professional, clean, modern
+
+### Dark Mode (Blue Web3 Feel)
+- **Background**: Deep blue gradients with slate undertones
+- **Cards**: Semi-transparent white with blue borders
+- **Text**: White and light grays for contrast
+- **Accents**: Bright blue and cyan for visibility
+- **Mood**: Sophisticated, tech-forward, immersive
+
+## 🎨 Component Color Mapping
+
+### Backgrounds
+```css
+/* Light Mode */
+--bg-primary: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 50%, #FFFFFF 100%)
+--bg-secondary: linear-gradient(135deg, #FFFFFF 0%, #F1F5F9 50%, #FFFFFF 100%)
+
+/* Dark Mode */
 --bg-primary: linear-gradient(135deg, #111827 0%, #1E3A8A 50%, #111827 100%)
-
-/* Alternative background gradient */
 --bg-secondary: linear-gradient(135deg, #111827 0%, #1E40AF 50%, #111827 100%)
+```
 
-/* Card backgrounds */
+### Cards & Containers
+```css
+/* Light Mode */
+--bg-card: rgba(255, 255, 255, 0.8)
+--bg-card-hover: rgba(255, 255, 255, 0.9)
+--card-border: rgba(59, 130, 246, 0.1)
+
+/* Dark Mode */
 --bg-card: rgba(255, 255, 255, 0.05)
 --bg-card-hover: rgba(255, 255, 255, 0.08)
+--card-border: rgba(255, 255, 255, 0.1)
 ```
 
-### **Animated Background Elements**
+### Text Colors
 ```css
-/* Floating blobs for Web3 feel */
---blob-primary: rgba(59, 130, 246, 0.2)    /* Blue blob */
---blob-secondary: rgba(6, 182, 212, 0.2)   /* Cyan blob */
---blob-accent: rgba(99, 102, 241, 0.2)     /* Indigo blob */
-```
+/* Light Mode */
+--text-primary: #1E293B
+--text-secondary: #475569
+--text-muted: #64748B
 
-## 🔤 Text Colors
-
-### **Primary Text**
-```css
-/* Main text */
+/* Dark Mode */
 --text-primary: #FFFFFF
 --text-secondary: #E5E7EB
 --text-muted: #9CA3AF
 ```
 
-### **Accent Text**
+### Interactive Elements
 ```css
-/* Blue accent text */
---text-blue: #60A5FA
---text-blue-light: #93C5FD
---text-blue-dark: #3B82F6
-
-/* Cyan accent text */
---text-cyan: #06B6D4
---text-cyan-light: #22D3EE
-```
-
-## 🎨 Interactive Elements
-
-### **Buttons**
-```css
-/* Primary button */
+/* Buttons */
 --btn-primary: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)
 --btn-primary-hover: linear-gradient(135deg, #2563EB 0%, #0891B2 100%)
+--btn-secondary: rgba(59, 130, 246, 0.1)
+--btn-secondary-hover: rgba(59, 130, 246, 0.2)
 
-/* Secondary button */
---btn-secondary: rgba(255, 255, 255, 0.1)
---btn-secondary-hover: rgba(255, 255, 255, 0.2)
-
-/* Disabled button */
---btn-disabled: #6B7280
---btn-disabled-text: #9CA3AF
-```
-
-### **Form Elements**
-```css
-/* Input borders */
+/* Form Elements */
 --input-border: rgba(59, 130, 246, 0.3)
 --input-border-focus: #3B82F6
---input-border-error: #EF4444
-
-/* Input backgrounds */
---input-bg: rgba(255, 255, 255, 0.1)
+--input-bg: rgba(59, 130, 246, 0.05)
 --input-bg-focus: rgba(59, 130, 246, 0.1)
 ```
 
-## 🚦 Status Colors
+## 🔄 Theme Toggle System
 
-### **Success States**
-```css
---success: #10B981
---success-light: #34D399
---success-bg: rgba(16, 185, 129, 0.1)
---success-border: rgba(16, 185, 129, 0.3)
+### Implementation
+The application uses a **ThemeContext** that provides:
+- **Automatic detection** of system preference
+- **Local storage persistence** of user choice
+- **Smooth transitions** between themes
+- **Dynamic CSS variable updates**
+
+### Usage
+```jsx
+import { useTheme, ThemeToggle } from '../contexts/ThemeContext';
+
+// In components
+const { isDarkMode, toggleTheme, theme } = useTheme();
+
+// Toggle button
+<ThemeToggle size="default" />
+
+// Theme status display
+<ThemeStatus />
 ```
 
-### **Warning States**
+### Theme Switching
+- **Light → Dark**: Smooth transition to blue Web3 feel
+- **Dark → Light**: Smooth transition to white Web3 feel
+- **System Sync**: Automatically follows OS preference
+- **Persistence**: Remembers user choice across sessions
+
+## 🎭 Visual Effects
+
+### Glassmorphism
 ```css
---warning: #F59E0B
---warning-light: #FBBF24
---warning-bg: rgba(245, 158, 11, 0.1)
---warning-border: rgba(245, 158, 11, 0.3)
-```
-
-### **Error States**
-```css
---error: #EF4444
---error-light: #F87171
---error-bg: rgba(239, 68, 68, 0.1)
---error-border: rgba(239, 68, 68, 0.3)
-```
-
-## 🎭 Component-Specific Colors
-
-### **Cards & Containers**
-```css
-/* Glassmorphism effect */
---card-bg: rgba(255, 255, 255, 0.05)
---card-border: rgba(255, 255, 255, 0.1)
---card-shadow: 0 8px 32px rgba(0, 0, 0, 0.3)
-
-/* Hover states */
---card-hover-bg: rgba(255, 255, 255, 0.08)
---card-hover-border: rgba(59, 130, 246, 0.2)
-```
-
-### **Navigation & Headers**
-```css
-/* Navbar background */
---nav-bg: rgba(17, 24, 39, 0.95)
---nav-border: rgba(59, 130, 246, 0.2)
-
-/* Header text */
---header-primary: #FFFFFF
---header-secondary: #60A5FA
-```
-
-## 📱 Responsive Color Adjustments
-
-### **Mobile Optimizations**
-```css
-/* Reduce opacity for better mobile performance */
---mobile-bg-opacity: 0.8
---mobile-blur: blur(20px)
-```
-
-### **Dark Mode Considerations**
-```css
-/* Ensure contrast ratios meet accessibility standards */
---contrast-ratio: 4.5:1 (minimum)
---text-contrast: #FFFFFF on dark backgrounds
-```
-
-## 🎨 Usage Examples
-
-### **Gradient Backgrounds**
-```css
-/* Primary page background */
-background: linear-gradient(135deg, #111827 0%, #1E3A8A 50%, #111827 100%);
-
-/* Card background */
-background: rgba(255, 255, 255, 0.05);
-backdrop-filter: blur(20px);
-border: 1px solid rgba(255, 255, 255, 0.1);
-```
-
-### **Button Styles**
-```css
-/* Primary button */
-background: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%);
-color: #FFFFFF;
-box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
-
-/* Hover effect */
-transform: scale(1.05);
-box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35);
-```
-
-### **Text Hierarchy**
-```css
-/* Main heading */
-color: #FFFFFF;
-font-weight: 700;
-
-/* Subheading */
-color: #60A5FA;
-font-weight: 600;
-
-/* Body text */
-color: #E5E7EB;
-font-weight: 400;
-
-/* Muted text */
-color: #9CA3AF;
-font-weight: 400;
-```
-
-## 🔧 CSS Custom Properties
-
-### **Complete CSS Variables**
-```css
-:root {
-  /* Primary Colors */
-  --primary-blue: #3B82F6;
-  --primary-blue-hover: #2563EB;
-  --primary-blue-dark: #1E40AF;
-  --light-blue: #60A5FA;
-  --light-blue-hover: #3B82F6;
-  --deep-blue: #1E40AF;
-  --deep-blue-hover: #1E3A8A;
-  
-  /* Complementary Colors */
-  --cyan: #06B6D4;
-  --cyan-hover: #0891B2;
-  --electric-blue: #00D4FF;
-  --electric-blue-hover: #00B8E6;
-  --indigo: #6366F1;
-  --indigo-hover: #4F46E5;
-  
-  /* Backgrounds */
-  --bg-primary: linear-gradient(135deg, #111827 0%, #1E3A8A 50%, #111827 100%);
-  --bg-secondary: linear-gradient(135deg, #111827 0%, #1E40AF 50%, #111827 100%);
-  --bg-card: rgba(255, 255, 255, 0.05);
-  --bg-card-hover: rgba(255, 255, 255, 0.08);
-  
-  /* Text Colors */
-  --text-primary: #FFFFFF;
-  --text-secondary: #E5E7EB;
-  --text-muted: #9CA3AF;
-  --text-blue: #60A5FA;
-  --text-blue-light: #93C5FD;
-  --text-blue-dark: #3B82F6;
-  --text-cyan: #06B6D4;
-  --text-cyan-light: #22D3EE;
-  
-  /* Interactive Elements */
-  --btn-primary: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%);
-  --btn-primary-hover: linear-gradient(135deg, #2563EB 0%, #0891B2 100%);
-  --btn-secondary: rgba(255, 255, 255, 0.1);
-  --btn-secondary-hover: rgba(255, 255, 255, 0.2);
-  --btn-disabled: #6B7280;
-  --btn-disabled-text: #9CA3AF;
-  
-  /* Form Elements */
-  --input-border: rgba(59, 130, 246, 0.3);
-  --input-border-focus: #3B82F6;
-  --input-border-error: #EF4444;
-  --input-bg: rgba(255, 255, 255, 0.1);
-  --input-bg-focus: rgba(59, 130, 246, 0.1);
-  
-  /* Status Colors */
-  --success: #10B981;
-  --success-light: #34D399;
-  --success-bg: rgba(16, 185, 129, 0.1);
-  --success-border: rgba(16, 185, 129, 0.3);
-  --warning: #F59E0B;
-  --warning-light: #FBBF24;
-  --warning-bg: rgba(245, 158, 11, 0.1);
-  --warning-border: rgba(245, 158, 11, 0.3);
-  --error: #EF4444;
-  --error-light: #F87171;
-  --error-bg: rgba(239, 68, 68, 0.1);
-  --error-border: rgba(239, 68, 68, 0.3);
-  
-  /* Component Colors */
-  --card-bg: rgba(255, 255, 255, 0.05);
-  --card-border: rgba(255, 255, 255, 0.1);
-  --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --card-hover-bg: rgba(255, 255, 255, 0.08);
-  --card-hover-border: rgba(59, 130, 246, 0.2);
-  
-  /* Blob Colors */
-  --blob-primary: rgba(59, 130, 246, 0.2);
-  --blob-secondary: rgba(6, 182, 212, 0.2);
-  --blob-accent: rgba(99, 102, 241, 0.2);
+.glass {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
 }
 ```
 
-## 📋 Implementation Checklist
+### Blob Animations
+```css
+.blob-primary {
+  background: var(--blob-primary);
+  border-radius: 50%;
+  filter: blur(40px);
+  animation: blob-float 6s ease-in-out infinite;
+}
+```
 
-### **Before Using Colors**
-- [ ] Check this guide for the correct color values
-- [ ] Use CSS custom properties when possible
-- [ ] Ensure contrast ratios meet accessibility standards
-- [ ] Test on both light and dark backgrounds
+### Gradients
+```css
+/* Primary gradients */
+background: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)
+background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%)
 
-### **Color Usage Rules**
-- [ ] Primary blue (#3B82F6) for main actions and branding
-- [ ] Cyan (#06B6D4) for secondary actions and highlights
-- [ ] White (#FFFFFF) for primary text on dark backgrounds
-- [ ] Blue tints for secondary text and accents
-- [ ] Consistent hover states using defined hover colors
+/* Background gradients */
+background: var(--bg-primary)
+background: var(--bg-secondary)
+```
 
-### **Accessibility Requirements**
-- [ ] Minimum contrast ratio: 4.5:1 for normal text
-- [ ] Minimum contrast ratio: 3:1 for large text
-- [ ] Color should not be the only way to convey information
-- [ ] Test with color blindness simulators
+## 📱 Responsive Design
 
-## 🎯 Quick Reference
+### Breakpoints
+- **Mobile**: 320px - 768px
+- **Tablet**: 768px - 1024px
+- **Desktop**: 1024px+
 
-| Element | Primary Color | Secondary Color | Hover Color |
-|---------|---------------|-----------------|-------------|
-| Buttons | #3B82F6 | #06B6D4 | #2563EB |
-| Text | #FFFFFF | #60A5FA | #93C5FD |
-| Borders | rgba(59, 130, 246, 0.3) | rgba(6, 182, 212, 0.3) | #3B82F6 |
-| Backgrounds | #111827 | #1E3A8A | #1E40AF |
-| Success | #10B981 | #34D399 | #059669 |
-| Warning | #F59E0B | #FBBF24 | #D97706 |
-| Error | #EF4444 | #F87171 | #DC2626 |
+### Mobile Optimizations
+- **Touch-friendly** button sizes (44px minimum)
+- **Readable text** at all screen sizes
+- **Optimized spacing** for mobile devices
+- **Gesture support** for theme switching
+
+## ♿ Accessibility
+
+### Contrast Ratios
+- **Large text**: Minimum 3:1 contrast ratio
+- **Normal text**: Minimum 4.5:1 contrast ratio
+- **UI components**: Minimum 3:1 contrast ratio
+
+### Color Independence
+- **No color-only** information conveyance
+- **Icon + text** combinations for clarity
+- **Alternative indicators** for status changes
+
+### Focus States
+- **Visible focus** indicators on all interactive elements
+- **High contrast** focus rings
+- **Keyboard navigation** support
+
+## 🛠️ Implementation
+
+### CSS Variables
+```css
+:root {
+  /* All color definitions */
+  --primary-blue: #3B82F6;
+  --bg-primary: linear-gradient(...);
+  /* ... more variables */
+}
+
+.dark {
+  /* Dark mode overrides */
+  --bg-primary: linear-gradient(...);
+  --text-primary: #FFFFFF;
+}
+```
+
+### Utility Classes
+```css
+.bg-web3-primary { background: var(--bg-primary); }
+.text-web3-primary { color: var(--text-primary); }
+.btn-web3-primary { /* button styles */ }
+.glass { /* glassmorphism effect */ }
+```
+
+### Theme Transitions
+```css
+.theme-transition {
+  transition: background-color 0.3s ease, 
+              color 0.3s ease, 
+              border-color 0.3s ease;
+}
+```
+
+## 📋 Usage Checklist
+
+### For Developers
+- [ ] Use CSS variables instead of hardcoded colors
+- [ ] Apply `theme-transition` class for smooth theme changes
+- [ ] Test both light and dark modes
+- [ ] Ensure proper contrast ratios
+- [ ] Use semantic color names
+
+### For Designers
+- [ ] Maintain blue as primary color
+- [ ] Ensure visual hierarchy in both themes
+- [ ] Test readability across devices
+- [ ] Validate accessibility compliance
+- [ ] Consider user preference patterns
+
+## 🎨 Component Examples
+
+### Button Styles
+```jsx
+// Primary button
+<button className="btn-web3-primary px-6 py-3 rounded-xl">
+  Click Me
+</button>
+
+// Secondary button
+<button className="btn-web3-secondary px-6 py-3 rounded-xl">
+  Secondary Action
+</button>
+```
+
+### Card Styles
+```jsx
+// Glass card
+<div className="glass rounded-2xl p-6">
+  <h3 className="text-web3-primary font-semibold">Card Title</h3>
+  <p className="text-web3-blue">Card content</p>
+</div>
+```
+
+### Form Styles
+```jsx
+// Input field
+<input 
+  className="input-web3 w-full px-4 py-3 rounded-xl"
+  placeholder="Enter text..."
+/>
+```
+
+## 🚀 Best Practices
+
+### Color Usage
+1. **Primary blue** for main actions and branding
+2. **Cyan** for secondary actions and highlights
+3. **Gray scale** for text and backgrounds
+4. **Semantic colors** for status indicators
+
+### Theme Consistency
+1. **Always use CSS variables** for colors
+2. **Test both themes** during development
+3. **Maintain contrast** in both modes
+4. **Smooth transitions** between themes
+
+### Performance
+1. **CSS variables** for dynamic updates
+2. **Efficient transitions** (300ms duration)
+3. **Minimal repaints** during theme changes
+4. **Optimized animations** for mobile
+
+## 🔮 Future Enhancements
+
+### Planned Features
+- **Custom color themes** for users
+- **Seasonal variations** (holiday themes)
+- **Brand customization** for organizers
+- **Accessibility presets** (high contrast, colorblind friendly)
+
+### Technical Improvements
+- **CSS-in-JS** integration for dynamic theming
+- **Theme plugins** for third-party components
+- **Performance optimizations** for theme switching
+- **Advanced animations** and micro-interactions
 
 ---
 
-**Remember**: Consistency is key! Always reference this guide when implementing new components or updating existing ones. The Web3 aesthetic relies on a cohesive color story that tells users they're experiencing something modern and cutting-edge. 🚀
+## 📚 References
+
+- **Web3 Design Principles**: Modern, clean, tech-forward aesthetics
+- **Accessibility Guidelines**: WCAG 2.1 AA compliance
+- **Color Theory**: Blue psychology and user trust
+- **CSS Best Practices**: Variables, transitions, and performance
+- **Design Systems**: Consistent component architecture
+
+---
+
+*This color scheme guide ensures a cohesive, accessible, and beautiful user experience across all themes and devices.* 🎨✨

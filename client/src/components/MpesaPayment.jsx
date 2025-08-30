@@ -1,92 +1,90 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Phone, CreditCard, CheckCircle, XCircle, Loader, ArrowRight } from 'lucide-react';
+import { Phone, CreditCard, CheckCircle, XCircle, Clock, ArrowLeft } from 'lucide-react';
 import { initiatePayment, setCheckoutStep } from '../store/slices/checkoutSlice';
 
 const MpesaPayment = () => {
   const dispatch = useDispatch();
-  const { currentOrder, paymentStatus, isLoading, error, mpesaPrompt } = useSelector((state) => state.checkout);
+  const { currentOrder, paymentStatus, mpesaPrompt, isLoading, error } = useSelector((state) => state.checkout);
   
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneError, setPhoneError] = useState('');
 
-  useEffect(() => {
-    if (paymentStatus === 'success') {
-      // Auto-advance to confirmation after a short delay
-      setTimeout(() => {
-        dispatch(setCheckoutStep('confirmation'));
-      }, 2000);
-    }
-  }, [paymentStatus, dispatch]);
-
   const validatePhone = (phone) => {
     if (!phone.trim()) {
-      return 'Phone number is required';
+      setPhoneError('Phone number is required');
+      return false;
     }
     if (!/^254\d{9}$/.test(phone)) {
-      return 'Please enter a valid Kenyan phone number (254XXXXXXXXX)';
+      setPhoneError('Please enter a valid Kenyan phone number (254XXXXXXXXX)');
+      return false;
     }
-    return '';
+    setPhoneError('');
+    return true;
   };
 
   const handlePhoneChange = (e) => {
     const value = e.target.value;
     setPhoneNumber(value);
-    
-    // Clear error when user starts typing
     if (phoneError) {
-      setPhoneError('');
+      validatePhone(value);
     }
   };
 
-  const handlePayment = async (e) => {
-    e.preventDefault();
-    
-    const error = validatePhone(phoneNumber);
-    if (error) {
-      setPhoneError(error);
+  const handleBack = () => {
+    dispatch(setCheckoutStep('customer-info'));
+  };
+
+  const handlePayment = async () => {
+    if (!validatePhone(phoneNumber)) {
       return;
     }
 
-    if (!currentOrder || !currentOrder._id) {
-      console.error('No current order found');
+    if (!currentOrder?._id) {
+      console.error('No order ID available');
       return;
     }
 
-    // Initiate MPESA payment
-    await dispatch(initiatePayment({ orderId: currentOrder._id, phoneNumber }));
+    try {
+      await dispatch(initiatePayment({
+        orderId: currentOrder._id,
+        phoneNumber: phoneNumber
+      })).unwrap();
+    } catch (error) {
+      console.error('Payment initiation failed:', error);
+    }
   };
 
   const getStatusIcon = () => {
     switch (paymentStatus) {
-      case 'processing':
-        return <Loader className="w-16 h-16 text-blue-400 animate-spin" />;
+      case 'pending':
+        return <Clock className="w-8 h-8 text-yellow-400" />;
       case 'success':
-        return <CheckCircle className="w-16 h-16 text-green-400" />;
+        return <CheckCircle className="w-8 h-8 text-green-400" />;
       case 'failed':
-        return <XCircle className="w-16 h-16 text-red-400" />;
+        return <XCircle className="w-8 h-8 text-red-400" />;
       default:
-        return <CreditCard className="w-16 h-16 text-blue-400" />;
+        return <CreditCard className="w-8 h-8 text-blue-400" />;
     }
   };
 
-  const getStatusMessage = () => {
+  const getStatusText = () => {
     switch (paymentStatus) {
-      case 'processing':
-        return 'Processing your payment...';
+      case 'pending':
+        return 'Payment Pending';
       case 'success':
-        return 'Payment successful! Redirecting to confirmation...';
+        return 'Payment Successful';
       case 'failed':
-        return 'Payment failed. Please try again.';
+        return 'Payment Failed';
       default:
-        return 'Enter your phone number to pay with MPESA';
+        return 'Ready for Payment';
     }
   };
 
   const getStatusColor = () => {
     switch (paymentStatus) {
-      case 'processing':
-        return 'text-blue-400';
+      case 'pending':
+        return 'text-yellow-400';
       case 'success':
         return 'text-green-400';
       case 'failed':
@@ -96,165 +94,183 @@ const MpesaPayment = () => {
     }
   };
 
+  if (!currentOrder) {
+    return (
+      <div className="min-h-screen bg-web3-primary flex items-center justify-center p-4 theme-transition">
+        <div className="text-center">
+          <XCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-web3-primary mb-2">Order Not Found</h2>
+          <p className="text-web3-blue mb-4">Please complete the previous steps first.</p>
+          <button
+            onClick={handleBack}
+            className="btn-web3-secondary px-6 py-2 rounded-xl"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
+    <div className="min-h-screen bg-web3-primary p-4 theme-transition">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 blob-primary"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 blob-secondary"></div>
       </div>
 
       <div className="max-w-2xl mx-auto relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-4xl font-bold text-web3-primary mb-4">
             MPESA Payment
           </h1>
-          <p className="text-blue-200 text-lg">
-            Complete your purchase securely with MPESA
+          <p className="text-web3-blue text-lg">
+            Complete your payment using MPESA mobile money
           </p>
         </div>
 
         {/* Payment Form */}
-        <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-8">
-          {/* Status Display */}
-          <div className="text-center mb-8">
-            <div className="mb-4">
-              {getStatusIcon()}
+        <div className="glass rounded-2xl p-8">
+          {/* Order Summary */}
+          <div className="mb-8 p-6 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-xl border border-blue-500/20">
+            <h3 className="text-lg font-semibold text-web3-primary mb-4">Order Summary</h3>
+            <div className="space-y-2 text-web3-blue">
+              <div className="flex justify-between">
+                <span>Order Number:</span>
+                <span className="font-mono">{currentOrder.orderNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Amount:</span>
+                <span className="font-semibold text-web3-primary">
+                  KES {currentOrder.pricing?.total?.toLocaleString() || '0'}
+                </span>
+              </div>
             </div>
-            <h2 className={`text-2xl font-semibold mb-2 ${getStatusColor()}`}>
-              {getStatusMessage()}
-            </h2>
-            {paymentStatus === 'processing' && (
-              <p className="text-blue-300 text-sm">
-                Please check your phone for the MPESA prompt
-              </p>
-            )}
           </div>
+
+          {/* Payment Status */}
+          <div className="text-center mb-8">
+            <div className="inline-flex flex-col items-center gap-3 p-6 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-xl border border-blue-500/20">
+              {getStatusIcon()}
+              <div>
+                <h4 className={`text-xl font-semibold ${getStatusColor()}`}>
+                  {getStatusText()}
+                </h4>
+                {paymentStatus === 'pending' && (
+                  <p className="text-web3-blue text-sm mt-1">
+                    Check your phone for the MPESA prompt
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Phone Number Input */}
+          {!paymentStatus || paymentStatus === 'failed' ? (
+            <div className="mb-6">
+              <label className="block text-web3-blue text-sm font-medium mb-2">
+                MPESA Phone Number *
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-web3-blue" />
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={handlePhoneChange}
+                  className={`input-web3 w-full pl-10 pr-4 py-3 rounded-xl placeholder-web3-cyan focus:outline-none transition-all duration-300 ${
+                    phoneError ? 'error' : ''
+                  }`}
+                  placeholder="254XXXXXXXXX (Kenyan format)"
+                />
+              </div>
+              {phoneError && (
+                <p className="mt-1 text-red-400 text-sm">{phoneError}</p>
+              )}
+              <p className="mt-2 text-web3-cyan text-sm">
+                Format: 254XXXXXXXXX (e.g., 254712345678)
+              </p>
+            </div>
+          ) : null}
 
           {/* MPESA Prompt Display */}
           {mpesaPrompt && (
-            <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl p-6 mb-6">
-              <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                <Phone className="w-5 h-5 text-blue-400" />
-                MPESA Prompt
-              </h3>
-              <div className="space-y-2 text-blue-200">
-                <p><strong>Amount:</strong> KES {currentOrder?.pricing?.total?.toLocaleString() || 'N/A'}</p>
-                <p><strong>Reference:</strong> {currentOrder?.orderNumber || 'N/A'}</p>
-                <p><strong>Phone:</strong> {phoneNumber}</p>
-              </div>
-              <p className="text-blue-300 text-sm mt-3">
-                Enter your MPESA PIN when prompted on your phone
+            <div className="mb-6 p-4 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-xl border border-green-500/20">
+              <h4 className="text-green-400 font-semibold mb-2">MPESA Prompt Sent!</h4>
+              <p className="text-web3-blue text-sm">
+                Please check your phone and enter your MPESA PIN when prompted.
               </p>
             </div>
           )}
 
-          {/* Payment Form */}
-          {paymentStatus !== 'success' && (
-            <form onSubmit={handlePayment} className="space-y-6">
-              <div>
-                <label className="block text-blue-200 text-sm font-medium mb-2">
-                  Phone Number *
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-blue-400" />
-                  <input
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={handlePhoneChange}
-                    disabled={paymentStatus === 'processing'}
-                    className={`w-full pl-10 pr-4 py-3 bg-white/10 border rounded-xl text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
-                      phoneError ? 'border-red-500' : 'border-blue-500/30'
-                    }`}
-                    placeholder="254XXXXXXXXX (Kenyan format)"
-                  />
-                </div>
-                {phoneError && (
-                  <p className="mt-1 text-red-400 text-sm">{phoneError}</p>
-                )}
-                <p className="mt-2 text-blue-300 text-sm">
-                  Format: 254XXXXXXXXX (e.g., 254712345678)
-                </p>
-              </div>
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 status-error rounded-xl p-4">
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
 
-              {/* Error Display */}
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
-                  <p className="text-red-400 text-sm">{error}</p>
-                </div>
-              )}
-
-              {/* Payment Button */}
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button
+              onClick={handleBack}
+              className="btn-web3-secondary flex-1 sm:flex-none px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Back
+            </button>
+            
+            {(!paymentStatus || paymentStatus === 'failed') && (
               <button
-                type="submit"
-                disabled={!phoneNumber.trim() || paymentStatus === 'processing' || isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-600 disabled:to-gray-700 text-white py-3 px-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2"
+                onClick={handlePayment}
+                disabled={isLoading || !phoneNumber.trim()}
+                className="btn-web3-primary flex-1 sm:flex-none px-8 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
               >
-                {isLoading || paymentStatus === 'processing' ? (
+                {isLoading ? (
                   <>
-                    <Loader className="w-5 h-5 animate-spin" />
-                    {paymentStatus === 'processing' ? 'Processing...' : 'Initiating Payment...'}
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Initiating Payment...
                   </>
                 ) : (
                   <>
                     Pay with MPESA
-                    <ArrowRight className="w-5 h-5" />
+                    <CreditCard className="w-5 h-5" />
                   </>
                 )}
               </button>
-            </form>
-          )}
-
-          {/* Success Message */}
-          {paymentStatus === 'success' && (
-            <div className="text-center">
-              <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-xl p-6">
-                <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-green-400 mb-2">
-                  Payment Successful!
-                </h3>
-                <p className="text-green-300">
-                  Your order has been confirmed. You'll receive an email with your tickets shortly.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Failed Payment */}
-          {paymentStatus === 'failed' && (
-            <div className="text-center">
-              <div className="bg-gradient-to-br from-red-500/10 to-pink-500/10 border border-red-500/30 rounded-xl p-6 mb-6">
-                <XCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-red-400 mb-2">
-                  Payment Failed
-                </h3>
-                <p className="text-red-300">
-                  There was an issue processing your payment. Please try again.
-                </p>
-              </div>
-              
-              <button
-                onClick={() => window.location.reload()}
-                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-blue-500/25"
-              >
-                Try Again
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* MPESA Information */}
-        <div className="mt-8 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-blue-400" />
-            About MPESA Payment
-          </h3>
-          <div className="space-y-2 text-blue-200 text-sm">
-            <p>• You'll receive an MPESA prompt on your phone</p>
-            <p>• Enter your MPESA PIN to complete the payment</p>
-            <p>• Payment is processed securely and instantly</p>
-            <p>• You'll receive confirmation via email</p>
+        {/* Payment Instructions */}
+        <div className="mt-8 glass rounded-2xl p-6">
+          <h3 className="text-lg font-semibold text-web3-primary mb-4">How it works:</h3>
+          <div className="space-y-3 text-web3-blue text-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
+                1
+              </div>
+              <p>Enter your MPESA-registered phone number</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
+                2
+              </div>
+              <p>Click "Pay with MPESA" to receive the prompt</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
+                3
+              </div>
+              <p>Enter your MPESA PIN when prompted on your phone</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
+                4
+              </div>
+              <p>Wait for confirmation and receive your tickets via email</p>
+            </div>
           </div>
         </div>
       </div>

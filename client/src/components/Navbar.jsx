@@ -1,139 +1,112 @@
-import { useEffect, useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { logout, getCurrentUser } from '../store/slices/authSlice'
-import { selectCartItemCount } from '../store/slices/checkoutSlice'
-import AuthModal from './AuthModal'
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectCartItemCount } from '../store/slices/checkoutSlice';
+import { ShoppingCart, Menu, X, User, LogOut } from 'lucide-react';
+import { ThemeToggle } from '../contexts/ThemeContext';
 
 const Navbar = () => {
-  const [showAuthModal, setShowAuthModal] = useState(false)
-  const [showLogoutMessage, setShowLogoutMessage] = useState(false)
-  const dispatch = useDispatch()
-  const { isAuthenticated, user, authToken } = useSelector(state => state.auth)
-  const cartItemCount = useSelector(selectCartItemCount)
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const cartItemCount = useSelector(selectCartItemCount);
 
-  useEffect(() => {
-    // Only fetch user data if we have a token and are not already authenticated
-    if (authToken && !isAuthenticated && !user) {
-      // Check if token is valid before making the request
-      try {
-        dispatch(getCurrentUser())
-      } catch (error) {
-        console.error('Failed to get current user:', error)
-        // If it fails, clear the invalid token
-        localStorage.removeItem('authToken')
-        localStorage.removeItem('refreshToken')
-      }
-    }
-  }, [dispatch, authToken, isAuthenticated, user])
-
-  const handleLogout = async () => {
-    try {
-      await dispatch(logout()).unwrap()
-      setShowLogoutMessage(true)
-      setTimeout(() => {
-        setShowLogoutMessage(false)
-      }, 3000)
-    } catch (error) {
-      console.error('Logout error:', error)
-      // Even if logout fails on server, clear local state
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('refreshToken')
-    }
-  }
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
 
   return (
-    <>
-      <nav className="bg-white shadow-lg border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex-shrink-0">
-              <h1 className="text-2xl font-bold text-primary-600">Event-i</h1>
+    <nav className="bg-web3-card backdrop-blur-xl border-b border-web3-card-hover sticky top-0 z-50 theme-transition">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-lg">E</span>
             </div>
+            <span className="text-web3-primary font-bold text-xl">Event-i</span>
+          </Link>
 
-            {/* Navigation Links */}
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                <a href="/" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                  Home
-                </a>
-                <a href="/events" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                  Events
-                </a>
-                {isAuthenticated && user?.role === 'admin' && (
-                  <a href="/admin" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                    Admin
-                  </a>
-                )}
-                {isAuthenticated && (user?.role === 'organizer' || user?.role === 'admin') && (
-                  <a href="/organizer" className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
-                    Organizer
-                  </a>
-                )}
-              </div>
-            </div>
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            <Link 
+              to="/" 
+              className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+            >
+              Home
+            </Link>
+            <Link 
+              to="/events" 
+              className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+            >
+              Events
+            </Link>
+          </div>
+
+          {/* Right side - Cart, Theme Toggle, User Menu */}
+          <div className="flex items-center space-x-4">
+            {/* Theme Toggle */}
+            <ThemeToggle size="default" />
+            
+            {/* Cart */}
+            <Link 
+              to="/checkout" 
+              className="relative p-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200"
+            >
+              <ShoppingCart className="w-6 h-6" />
+              {cartItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {cartItemCount}
+                </span>
+              )}
+            </Link>
 
             {/* User Menu */}
-            <div className="flex items-center space-x-4">
-              {/* Cart Icon */}
-              <a href="/checkout" className="relative p-2 text-gray-700 hover:text-primary-600 transition-colors">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-                {cartItemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                    {cartItemCount}
-                  </span>
-                )}
-              </a>
-              
-              {isAuthenticated ? (
-                <div className="flex items-center space-x-3">
-                  <div className="text-sm text-gray-700">
-                    <span className="font-medium">Welcome, {user?.firstName || user?.username}!</span>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-                  >
-                    Logout
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowAuthModal(true)}
-                  className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-                >
-                  Sign In
-                </button>
-              )}
+            <div className="relative">
+              <button className="p-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200">
+                <User className="w-6 h-6" />
+              </button>
             </div>
+
+            {/* Mobile menu button */}
+            <button
+              onClick={toggleMenu}
+              className="md:hidden p-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200"
+            >
+              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
-      </nav>
 
-      {/* Logout Success Message */}
-      {showLogoutMessage && (
-        <div className="fixed top-20 right-4 z-50 bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-green-800">
-                👋 Successfully logged out! Come back soon to discover more amazing events.
-              </p>
+        {/* Mobile Navigation */}
+        {isMenuOpen && (
+          <div className="md:hidden">
+            <div className="px-2 pt-2 pb-3 space-y-1 bg-web3-card-hover rounded-lg mt-2 border border-web3-card-hover">
+              <Link 
+                to="/" 
+                className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Home
+              </Link>
+              <Link 
+                to="/events" 
+                className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Events
+              </Link>
+              <Link 
+                to="/checkout" 
+                className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Cart ({cartItemCount})
+              </Link>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+    </nav>
+  );
+};
 
-      {/* Auth Modal */}
-      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
-    </>
-  )
-}
-
-export default Navbar 
+export default Navbar; 

@@ -1,62 +1,34 @@
-import { Routes, Route } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { useSelector } from 'react-redux'
-import Navbar from './components/Navbar'
-import Home from './pages/Home'
-import Events from './pages/Events'
-import Checkout from './pages/Checkout'
-import Notification from './components/Notification'
-import EventDetails from './pages/EventDetails'
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { store } from './store';
+import { ThemeProvider } from './contexts/ThemeContext';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
+import Events from './pages/Events';
+import EventDetails from './pages/EventDetails';
+import Checkout from './pages/Checkout';
 
 function App() {
-  const [notifications, setNotifications] = useState([])
-  const { user, isAuthenticated } = useSelector(state => state.auth)
-
-  // Show welcome message for new users
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      const isNewUser = localStorage.getItem(`welcome_shown_${user.id}`)
-      if (!isNewUser) {
-        setNotifications(prev => [...prev, {
-          id: Date.now(),
-          message: `🎉 Welcome to Event-i, ${user.firstName || user.username}! We're excited to have you join our community. Start exploring events and discover amazing experiences!`,
-          type: 'success',
-          duration: 8000
-        }])
-        localStorage.setItem(`welcome_shown_${user.id}`, 'true')
-      }
-    }
-  }, [isAuthenticated, user])
-
-  const removeNotification = (id) => {
-    setNotifications(prev => prev.filter(notification => notification.id !== id))
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      
-      {/* Notifications */}
-      {notifications.map(notification => (
-        <Notification
-          key={notification.id}
-          message={notification.message}
-          type={notification.type}
-          duration={notification.duration}
-          onClose={() => removeNotification(notification.id)}
-        />
-      ))}
-
-      <main>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/events" element={<Events />} />
-          <Route path="/events/:slug" element={<EventDetails />} />
-          <Route path="/checkout" element={<Checkout />} />
-        </Routes>
-      </main>
-    </div>
-  )
+    <Provider store={store}>
+      <ThemeProvider>
+        <Router>
+          <div className="min-h-screen bg-web3-primary theme-transition">
+            <Navbar />
+            <main>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/events" element={<Events />} />
+                <Route path="/events/:slug" element={<EventDetails />} />
+                <Route path="/checkout" element={<Checkout />} />
+              </Routes>
+            </main>
+          </div>
+        </Router>
+      </ThemeProvider>
+    </Provider>
+  );
 }
 
-export default App 
+export default App; 

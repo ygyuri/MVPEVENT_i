@@ -1,128 +1,141 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
-import { selectCheckoutStep } from '../store/slices/checkoutSlice';
-import Cart from '../components/Cart';
+import { Cart, User, CreditCard, CheckCircle } from 'lucide-react';
+import CartComponent from '../components/Cart';
 import CustomerInfoForm from '../components/CustomerInfoForm';
 import MpesaPayment from '../components/MpesaPayment';
 import OrderConfirmation from '../components/OrderConfirmation';
 
-const CheckoutProgress = ({ currentStep }) => {
+const Checkout = () => {
+  const { checkoutStep } = useSelector((state) => state.checkout);
+
   const steps = [
-    { key: 'cart', label: 'Cart', icon: '🛒' },
-    { key: 'customer-info', label: 'Customer Info', icon: '👤' },
-    { key: 'payment', label: 'Payment', icon: '💳' },
-    { key: 'confirmation', label: 'Confirmation', icon: '✅' }
+    { id: 'cart', label: 'Cart', icon: Cart, description: 'Review your selections' },
+    { id: 'customer-info', label: 'Customer Info', icon: User, description: 'Enter your details' },
+    { id: 'payment', label: 'Payment', icon: CreditCard, description: 'Complete payment' },
+    { id: 'confirmation', label: 'Confirmation', icon: CheckCircle, description: 'Order confirmed' }
   ];
 
-  const currentIndex = steps.findIndex(step => step.key === currentStep);
+  const currentStepIndex = steps.findIndex(step => step.id === checkoutStep);
 
-  return (
-    <div className="mb-8">
-      <div className="flex items-center justify-center space-x-4">
-        {steps.map((step, index) => (
-          <React.Fragment key={step.key}>
-            <div className="flex flex-col items-center">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold transition-all duration-300 ${
-                index <= currentIndex
-                  ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg'
-                  : 'bg-white/10 text-blue-300 border border-blue-500/30'
-              }`}>
-                {step.icon}
-              </div>
-              <span className={`text-sm mt-2 font-medium transition-colors duration-300 ${
-                index <= currentIndex ? 'text-white' : 'text-blue-300'
-              }`}>
-                {step.label}
-              </span>
-            </div>
-            {index < steps.length - 1 && (
-              <div className={`w-16 h-0.5 transition-all duration-300 ${
-                index < currentIndex ? 'bg-gradient-to-r from-blue-600 to-cyan-600' : 'bg-blue-500/30'
-              }`} />
-            )}
-          </React.Fragment>
-        ))}
+  const LoadingSpinner = () => (
+    <div className="flex items-center justify-center min-h-screen bg-web3-primary theme-transition">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-web3-blue text-lg">Loading checkout...</p>
       </div>
     </div>
   );
-};
 
-const LoadingSpinner = () => (
-  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-    <div className="text-center">
-      <div className="w-16 h-16 mx-auto mb-6 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
-      <h2 className="text-2xl font-bold text-white mb-2">Loading...</h2>
-      <p className="text-blue-300">Please wait while we prepare your checkout experience</p>
-    </div>
-  </div>
-);
-
-const ErrorMessage = ({ error }) => (
-  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
-    <div className="text-center">
-      <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-red-500 to-pink-500 rounded-full flex items-center justify-center">
-        <span className="text-2xl">⚠️</span>
+  const ErrorMessage = ({ message }) => (
+    <div className="flex items-center justify-center min-h-screen bg-web3-primary theme-transition">
+      <div className="text-center">
+        <div className="w-16 h-16 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-web3-primary mb-2">Something went wrong</h2>
+        <p className="text-web3-blue mb-4">{message}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="btn-web3-primary px-6 py-2 rounded-xl"
+        >
+          Try Again
+        </button>
       </div>
-      <h2 className="text-2xl font-bold text-white mb-4">Something went wrong</h2>
-      <p className="text-blue-300 mb-6 max-w-md">
-        {error || 'An unexpected error occurred. Please try again.'}
-      </p>
-      <button
-        onClick={() => window.location.reload()}
-        className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-blue-500/25"
-      >
-        Try Again
-      </button>
     </div>
-  </div>
-);
+  );
 
-const Checkout = () => {
-  const currentStep = useSelector(selectCheckoutStep);
-  const { isLoading, error } = useSelector((state) => state.checkout);
-
-  if (isLoading) {
+  // Show loading spinner while determining step
+  if (!checkoutStep) {
     return <LoadingSpinner />;
   }
 
-  if (error) {
-    return <ErrorMessage error={error} />;
+  // Show error if step is invalid
+  if (!steps.find(step => step.id === checkoutStep)) {
+    return <ErrorMessage message="Invalid checkout step" />;
   }
 
-  const renderStep = () => {
-    switch (currentStep) {
-      case 'cart':
-        return <Cart />;
-      case 'customer-info':
-        return <CustomerInfoForm />;
-      case 'payment':
-        return <MpesaPayment />;
-      case 'confirmation':
-        return <OrderConfirmation />;
-      default:
-        return <Cart />;
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-indigo-500/20 to-purple-600/20 rounded-full blur-3xl animate-pulse opacity-30"></div>
+    <div className="min-h-screen bg-web3-primary theme-transition">
+      {/* Progress Bar */}
+      <div className="sticky top-16 z-40 bg-web3-card backdrop-blur-xl border-b border-web3-card-hover">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            {steps.map((step, index) => {
+              const Icon = step.icon;
+              const isActive = step.id === checkoutStep;
+              const isCompleted = index < currentStepIndex;
+              const isUpcoming = index > currentStepIndex;
+
+              return (
+                <div key={step.id} className="flex items-center">
+                  {/* Step Icon */}
+                  <div className={`
+                    w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
+                    ${isCompleted 
+                      ? 'bg-green-500 text-white' 
+                      : isActive 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-500/20 text-gray-400'
+                    }
+                  `}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+
+                  {/* Step Label */}
+                  <div className="ml-3 hidden sm:block">
+                    <p className={`text-sm font-medium transition-colors duration-300 ${
+                      isActive 
+                        ? 'text-web3-primary' 
+                        : isCompleted 
+                          ? 'text-green-500' 
+                          : 'text-web3-blue'
+                    }`}>
+                      {step.label}
+                    </p>
+                    <p className={`text-xs transition-colors duration-300 ${
+                      isActive 
+                        ? 'text-web3-primary' 
+                        : 'text-web3-cyan'
+                    }`}>
+                      {step.description}
+                    </p>
+                  </div>
+
+                  {/* Connector Line */}
+                  {index < steps.length - 1 && (
+                    <div className={`
+                      w-16 h-0.5 mx-4 transition-all duration-300
+                      ${isCompleted 
+                        ? 'bg-green-500' 
+                        : 'bg-gray-500/20'
+                      }
+                    `} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      <div className="relative z-10">
-        {/* Progress Bar - Only show for multi-step flows */}
-        {currentStep !== 'confirmation' && (
-          <div className="pt-8 pb-4">
-            <CheckoutProgress currentStep={currentStep} />
-          </div>
-        )}
+      {/* Step Content */}
+      <div className="relative">
+        {/* Animated Background */}
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-80 h-80 blob-primary"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 blob-secondary"></div>
+        </div>
 
-        {/* Step Content */}
-        {renderStep()}
+        {/* Content */}
+        <div className="relative z-10">
+          {checkoutStep === 'cart' && <CartComponent />}
+          {checkoutStep === 'customer-info' && <CustomerInfoForm />}
+          {checkoutStep === 'payment' && <MpesaPayment />}
+          {checkoutStep === 'confirmation' && <OrderConfirmation />}
+        </div>
       </div>
     </div>
   );

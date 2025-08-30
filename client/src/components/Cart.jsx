@@ -32,18 +32,18 @@ const Cart = () => {
   // Handle case where cart might be undefined or null
   if (!cart || cart.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-web3-primary flex items-center justify-center p-4 theme-transition">
         <div className="text-center">
           <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
             <ShoppingCart className="w-12 h-12 text-white" />
           </div>
-          <h2 className="text-3xl font-bold text-white mb-4">Your Cart is Empty</h2>
-          <p className="text-blue-200 mb-8 max-w-md">
+          <h2 className="text-3xl font-bold text-web3-primary mb-4">Your Cart is Empty</h2>
+          <p className="text-web3-blue mb-8 max-w-md">
             Start building your cart by exploring our amazing events and adding tickets!
           </p>
           <button
             onClick={() => window.history.back()}
-            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-8 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-blue-500/25"
+            className="btn-web3-primary px-8 py-3 rounded-xl font-semibold"
           >
             Explore Events
           </button>
@@ -53,20 +53,20 @@ const Cart = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
+    <div className="min-h-screen bg-web3-primary p-4 theme-transition">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 blob-primary"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 blob-secondary"></div>
       </div>
 
       <div className="max-w-4xl mx-auto relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-4">
+          <h1 className="text-4xl font-bold text-web3-primary mb-4">
             Your Cart
           </h1>
-          <p className="text-blue-200 text-lg">
+          <p className="text-web3-blue text-lg">
             Review your selections and proceed to checkout
           </p>
         </div>
@@ -74,9 +74,9 @@ const Cart = () => {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2">
-            <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-              <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-3">
-                <ShoppingCart className="w-6 h-6 text-blue-400" />
+            <div className="glass rounded-2xl p-6">
+              <h2 className="text-xl font-semibold text-web3-primary mb-6 flex items-center gap-3">
+                <ShoppingCart className="w-6 h-6 text-web3-blue" />
                 Cart Items ({cart.length})
               </h2>
               
@@ -88,13 +88,13 @@ const Cart = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-white mb-2">
+                        <h3 className="font-semibold text-web3-primary mb-2">
                           {item.eventTitle}
                         </h3>
-                        <p className="text-blue-200 text-sm mb-2">
+                        <p className="text-web3-blue text-sm mb-2">
                           {item.ticketType} Ticket
                         </p>
-                        <p className="text-blue-300 font-medium">
+                        <p className="text-web3-cyan font-medium">
                           KES {item.unitPrice.toLocaleString()}
                         </p>
                       </div>
@@ -128,7 +128,7 @@ const Cart = () => {
                     </div>
                     
                     <div className="mt-3 pt-3 border-t border-blue-500/20">
-                      <p className="text-right text-white font-semibold">
+                      <p className="text-right text-web3-primary font-semibold">
                         Subtotal: KES {item.subtotal.toLocaleString()}
                       </p>
                     </div>
@@ -140,24 +140,24 @@ const Cart = () => {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6 sticky top-4">
-              <h3 className="text-xl font-semibold text-white mb-6">Order Summary</h3>
+            <div className="glass rounded-2xl p-6 sticky top-4">
+              <h3 className="text-xl font-semibold text-web3-primary mb-6">Order Summary</h3>
               
               <div className="space-y-4 mb-6">
-                <div className="flex justify-between text-blue-200">
+                <div className="flex justify-between text-web3-blue">
                   <span>Subtotal</span>
                   <span>KES {cartTotal.toLocaleString()}</span>
                 </div>
                 
                 {pricing && (
                   <>
-                    <div className="flex justify-between text-blue-200">
+                    <div className="flex justify-between text-web3-blue">
                       <span>Service Fee</span>
                       <span>KES {pricing.serviceFee.toLocaleString()}</span>
                     </div>
                     
                     <div className="border-t border-blue-500/20 pt-3">
-                      <div className="flex justify-between text-white font-semibold text-lg">
+                      <div className="flex justify-between text-web3-primary font-semibold text-lg">
                         <span>Total</span>
                         <span>KES {pricing.total.toLocaleString()}</span>
                       </div>
@@ -169,13 +169,13 @@ const Cart = () => {
               <button
                 onClick={handleProceedToCheckout}
                 disabled={!cart || cart.length === 0}
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-600 disabled:to-gray-700 text-white py-3 px-6 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed shadow-lg hover:shadow-blue-500/25 flex items-center justify-center gap-2"
+                className="btn-web3-primary w-full py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2"
               >
                 Proceed to Checkout
                 <ArrowRight className="w-5 h-5" />
               </button>
               
-              <p className="text-xs text-blue-300 text-center mt-4">
+              <p className="text-xs text-web3-cyan text-center mt-4">
                 Secure checkout powered by MPESA
               </p>
             </div>
