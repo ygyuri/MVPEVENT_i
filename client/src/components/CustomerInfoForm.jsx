@@ -88,16 +88,16 @@ const CustomerInfoForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-web3-primary p-4 theme-transition">
+    <div className="min-h-screen bg-web3-primary theme-transition">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 blob-primary"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 blob-secondary"></div>
       </div>
 
-      <div className="max-w-2xl mx-auto relative z-10">
+      <div className="container-modern relative z-10">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center-modern mb-8">
           <h1 className="text-4xl font-bold text-web3-primary mb-4">
             Customer Information
           </h1>
@@ -107,7 +107,7 @@ const CustomerInfoForm = () => {
         </div>
 
         {/* Form */}
-        <div className="glass rounded-2xl p-8">
+        <div className="form-modern">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* First Name & Last Name */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -122,8 +122,8 @@ const CustomerInfoForm = () => {
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    className={`input-web3 w-full pl-10 pr-4 py-3 rounded-xl placeholder-web3-cyan focus:outline-none transition-all duration-300 ${
-                      errors.firstName ? 'error' : ''
+                    className={`input-modern w-full pl-10 pr-4 placeholder-web3-cyan focus:outline-none transition-all duration-300 ${
+                      errors.firstName ? 'border-red-500 bg-red-50' : ''
                     }`}
                     placeholder="Enter your first name"
                   />
@@ -144,8 +144,8 @@ const CustomerInfoForm = () => {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    className={`input-web3 w-full pl-10 pr-4 py-3 rounded-xl placeholder-web3-cyan focus:outline-none transition-all duration-300 ${
-                      errors.lastName ? 'error' : ''
+                    className={`input-modern w-full pl-10 pr-4 placeholder-web3-cyan focus:outline-none transition-all duration-300 ${
+                      errors.lastName ? 'border-red-500 bg-red-50' : ''
                     }`}
                     placeholder="Enter your last name"
                   />
@@ -168,8 +168,8 @@ const CustomerInfoForm = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`input-web3 w-full pl-10 pr-4 py-3 rounded-xl placeholder-web3-cyan focus:outline-none transition-all duration-300 ${
-                    errors.email ? 'error' : ''
+                  className={`input-modern w-full pl-10 pr-4 placeholder-web3-cyan focus:outline-none transition-all duration-300 ${
+                    errors.email ? 'border-red-500 bg-red-50' : ''
                   }`}
                   placeholder="Enter your email address"
                 />
@@ -191,8 +191,8 @@ const CustomerInfoForm = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className={`input-web3 w-full pl-10 pr-4 py-3 rounded-xl placeholder-web3-cyan focus:outline-none transition-all duration-300 ${
-                    errors.phone ? 'error' : ''
+                  className={`input-modern w-full pl-10 pr-4 placeholder-web3-cyan focus:outline-none transition-all duration-300 ${
+                    errors.phone ? 'border-red-500 bg-red-50' : ''
                   }`}
                   placeholder="254XXXXXXXXX (Kenyan format)"
                 />
@@ -217,7 +217,7 @@ const CustomerInfoForm = () => {
               <button
                 type="button"
                 onClick={handleBack}
-                className="btn-web3-secondary flex-1 sm:flex-none px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
+                className="btn-modern flex-1 sm:flex-none px-6 py-3 font-semibold flex items-center justify-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-800"
               >
                 <ArrowLeft className="w-5 h-5" />
                 Back to Cart
@@ -226,7 +226,7 @@ const CustomerInfoForm = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="btn-web3-primary flex-1 sm:flex-none px-8 py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
+                className="btn-modern flex-1 sm:flex-none px-8 py-3 font-semibold flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {isLoading ? (
                   <>

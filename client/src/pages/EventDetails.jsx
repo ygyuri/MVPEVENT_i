@@ -61,13 +61,17 @@ const EventDetails = () => {
     
     try {
       setAddingToCart(true)
-      dispatch(addToCart({
+      
+      const cartItem = {
         eventId: currentEvent._id,
         eventTitle: currentEvent.title,
         ticketType: selectedTicket.name,
         price: selectedTicket.price || 0,
         quantity
-      }))
+      };
+      
+      console.log('Adding to cart:', cartItem);
+      dispatch(addToCart(cartItem));
       
       // Show success message
       alert(`🎉 Added ${quantity} ${selectedTicket.name} ticket(s) to cart!`)
@@ -127,7 +131,7 @@ const EventDetails = () => {
 
       <div className="relative z-10">
         {/* Navigation */}
-        <div className="container mx-auto px-4 py-6">
+        <div className="container-modern py-6">
           <button 
             onClick={() => navigate(-1)}
             className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-6 group"
@@ -137,9 +141,9 @@ const EventDetails = () => {
           </button>
         </div>
 
-        <div className="container mx-auto px-4 pb-16">
+        <div className="container-modern pb-16">
           {/* Hero Section */}
-          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100/50 backdrop-blur-sm">
+          <div className="card-modern overflow-hidden">
             {currentEvent.coverImageUrl && (
               <div className="relative h-80 md:h-96 overflow-hidden">
                 <img 
@@ -174,13 +178,13 @@ const EventDetails = () => {
               </div>
             )}
 
-            <div className="p-8">
-              <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+            <div className="p-6 md:p-8">
+              <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-4 leading-tight text-center">
                 {currentEvent.title}
               </h1>
 
               {/* Event Meta */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 text-center">
                 <div className="flex items-center text-gray-600">
                   <Calendar className="w-5 h-5 mr-3 text-primary-600" />
                   <div>
@@ -214,13 +218,13 @@ const EventDetails = () => {
 
               {/* Description */}
               {currentEvent.description && (
-                <p className="text-gray-700 text-lg leading-relaxed mb-6">
+                <p className="text-gray-700 text-lg leading-relaxed mb-6 text-center max-w-4xl mx-auto">
                   {currentEvent.description}
                 </p>
               )}
 
               {/* Web3 Features */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 max-w-4xl mx-auto">
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
                   <div className="flex items-center mb-2">
                     <Wallet className="w-5 h-5 text-blue-600 mr-2" />
@@ -250,13 +254,13 @@ const EventDetails = () => {
 
           {/* Organizer Section */}
           {currentEvent.organizer && (
-            <div className="mt-8 bg-white rounded-3xl shadow-xl p-8 border border-gray-100/50 backdrop-blur-sm">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-                <Globe className="w-6 h-6 mr-3 text-primary-600" />
-                Event Organizer
-              </h2>
+            <div className="mt-8 card-modern max-w-6xl mx-auto">
+                              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center justify-center">
+                  <Globe className="w-6 h-6 mr-3 text-primary-600" />
+                  Event Organizer
+                </h2>
               
-              <div className="flex items-center space-x-6">
+                              <div className="flex items-center space-x-6 justify-center">
                 {currentEvent.organizer.avatarUrl ? (
                   <img 
                     src={currentEvent.organizer.avatarUrl} 
@@ -290,21 +294,21 @@ const EventDetails = () => {
           )}
 
           {/* Tickets Section */}
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {/* Event Details */}
-            <div className="lg:col-span-2 bg-white rounded-3xl shadow-xl p-8 border border-gray-100/50 backdrop-blur-sm">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Event Details</h2>
+            <div className="lg:col-span-2 card-modern">
+                              <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Event Details</h2>
               
-              {currentEvent.description && (
-                <div className="prose prose-lg max-w-none text-gray-700">
-                  <p className="leading-relaxed">{currentEvent.description}</p>
-                </div>
-              )}
+                              {currentEvent.description && (
+                  <div className="prose prose-lg max-w-none text-gray-700 text-center">
+                    <p className="leading-relaxed">{currentEvent.description}</p>
+                  </div>
+                )}
 
               {/* Additional Info */}
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-gray-50 p-6 rounded-2xl">
-                  <h3 className="font-semibold text-gray-900 mb-3">Event Schedule</h3>
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                                  <div className="card-modern bg-gray-50">
+                    <h3 className="font-semibold text-gray-900 mb-3 text-center">Event Schedule</h3>
                   <div className="space-y-2 text-sm text-gray-600">
                     <div className="flex justify-between">
                       <span>Doors Open:</span>
@@ -317,8 +321,8 @@ const EventDetails = () => {
                   </div>
                 </div>
                 
-                <div className="bg-gray-50 p-6 rounded-2xl">
-                  <h3 className="font-semibold text-gray-900 mb-3">Location Details</h3>
+                                  <div className="card-modern bg-gray-50">
+                    <h3 className="font-semibold text-gray-900 mb-3 text-center">Location Details</h3>
                   <div className="space-y-2 text-sm text-gray-600">
                     {currentEvent.venueName && (
                       <p><strong>Venue:</strong> {currentEvent.venueName}</p>
@@ -333,11 +337,11 @@ const EventDetails = () => {
             </div>
 
             {/* Ticket Purchase */}
-            <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100/50 backdrop-blur-sm h-fit">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900">Get Tickets</h3>
-                <Ticket className="w-6 h-6 text-primary-600" />
-              </div>
+            <div className="card-modern h-fit">
+                              <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-gray-900 text-center w-full">Get Tickets</h3>
+                  <Ticket className="w-6 h-6 text-primary-600" />
+                </div>
 
               {tickets.length > 0 ? (
                 <>
@@ -346,7 +350,7 @@ const EventDetails = () => {
                       <button
                         key={ticket.name}
                         onClick={() => setSelectedTicket(ticket)}
-                        className={`w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 ${
+                        className={`w-full text-left p-4 card-modern border-2 transition-all duration-200 ${
                           selectedTicket?.name === ticket.name
                             ? 'border-primary-500 bg-primary-50 shadow-lg'
                             : 'border-gray-200 hover:border-primary-300 hover:shadow-md'
@@ -402,7 +406,7 @@ const EventDetails = () => {
                             max="10"
                             value={quantity}
                             onChange={(e) => setQuantity(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
-                            className="w-16 text-center border border-gray-300 rounded-lg py-2 text-sm"
+                            className="input-modern w-16 text-center text-sm"
                           />
                           <button
                             onClick={() => setQuantity(Math.min(10, quantity + 1))}
@@ -413,7 +417,7 @@ const EventDetails = () => {
                         </div>
                       </div>
 
-                      <div className="bg-gray-50 p-4 rounded-2xl">
+                      <div className="card-modern bg-gray-50">
                         <div className="flex justify-between text-sm mb-2">
                           <span>Price per ticket:</span>
                           <span>{formatPrice(selectedTicket.price)}</span>
@@ -433,7 +437,7 @@ const EventDetails = () => {
                       <button
                         onClick={handleAddToCart}
                         disabled={addingToCart}
-                        className="w-full bg-gradient-to-r from-primary-600 to-primary-700 text-white py-4 rounded-2xl font-semibold text-lg hover:from-primary-700 hover:to-primary-800 focus:ring-4 focus:ring-primary-500/30 transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn-modern w-full py-4 font-semibold text-lg bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 focus:ring-4 focus:ring-primary-500/30 transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {addingToCart ? (
                           <div className="flex items-center justify-center">
@@ -451,19 +455,19 @@ const EventDetails = () => {
                       <div className="flex space-x-3">
                         <button
                           onClick={() => navigate('/checkout')}
-                          className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-2xl font-semibold hover:bg-gray-200 transition-all duration-200"
+                          className="btn-modern flex-1 py-3 font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200"
                         >
                           View Cart
                         </button>
                         <button
                           onClick={() => navigate('/checkout')}
-                          className="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 text-white py-3 rounded-2xl font-semibold hover:from-green-700 hover:to-emerald-800 transition-all duration-200"
+                          className="btn-modern flex-1 py-3 font-semibold bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 transition-all duration-200"
                         >
                           Checkout Now
                         </button>
                       </div>
 
-                      <p className="text-xs text-gray-500 text-center">
+                      <p className="text-xs text-gray-500 text-center mt-4">
                         🛒 Add to cart and checkout with MPESA
                       </p>
                     </div>

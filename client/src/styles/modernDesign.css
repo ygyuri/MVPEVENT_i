@@ -1,0 +1,277 @@
+/* 🎨 Modern Design System - Event-i Application */
+
+/* ===== GLOBAL MODERN DESIGN VARIABLES ===== */
+:root {
+  /* Modern Spacing System */
+  --space-xs: 0.5rem;    /* 8px */
+  --space-sm: 1rem;       /* 16px */
+  --space-md: 1.5rem;     /* 24px */
+  --space-lg: 2rem;       /* 32px */
+  --space-xl: 3rem;       /* 48px */
+  --space-2xl: 4rem;      /* 64px */
+  --space-3xl: 6rem;      /* 96px */
+  
+  /* Modern Border Radius System */
+  --radius-sm: 0.75rem;   /* 12px */
+  --radius-md: 1rem;      /* 16px */
+  --radius-lg: 1.5rem;    /* 24px */
+  --radius-xl: 2rem;      /* 32px */
+  --radius-2xl: 3rem;     /* 48px */
+  --radius-full: 9999px;
+  
+  /* Modern Container Max Widths */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1536px;
+  
+  /* Modern Padding System */
+  --padding-page: 1.5rem;  /* Mobile */
+  --padding-page-md: 2rem; /* Tablet */
+  --padding-page-lg: 3rem; /* Desktop */
+  
+  /* Modern Card System */
+  --card-padding: 1.5rem;
+  --card-padding-md: 2rem;
+  --card-padding-lg: 2.5rem;
+  
+  /* Modern Shadow System */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  
+  /* Modern Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --glass-backdrop: blur(16px);
+}
+
+/* ===== MODERN LAYOUT UTILITIES ===== */
+@layer utilities {
+  /* Modern Container */
+  .container-modern {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--padding-page);
+    padding-right: var(--padding-page);
+    max-width: var(--container-xl);
+  }
+  
+  /* Modern Card */
+  .card-modern {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--glass-shadow);
+    padding: var(--card-padding);
+  }
+  
+  /* Modern Button */
+  .btn-modern {
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .btn-modern:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+  
+  /* Modern Input */
+  .input-modern {
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    transition: all 0.2s ease-in-out;
+  }
+  
+  .input-modern:focus {
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+  
+  /* Modern Section */
+  .section-modern {
+    padding: var(--space-2xl) 0;
+  }
+  
+  /* Modern Grid */
+  .grid-modern {
+    display: grid;
+    gap: var(--space-lg);
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+  
+  /* Modern Flex Center */
+  .flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Modern Text Center */
+  .text-center-modern {
+    text-align: center;
+    max-width: 65ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* ===== RESPONSIVE DESIGN SYSTEM ===== */
+@media (min-width: 768px) {
+  :root {
+    --padding-page: var(--padding-page-md);
+    --card-padding: var(--card-padding-md);
+  }
+  
+  .container-modern {
+    padding-left: var(--padding-page-md);
+    padding-right: var(--padding-page-md);
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --padding-page: var(--padding-page-lg);
+    --card-padding: var(--card-padding-lg);
+  }
+  
+  .container-modern {
+    padding-left: var(--padding-page-lg);
+    padding-right: var(--padding-page-lg);
+  }
+}
+
+/* ===== MODERN COMPONENT STYLES ===== */
+@layer components {
+  /* Modern Navbar */
+  .navbar-modern {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    border-bottom: 1px solid var(--glass-border);
+    padding: var(--space-md) 0;
+  }
+  
+  /* Modern Hero Section */
+  .hero-modern {
+    padding: var(--space-3xl) 0;
+    text-align: center;
+  }
+  
+  /* Modern Event Card */
+  .event-card-modern {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--card-padding);
+    transition: all 0.3s ease-in-out;
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .event-card-modern:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-2xl);
+  }
+  
+  /* Modern Form */
+  .form-modern {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--card-padding-lg);
+    box-shadow: var(--shadow-xl);
+  }
+  
+  /* Modern Checkout Steps */
+  .checkout-step-modern {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: var(--card-padding-lg);
+    margin: var(--space-lg) 0;
+    box-shadow: var(--shadow-lg);
+  }
+  
+  /* Modern Progress Bar */
+  .progress-modern {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-backdrop);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-full);
+    padding: var(--space-md);
+    margin: var(--space-lg) 0;
+  }
+}
+
+/* ===== MOBILE-FIRST ENHANCEMENTS ===== */
+@media (max-width: 767px) {
+  /* Mobile-specific adjustments */
+  .container-modern {
+    padding-left: var(--space-md);
+    padding-right: var(--space-md);
+  }
+  
+  .card-modern {
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+  }
+  
+  .event-card-modern {
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+  }
+  
+  .form-modern {
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+  }
+  
+  .checkout-step-modern {
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+  }
+  
+  /* Mobile touch targets */
+  .btn-modern {
+    min-height: 44px;
+    padding: 0.875rem 1.5rem;
+  }
+  
+  /* Mobile spacing */
+  .section-modern {
+    padding: var(--space-xl) 0;
+  }
+  
+  .hero-modern {
+    padding: var(--space-2xl) 0;
+  }
+}
+
+/* ===== ACCESSIBILITY ENHANCEMENTS ===== */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== DARK MODE ADAPTATIONS ===== */
+.dark {
+  --glass-bg: rgba(0, 0, 0, 0.2);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}

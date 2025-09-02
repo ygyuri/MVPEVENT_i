@@ -60,8 +60,8 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-web3-primary theme-transition">
       {/* Progress Bar */}
-      <div className="sticky top-16 z-40 bg-web3-card backdrop-blur-xl border-b border-web3-card-hover">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+      <div className="progress-modern sticky top-16 z-40">
+        <div className="container-modern py-4">
           <div className="flex items-center justify-between">
             {steps.map((step, index) => {
               const Icon = step.icon;
@@ -130,7 +130,7 @@ const Checkout = () => {
         </div>
 
         {/* Content */}
-        <div className="relative z-10">
+        <div className="relative z-10 section-modern">
           {checkoutStep === 'cart' && <CartComponent />}
           {checkoutStep === 'customer-info' && <CustomerInfoForm />}
           {checkoutStep === 'payment' && <MpesaPayment />}

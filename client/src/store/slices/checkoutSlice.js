@@ -104,7 +104,15 @@ const checkoutSlice = createSlice({
         });
       }
       
+      // Recalculate cart total
       state.cartTotal = state.cart.reduce((total, item) => total + item.subtotal, 0);
+      
+      // Debug logging
+      console.log('Cart updated:', {
+        cart: state.cart,
+        cartTotal: state.cartTotal,
+        action: action.payload
+      });
     },
     
     removeFromCart: (state, action) => {

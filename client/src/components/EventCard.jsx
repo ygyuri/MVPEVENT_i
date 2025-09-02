@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Heart, MapPin, Calendar, Users, Star, Zap, Wallet } from 'lucide-react'
 import { cn } from '../utils/cn'
 import { useNavigate } from 'react-router-dom'
+import CategoryBadge from './CategoryBadge'
 
 const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
   const navigate = useNavigate()
@@ -39,7 +40,7 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
       whileHover={{ y: -8, scale: 1.02 }}
-      className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-gray-100 cursor-pointer z-10"
+      className="event-card-modern group relative overflow-hidden cursor-pointer z-10"
       onClick={openDetails}
     >
       {/* Web3 Badge */}
@@ -97,12 +98,11 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
         
         {/* Category Badge */}
         <div className="absolute bottom-4 left-4">
-          <div 
-            className="px-3 py-1 rounded-full text-xs font-semibold text-white backdrop-blur-sm border border-white/20"
-            style={{ backgroundColor: `${event.category?.color}CC` }}
-          >
-            {event.category?.name}
-          </div>
+          <CategoryBadge 
+            category={event.category?.name || 'tech'} 
+            variant="solid" 
+            size="sm"
+          />
         </div>
       </div>
 

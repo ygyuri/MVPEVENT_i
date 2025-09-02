@@ -1,6 +1,27 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000';
+// Dynamic API URL for mobile and desktop access
+const getApiBaseUrl = () => {
+  // Check if we're in development
+  if (import.meta.env.DEV) {
+    // Get the current hostname (works for both localhost and IP addresses)
+    const hostname = window.location.hostname;
+    const port = '5000';
+    return `http://${hostname}:${port}`;
+  }
+  // Production URL (replace with your actual production API URL)
+  return 'https://your-production-api.com';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+// Debug logging for mobile access
+console.log('🌐 API Configuration:', {
+  hostname: window.location.hostname,
+  port: window.location.port,
+  apiUrl: API_BASE_URL,
+  isDev: import.meta.env.DEV
+});
 
 // Create axios instance
 const api = axios.create({

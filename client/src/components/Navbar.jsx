@@ -14,8 +14,8 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-web3-card backdrop-blur-xl border-b border-web3-card-hover sticky top-0 z-50 theme-transition">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="navbar-modern sticky top-0 z-50 theme-transition">
+      <div className="container-modern">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
@@ -79,7 +79,7 @@ const Navbar = () => {
         {/* Mobile Navigation */}
         {isMenuOpen && (
           <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 bg-web3-card-hover rounded-lg mt-2 border border-web3-card-hover">
+            <div className="px-2 pt-2 pb-3 space-y-1 card-modern mt-2">
               <Link 
                 to="/" 
                 className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"

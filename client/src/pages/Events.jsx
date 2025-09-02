@@ -131,13 +131,13 @@ const Events = () => {
         <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-blue-400/10 blur-3xl" />
       </div>
 
-      <section className="relative py-10 md:py-14 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="hero-modern relative z-10">
+        <div className="container-modern">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="text-center"
+            className="text-center-modern"
           >
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-gray-900">Explore Event-i Events</h1>
             <p className="mt-3 text-base md:text-lg text-gray-600">{headerSubtitle}</p>
@@ -149,8 +149,8 @@ const Events = () => {
         </div>
       </section>
 
-      <section className="relative pb-16 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="section-modern relative z-10">
+        <div className="container-modern">
           {error && !events.length && (
             <div className="min-h-[30vh] flex items-center justify-center">
               <div className="text-center">
@@ -163,7 +163,7 @@ const Events = () => {
           )}
 
           {events.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid-modern">
               {events.map((event, idx) => (
                 <EventCard 
                   key={event._id || event.id || idx} 

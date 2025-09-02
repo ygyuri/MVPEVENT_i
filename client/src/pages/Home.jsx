@@ -26,9 +26,9 @@ const Home = () => {
       </div>
 
       {/* Hero */}
-      <section className="relative pt-10 pb-12 md:pt-16 md:pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
+      <section className="hero-modern relative">
+        <div className="container-modern">
+          <div className="text-center-modern">
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -50,15 +50,15 @@ const Home = () => {
       </section>
 
       {/* Sections */}
-      <section className="relative pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+      <section className="section-modern relative">
+        <div className="container-modern space-y-12">
           {/* Featured */}
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Featured</h2>
             </div>
             {featuredEvents?.length ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid-modern">
                 {featuredEvents.map((e, idx) => (
                   <EventCard key={e._id || idx} event={e} index={idx % 9} />
                 ))}
@@ -74,7 +74,7 @@ const Home = () => {
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Trending Now</h2>
             </div>
             {trendingEvents?.length ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid-modern">
                 {trendingEvents.map((e, idx) => (
                   <EventCard key={e._id || idx} event={e} index={idx % 9} />
                 ))}
@@ -90,7 +90,7 @@ const Home = () => {
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Suggested For You</h2>
             </div>
             {suggestedEvents?.length ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid-modern">
                 {suggestedEvents.map((e, idx) => (
                   <EventCard key={e._id || idx} event={e} index={idx % 9} />
                 ))}

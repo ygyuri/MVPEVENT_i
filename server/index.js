@@ -27,7 +27,19 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://192.168.0.105:3000',
+    'http://192.168.0.105:3001',
+    'http://169.254.162.55:3000',
+    'http://169.254.162.55:3001'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Disable browser/proxy caching for API responses in development

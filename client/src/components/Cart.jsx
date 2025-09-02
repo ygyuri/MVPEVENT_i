@@ -12,6 +12,9 @@ const Cart = () => {
   const dispatch = useDispatch();
   const { cart, cartTotal, pricing } = useSelector((state) => state.checkout);
 
+  // Debug logging
+  console.log('Cart component state:', { cart, cartTotal, pricing });
+
   const handleQuantityChange = (eventId, ticketType, newQuantity) => {
     if (newQuantity > 0) {
       dispatch(updateCartItemQuantity({ eventId, ticketType, quantity: newQuantity }));
@@ -53,16 +56,16 @@ const Cart = () => {
   }
 
   return (
-    <div className="min-h-screen bg-web3-primary p-4 theme-transition">
+    <div className="min-h-screen bg-web3-primary theme-transition">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 blob-primary"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 blob-secondary"></div>
       </div>
 
-      <div className="max-w-4xl mx-auto relative z-10">
+      <div className="container-modern relative z-10">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center-modern mb-8">
           <h1 className="text-4xl font-bold text-web3-primary mb-4">
             Your Cart
           </h1>
@@ -74,7 +77,7 @@ const Cart = () => {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2">
-            <div className="glass rounded-2xl p-6">
+            <div className="card-modern">
               <h2 className="text-xl font-semibold text-web3-primary mb-6 flex items-center gap-3">
                 <ShoppingCart className="w-6 h-6 text-web3-blue" />
                 Cart Items ({cart.length})
@@ -95,7 +98,7 @@ const Cart = () => {
                           {item.ticketType} Ticket
                         </p>
                         <p className="text-web3-cyan font-medium">
-                          KES {item.unitPrice.toLocaleString()}
+                          KES {(item.unitPrice || item.price || 0).toLocaleString()}
                         </p>
                       </div>
                       
@@ -129,7 +132,7 @@ const Cart = () => {
                     
                     <div className="mt-3 pt-3 border-t border-blue-500/20">
                       <p className="text-right text-web3-primary font-semibold">
-                        Subtotal: KES {item.subtotal.toLocaleString()}
+                        Subtotal: KES {(item.subtotal || 0).toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -140,26 +143,26 @@ const Cart = () => {
 
           {/* Order Summary */}
           <div className="lg:col-span-1">
-            <div className="glass rounded-2xl p-6 sticky top-4">
+            <div className="card-modern sticky top-4">
               <h3 className="text-xl font-semibold text-web3-primary mb-6">Order Summary</h3>
               
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between text-web3-blue">
                   <span>Subtotal</span>
-                  <span>KES {cartTotal.toLocaleString()}</span>
+                  <span>KES {(cartTotal || 0).toLocaleString()}</span>
                 </div>
                 
                 {pricing && (
                   <>
                     <div className="flex justify-between text-web3-blue">
                       <span>Service Fee</span>
-                      <span>KES {pricing.serviceFee.toLocaleString()}</span>
+                      <span>KES {(pricing.serviceFee || 0).toLocaleString()}</span>
                     </div>
                     
                     <div className="border-t border-blue-500/20 pt-3">
                       <div className="flex justify-between text-web3-primary font-semibold text-lg">
                         <span>Total</span>
-                        <span>KES {pricing.total.toLocaleString()}</span>
+                        <span>KES {(pricing.total || 0).toLocaleString()}</span>
                       </div>
                     </div>
                   </>
@@ -169,7 +172,7 @@ const Cart = () => {
               <button
                 onClick={handleProceedToCheckout}
                 disabled={!cart || cart.length === 0}
-                className="btn-web3-primary w-full py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2"
+                className="btn-modern w-full py-3 px-6 font-semibold flex items-center justify-center gap-2"
               >
                 Proceed to Checkout
                 <ArrowRight className="w-5 h-5" />
