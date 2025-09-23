@@ -4,7 +4,7 @@ const ticketSchema = new mongoose.Schema({
   // Ticket identification
   ticketNumber: {
     type: String,
-    required: true
+    required: false
   },
   
   // Associated order
@@ -127,8 +127,8 @@ ticketSchema.index({ 'holder.email': 1, eventId: 1 });
 ticketSchema.index({ ownerUserId: 1, status: 1, createdAt: -1 });
 ticketSchema.index({ 'qr.nonce': 1 });
 
-// Pre-save middleware to generate ticket number and QR code
-ticketSchema.pre('save', function(next) {
+// Pre-validate to generate ticket number and QR code meta
+ticketSchema.pre('validate', function(next) {
   if (!this.ticketNumber) {
     const timestamp = Date.now().toString();
     const random = Math.random().toString(36).substring(2, 8).toUpperCase();

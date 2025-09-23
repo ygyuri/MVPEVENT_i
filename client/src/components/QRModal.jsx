@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+import QRCode from 'react-qr-code';
 import dayjs from 'dayjs';
 
 export default function QRModal({ isOpen, onClose, ticketId, onIssue, qrData, issuing, error, onRotate }) {
@@ -30,7 +30,7 @@ export default function QRModal({ isOpen, onClose, ticketId, onIssue, qrData, is
         </div>
         <div className="mt-4 flex items-center justify-center bg-white rounded-xl p-4">
           {qrData?.qr ? (
-            <QRCodeSVG value={qrData.qr} size={220} includeMargin={false} />
+            <QRCode value={qrData.qr} size={220} />
           ) : (
             <div className="text-white/60 text-sm">{issuing ? 'Generating QR…' : (error?.error || 'No QR yet')}</div>
           )}
