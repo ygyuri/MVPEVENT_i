@@ -21,6 +21,12 @@ const ticketSchema = new mongoose.Schema({
     required: true
   },
   
+  // Owner user (denormalized for quick lookups)
+  ownerUserId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  
   // Ticket holder information
   holder: {
     firstName: {
@@ -72,12 +78,30 @@ const ticketSchema = new mongoose.Schema({
     type: String
   },
   
+  // Secure QR payload meta (for signature + replay/expiry checks)
+  qr: {
+    nonce: { type: String },
+    issuedAt: { type: Date },
+    expiresAt: { type: Date },
+    signature: { type: String }
+  },
+  
   // Usage tracking
   usedAt: Date,
   usedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User' // Event staff who scanned the ticket
   },
+  
+  // Scan attempts history (optional audit)
+  scanHistory: [
+    {
+      scannedAt: { type: Date },
+      scannedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      location: { type: String },
+      result: { type: String, enum: ['success', 'already_used', 'invalid', 'expired', 'denied'] }
+    }
+  ],
   
   // Metadata
   metadata: {
@@ -100,6 +124,8 @@ ticketSchema.index({ status: 1 });
 ticketSchema.index({ qrCode: 1 });
 ticketSchema.index({ 'holder.email': 1 });
 ticketSchema.index({ 'holder.email': 1, eventId: 1 });
+ticketSchema.index({ ownerUserId: 1, status: 1, createdAt: -1 });
+ticketSchema.index({ 'qr.nonce': 1 });
 
 // Pre-save middleware to generate ticket number and QR code
 ticketSchema.pre('save', function(next) {

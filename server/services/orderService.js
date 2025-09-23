@@ -401,6 +401,7 @@ class OrderService {
         const ticket = new Ticket({
           orderId: order._id,
           eventId: item.eventId,
+          ownerUserId: order.customer?.userId || undefined,
           holder: {
             firstName: order.customer.firstName,
             lastName: order.customer.lastName,

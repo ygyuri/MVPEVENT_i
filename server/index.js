@@ -10,6 +10,8 @@ require('./models/EventCategory');
 require('./models/EventTag');
 require('./models/Order');
 require('./models/Ticket');
+require('./models/EventStaff');
+require('./models/ScanLog');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -17,6 +19,7 @@ const eventRoutes = require('./routes/events');
 const orderRoutes = require('./routes/orders');
 const testRoutes = require('./routes/test');
 const payheroRoutes = require('./routes/payhero');
+const ticketRoutes = require('./routes/tickets');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -103,6 +106,9 @@ app.use('/api/user', userRoutes);
 app.use('/api/orders', orderRoutes);
 // PayHero routes
 app.use('/api/payhero', payheroRoutes);
+
+// Ticket routes
+app.use('/api/tickets', ticketRoutes);
 
 // Test routes
 app.use('/api/test', testRoutes);
