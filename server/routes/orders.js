@@ -4,6 +4,7 @@ const orderService = require('../services/orderService');
 const { verifyToken } = require('../middleware/auth');
 
 const router = express.Router();
+const pesapalService = require('../services/pesapalService');
 
 // Validation middleware
 const validateOrderData = [
@@ -72,7 +73,7 @@ router.post('/create', validateOrderData, async (req, res) => {
 router.post('/:orderId/pay', validatePaymentData, async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { phoneNumber } = req.body;
+    const { phoneNumber, provider, credentials } = req.body;
 
     // Check for validation errors
     const errors = validationResult(req);
@@ -84,8 +85,11 @@ router.post('/:orderId/pay', validatePaymentData, async (req, res) => {
       });
     }
 
-    // Initiate payment
-    const paymentResult = await orderService.initiatePayment(orderId, phoneNumber);
+    // Initiate payment (defaults to PayHero if not specified)
+    const paymentResult = await orderService.initiatePayment(orderId, phoneNumber, {
+      provider: provider || 'payhero',
+      credentials: credentials || null,
+    });
 
     res.json({
       success: true,
@@ -99,6 +103,33 @@ router.post('/:orderId/pay', validatePaymentData, async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+// Dynamic provider auth test (e.g., PesaPal token fetch)
+router.post('/provider/auth', async (req, res) => {
+  try {
+    const { provider, credentials } = req.body || {};
+    if (!provider) {
+      return res.status(400).json({ success: false, error: 'provider is required' });
+    }
+
+    if (provider === 'pesapal') {
+      const { consumerKey, consumerSecret } = credentials || {};
+      if (!consumerKey || !consumerSecret) {
+        return res.status(400).json({ success: false, error: 'consumerKey and consumerSecret are required' });
+      }
+      const result = await pesapalService.requestToken(consumerKey, consumerSecret);
+      if (!result.success) {
+        return res.status(400).json({ success: false, error: result.error });
+      }
+      return res.json({ success: true, data: { token: result.token, raw: result.raw } });
+    }
+
+    return res.status(400).json({ success: false, error: `Unsupported provider: ${provider}` });
+  } catch (error) {
+    console.error('❌ Provider auth failed:', error.message);
+    res.status(500).json({ success: false, error: 'Provider auth failed' });
   }
 });
 

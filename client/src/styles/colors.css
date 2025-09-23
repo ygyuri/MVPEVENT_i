@@ -184,24 +184,24 @@
 
 /* Dark Mode Palette */
 .dark {
-  /* Primary Colors - Dark Mode */
-  --primary-blue: #3A7DFF;
-  --primary-blue-hover: #2563EB;
-  --primary-blue-dark: #1E40AF;
-  --secondary-accent: #00D4FF;
-  --secondary-accent-hover: #00B8E6;
+  /* Primary Colors - Dark Mode (More Subtle) */
+  --primary-blue: #60A5FA;
+  --primary-blue-hover: #3B82F6;
+  --primary-blue-dark: #2563EB;
+  --secondary-accent: #22D3EE;
+  --secondary-accent-hover: #06B6D4;
   
-  /* Background Colors - Dark Mode */
-  --bg-primary: #121212;
-  --bg-secondary: #0B0F19;
-  --bg-card: rgba(11, 15, 25, 0.9);
-  --bg-card-hover: rgba(11, 15, 25, 0.95);
-  --bg-accent: rgba(58, 125, 255, 0.1);
+  /* Background Colors - Dark Mode (Enhanced) */
+  --bg-primary: #0F172A;
+  --bg-secondary: #1E293B;
+  --bg-card: rgba(30, 41, 59, 0.9);
+  --bg-card-hover: rgba(30, 41, 59, 0.95);
+  --bg-accent: rgba(96, 165, 250, 0.08);
   
-  /* Neutral Colors - Dark Mode */
-  --neutral-light: #D1D5DB;
-  --neutral-medium: #9CA3AF;
-  --neutral-dark: #0B0F19;
+  /* Neutral Colors - Dark Mode (Enhanced) */
+  --neutral-light: #F1F5F9;
+  --neutral-medium: #CBD5E1;
+  --neutral-dark: #1E293B;
   
   /* Status Colors - Dark Mode (Same as light for consistency) */
   --success-primary: #16A34A;
@@ -225,23 +225,23 @@
   --error-border: rgba(239, 68, 68, 0.3);
   --error-text: #F87171;
   
-  /* Text Colors - Dark Mode */
-  --text-primary: #F1F1F1;
-  --text-secondary: #B8B8B8;
-  --text-muted: #9CA3AF;
+  /* Text Colors - Dark Mode (Enhanced Contrast) */
+  --text-primary: #FFFFFF;
+  --text-secondary: #E5E7EB;
+  --text-muted: #D1D5DB;
   --text-accent: #3A7DFF;
   
   /* Interactive Elements - Dark Mode (Subtle & Futuristic) */
-  --btn-primary: linear-gradient(135deg, #3A7DFF 0%, #00D4FF 100%);
-  --btn-primary-hover: linear-gradient(135deg, #2563EB 0%, #00B8E6 100%);
-  --btn-primary-focus: linear-gradient(135deg, #1E40AF 0%, #0891B2 100%);
-  --btn-primary-shadow: 0 4px 20px rgba(58, 125, 255, 0.4);
-  --btn-primary-glow: 0 0 25px rgba(58, 125, 255, 0.5);
+  --btn-primary: linear-gradient(135deg, #60A5FA 0%, #22D3EE 100%);
+  --btn-primary-hover: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%);
+  --btn-primary-focus: linear-gradient(135deg, #2563EB 0%, #0891B2 100%);
+  --btn-primary-shadow: 0 4px 20px rgba(96, 165, 250, 0.3);
+  --btn-primary-glow: 0 0 25px rgba(96, 165, 250, 0.4);
   
-  --btn-secondary: rgba(58, 125, 255, 0.12);
-  --btn-secondary-hover: rgba(58, 125, 255, 0.2);
-  --btn-secondary-focus: rgba(58, 125, 255, 0.25);
-  --btn-secondary-border: rgba(58, 125, 255, 0.3);
+  --btn-secondary: rgba(96, 165, 250, 0.1);
+  --btn-secondary-hover: rgba(96, 165, 250, 0.15);
+  --btn-secondary-focus: rgba(96, 165, 250, 0.2);
+  --btn-secondary-border: rgba(96, 165, 250, 0.25);
   
   --btn-success: linear-gradient(135deg, #16A34A 0%, #22C55E 100%);
   --btn-success-hover: linear-gradient(135deg, #15803D 0%, #16A34A 100%);
@@ -271,24 +271,24 @@
   --input-bg-focus: rgba(58, 125, 255, 0.1);
   
   /* Component Colors - Dark Mode (Subtle & Futuristic) */
-  --card-bg: rgba(11, 15, 25, 0.9);
-  --card-border: rgba(58, 125, 255, 0.2);
-  --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --card-hover-bg: rgba(11, 15, 25, 0.95);
-  --card-hover-border: rgba(58, 125, 255, 0.3);
-  --card-hover-shadow: 0 12px 40px rgba(58, 125, 255, 0.25);
-  --card-accent-bg: rgba(58, 125, 255, 0.1);
-  --card-accent-border: rgba(58, 125, 255, 0.3);
-  --card-glow: 0 0 40px rgba(58, 125, 255, 0.2);
+  --card-bg: rgba(30, 41, 59, 0.9);
+  --card-border: rgba(96, 165, 250, 0.15);
+  --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --card-hover-bg: rgba(30, 41, 59, 0.95);
+  --card-hover-border: rgba(96, 165, 250, 0.2);
+  --card-hover-shadow: 0 12px 40px rgba(96, 165, 250, 0.15);
+  --card-accent-bg: rgba(96, 165, 250, 0.08);
+  --card-accent-border: rgba(96, 165, 250, 0.2);
+  --card-glow: 0 0 40px rgba(96, 165, 250, 0.15);
   
   /* Blob Colors - Dark Mode (Subtle & Futuristic) */
-  --blob-primary: rgba(58, 125, 255, 0.25);
-  --blob-secondary: rgba(0, 212, 255, 0.25);
-  --blob-accent: rgba(0, 212, 255, 0.25);
-  --blob-success: rgba(22, 163, 74, 0.25);
-  --blob-warning: rgba(245, 158, 11, 0.25);
-  --blob-error: rgba(239, 68, 68, 0.25);
-  --blob-glow: 0 0 60px rgba(58, 125, 255, 0.2);
+  --blob-primary: rgba(96, 165, 250, 0.2);
+  --blob-secondary: rgba(34, 211, 238, 0.2);
+  --blob-accent: rgba(34, 211, 238, 0.2);
+  --blob-success: rgba(22, 163, 74, 0.2);
+  --blob-warning: rgba(245, 158, 11, 0.2);
+  --blob-error: rgba(239, 68, 68, 0.2);
+  --blob-glow: 0 0 60px rgba(96, 165, 250, 0.15);
   
   /* Navigation & Headers - Dark Mode */
   --nav-bg: rgba(18, 18, 18, 0.95);
@@ -363,6 +363,11 @@
   .text-web3-primary { color: var(--text-primary); }
   .text-web3-secondary { color: var(--text-secondary); }
   .text-web3-accent { color: var(--text-accent); }
+  .text-web3-blue { color: var(--text-accent); }
+  .text-web3-cyan { color: var(--text-secondary); }
+  
+  /* Placeholder colors */
+  .placeholder-web3-cyan::placeholder { color: var(--text-muted); }
   
   .btn-web3-primary { 
     background: var(--btn-primary); 
@@ -391,6 +396,21 @@
   .btn-web3-secondary:focus { 
     background: var(--btn-secondary-focus); 
     border-color: var(--btn-secondary-border);
+  }
+  
+  .btn-web3-success { 
+    background: var(--btn-success); 
+    box-shadow: var(--btn-success-shadow);
+    transition: all 0.3s ease;
+  }
+  .btn-web3-success:hover { 
+    background: var(--btn-success-hover); 
+    box-shadow: var(--btn-success-shadow);
+    transform: translateY(-2px);
+  }
+  .btn-web3-success:focus { 
+    background: var(--btn-success-focus); 
+    box-shadow: var(--btn-success-shadow);
   }
   
   .input-web3 { 

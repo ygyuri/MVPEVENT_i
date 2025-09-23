@@ -1,4 +1,4 @@
-# 🎨 Event-i Color Palette Guide
+ess an actual ticket i bought or cancelled # 🎨 Event-i Color Palette Guide
 
 ## 📊 **Current Color System Analysis**
 

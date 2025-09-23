@@ -15,8 +15,8 @@ const MpesaPayment = () => {
       setPhoneError('Phone number is required');
       return false;
     }
-    if (!/^254\d{9}$/.test(phone)) {
-      setPhoneError('Please enter a valid Kenyan phone number (254XXXXXXXXX)');
+    if (!/^(254\d{9}|0\d{9})$/.test(phone)) {
+      setPhoneError('Please enter phone as 07XXXXXXXX or 254XXXXXXXXX');
       return false;
     }
     setPhoneError('');
@@ -182,15 +182,13 @@ const MpesaPayment = () => {
                   className={`input-web3 w-full pl-10 pr-4 py-3 rounded-xl placeholder-web3-cyan focus:outline-none transition-all duration-300 ${
                     phoneError ? 'error' : ''
                   }`}
-                  placeholder="254XXXXXXXXX (Kenyan format)"
+                  placeholder="07XXXXXXXX or 254XXXXXXXXX"
                 />
               </div>
               {phoneError && (
                 <p className="mt-1 text-red-400 text-sm">{phoneError}</p>
               )}
-              <p className="mt-2 text-web3-cyan text-sm">
-                Format: 254XXXXXXXXX (e.g., 254712345678)
-              </p>
+              <p className="mt-2 text-web3-cyan text-sm">Accepted: 07XXXXXXXX or 254XXXXXXXXX</p>
             </div>
           ) : null}
 

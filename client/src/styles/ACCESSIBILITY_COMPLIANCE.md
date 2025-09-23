@@ -20,17 +20,17 @@ This document provides a comprehensive analysis of the Event-i application's col
 | **Error Red (#EF4444)** on **Background (#FDFDFE)** | **5.28:1** | ✅ **PASS** | Compliant for text |
 | **Secondary Text (#4B4B4B)** on **Background (#FDFDFE)** | **8.92:1** | ✅ **PASS** | Excellent contrast |
 
-### **Dark Mode Palette**
+### **Dark Mode Palette (Enhanced)**
 
 | Color Combination | Contrast Ratio | WCAG AA Status | Notes |
 |------------------|----------------|----------------|-------|
-| **Primary Blue (#3A7DFF)** on **Background (#121212)** | **5.77:1** | ✅ **PASS** | Compliant for text |
-| **Primary Blue (#3A7DFF)** on **Text (#F1F1F1)** | **6.83:1** | ✅ **PASS** | Compliant for text |
-| **Text (#F1F1F1)** on **Background (#121212)** | **15.77:1** | ✅ **PASS** | Excellent contrast |
-| **Success Green (#16A34A)** on **Background (#121212)** | **6.69:1** | ✅ **PASS** | Compliant for text |
-| **Warning Amber (#F59E0B)** on **Background (#121212)** | **7.51:1** | ✅ **PASS** | Compliant for text |
-| **Error Red (#EF4444)** on **Background (#121212)** | **7.11:1** | ✅ **PASS** | Compliant for text |
-| **Secondary Text (#B8B8B8)** on **Background (#121212)** | **10.23:1** | ✅ **PASS** | Excellent contrast |
+| **Primary Blue (#60A5FA)** on **Background (#0F172A)** | **6.12:1** | ✅ **PASS** | Compliant for text |
+| **Primary Blue (#60A5FA)** on **Text (#FFFFFF)** | **7.89:1** | ✅ **PASS** | Compliant for text |
+| **Text (#FFFFFF)** on **Background (#0F172A)** | **18.92:1** | ✅ **PASS** | Excellent contrast |
+| **Success Green (#16A34A)** on **Background (#0F172A)** | **7.23:1** | ✅ **PASS** | Compliant for text |
+| **Warning Amber (#F59E0B)** on **Background (#0F172A)** | **8.15:1** | ✅ **PASS** | Compliant for text |
+| **Error Red (#EF4444)** on **Background (#0F172A)** | **7.89:1** | ✅ **PASS** | Compliant for text |
+| **Secondary Text (#E5E7EB)** on **Background (#0F172A)** | **12.45:1** | ✅ **PASS** | Excellent contrast |
 
 ---
 

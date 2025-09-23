@@ -90,13 +90,16 @@
   .input-modern {
     border-radius: var(--radius-md);
     padding: 0.75rem 1rem;
-    border: 1px solid rgba(59, 130, 246, 0.2);
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text-primary);
     transition: all 0.2s ease-in-out;
   }
   
   .input-modern:focus {
-    border-color: #3B82F6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: var(--input-border-focus);
+    background: var(--input-bg-focus);
+    box-shadow: 0 0 0 3px rgba(58, 125, 255, 0.1);
   }
   
   /* Modern Section */

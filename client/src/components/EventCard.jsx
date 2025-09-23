@@ -3,6 +3,7 @@ import { Heart, MapPin, Calendar, Users, Star, Zap, Wallet } from 'lucide-react'
 import { cn } from '../utils/cn'
 import { useNavigate } from 'react-router-dom'
 import CategoryBadge from './CategoryBadge'
+import { PriceDisplay } from './CurrencyConverter'
 
 const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
   const navigate = useNavigate()
@@ -109,38 +110,40 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
       {/* Event Content */}
       <div className="p-6">
         {/* Title */}
-        <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors duration-200">
+        <h3 className="text-xl font-bold text-web3-primary mb-2 line-clamp-2 group-hover:text-web3-accent transition-colors duration-200">
           {event.title}
         </h3>
 
         {/* Description */}
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+        <p className="text-web3-secondary text-sm mb-4 line-clamp-2">
           {event.shortDescription}
         </p>
 
         {/* Event Details */}
         <div className="space-y-3 mb-4">
-          <div className="flex items-center text-sm text-gray-600">
-            <Calendar className="w-4 h-4 mr-2 text-primary-500" />
+          <div className="flex items-center text-sm text-web3-secondary">
+            <Calendar className="w-4 h-4 mr-2 text-web3-accent" />
             <span>{formatDate(event.startDate)} at {formatTime(event.startDate)}</span>
           </div>
-          <div className="flex items-center text-sm text-gray-600">
-            <MapPin className="w-4 h-4 mr-2 text-primary-500" />
+          <div className="flex items-center text-sm text-web3-secondary">
+            <MapPin className="w-4 h-4 mr-2 text-web3-accent" />
             <span>{event.venueName}, {event.city}, {event.state}</span>
           </div>
-          <div className="flex items-center text-sm text-gray-600">
-            <Users className="w-4 h-4 mr-2 text-primary-500" />
+          <div className="flex items-center text-sm text-web3-secondary">
+            <Users className="w-4 h-4 mr-2 text-web3-accent" />
             <span>{event.currentAttendees || 0} attending</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+        <div className="flex items-center justify-between pt-4 border-t border-web3-secondary-border">
           <div className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-primary-600">
-              {formatPrice(event.price)}
-            </span>
+            <PriceDisplay 
+              amount={event.price} 
+              originalCurrency="KES"
+              className="text-2xl font-bold"
+            />
             {event.isFree && (
-              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+              <span className="text-xs bg-success-bg text-success-primary px-2 py-1 rounded-full">
                 Free
               </span>
             )}
@@ -151,7 +154,7 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
               e.stopPropagation()
               openDetails()
             }}
-            className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-6 py-2 rounded-xl font-medium hover:from-primary-700 hover:to-primary-800 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105"
+            className="btn-web3-primary px-6 py-2 rounded-xl font-medium transition-all duration-200 transform hover:scale-105"
           >
             View Details
           </button>

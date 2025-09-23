@@ -2,6 +2,12 @@ const nodemailer = require('nodemailer');
 
 class EmailService {
   constructor() {
+    this.transporter = null;
+    this.initializeTransporter();
+  }
+
+  initializeTransporter() {
+    // Create transporter using environment variables
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: process.env.SMTP_PORT || 587,
@@ -13,192 +19,230 @@ class EmailService {
     });
   }
 
-  // Send ticket purchase receipt
-  async sendPurchaseReceipt(order, tickets) {
+  /**
+   * Send payment receipt email
+   */
+  async sendPaymentReceipt(orderData, paymentData) {
     try {
-      const { customer, items, pricing, orderNumber } = order;
-      
-      const itemsList = items.map(item => 
-        `${item.eventTitle} - ${item.ticketType} x${item.quantity} @ KES ${item.unitPrice}`
-      ).join('\n');
-
-      const emailContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: #f8f9fa; padding: 20px; text-align: center;">
-            <h1 style="color: #333; margin: 0;">🎫 Event-i</h1>
-            <p style="color: #666; margin: 10px 0 0 0;">Your tickets are confirmed!</p>
-          </div>
-          
-          <div style="padding: 20px;">
-            <h2 style="color: #333;">Order Confirmation</h2>
-            <p><strong>Order Number:</strong> ${orderNumber}</p>
-            <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
-            <p><strong>Customer:</strong> ${customer.firstName} ${customer.lastName}</p>
-            <p><strong>Email:</strong> ${customer.email}</p>
-            
-            <h3 style="color: #333; margin-top: 30px;">Tickets Purchased:</h3>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
-              ${itemsList.split('\n').map(item => `<p style="margin: 5px 0;">${item}</p>`).join('')}
-            </div>
-            
-            <h3 style="color: #333; margin-top: 30px;">Payment Summary:</h3>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
-              <p><strong>Subtotal:</strong> KES ${pricing.subtotal}</p>
-              <p><strong>Service Fee:</strong> KES ${pricing.serviceFee}</p>
-              <p><strong>Total:</strong> KES ${pricing.total}</p>
-            </div>
-            
-            <div style="margin-top: 30px; padding: 15px; background: #e8f5e8; border-radius: 5px;">
-              <h4 style="color: #2d5a2d; margin: 0;">Your tickets have been sent to your email!</h4>
-              <p style="color: #2d5a2d; margin: 10px 0 0 0;">Please check your inbox for individual ticket details.</p>
-            </div>
-          </div>
-          
-          <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666;">
-            <p>Thank you for choosing Event-i!</p>
-            <p>If you have any questions, please contact our support team.</p>
-          </div>
-        </div>
-      `;
+      const { customerInfo, items, totalAmount, feeBreakdown, paymentReference } = orderData;
+      const { mpesaReceiptNumber, phone } = paymentData;
 
       const mailOptions = {
         from: `"Event-i" <${process.env.SMTP_USER}>`,
-        to: customer.email,
-        subject: `🎫 Ticket Confirmation - Order ${orderNumber}`,
-        html: emailContent
+        to: customerInfo.email || customerInfo.phone + '@example.com', // Fallback if no email
+        subject: `Payment Receipt - Order ${paymentReference}`,
+        html: this.generateReceiptHTML(orderData, paymentData)
       };
 
       const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Purchase receipt email sent:', result.messageId);
+      console.log('Payment receipt email sent:', result.messageId);
       return result;
-
     } catch (error) {
-      console.error('❌ Failed to send purchase receipt email:', error.message);
-      throw new Error('Failed to send receipt email');
+      console.error('Error sending payment receipt:', error);
+      throw error;
     }
   }
 
-  // Send individual ticket email
-  async sendTicketEmail(ticket, event) {
-    try {
-      const { holder, ticketNumber, ticketType, price } = ticket;
-      
-      const emailContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: #f8f9fa; padding: 20px; text-align: center;">
-            <h1 style="color: #333; margin: 0;">🎫 Event Ticket</h1>
-            <p style="color: #666; margin: 10px 0 0 0;">${event.title}</p>
+  /**
+   * Generate HTML receipt template
+   */
+  generateReceiptHTML(orderData, paymentData) {
+    const { customerInfo, items, totalAmount, feeBreakdown, paymentReference, createdAt } = orderData;
+    const { mpesaReceiptNumber, phone } = paymentData;
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Receipt - Event-i</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .receipt-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+          .total { font-weight: bold; font-size: 18px; color: #667eea; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+          .success-badge { background: #4CAF50; color: white; padding: 10px 20px; border-radius: 20px; display: inline-block; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎉 Payment Successful!</h1>
+            <p>Thank you for your purchase</p>
           </div>
           
-          <div style="padding: 20px;">
-            <h2 style="color: #333;">Ticket Details</h2>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
-              <p><strong>Ticket Number:</strong> ${ticketNumber}</p>
-              <p><strong>Event:</strong> ${event.title}</p>
-              <p><strong>Date:</strong> ${new Date(event.dates.startDate).toLocaleDateString()}</p>
-              <p><strong>Time:</strong> ${new Date(event.dates.startDate).toLocaleTimeString()}</p>
-              <p><strong>Venue:</strong> ${event.location.venueName || 'TBD'}</p>
-              <p><strong>Ticket Type:</strong> ${ticketType}</p>
-              <p><strong>Price:</strong> KES ${price}</p>
+          <div class="content">
+            <div class="success-badge">
+              ✅ Payment Completed Successfully
             </div>
             
-            <h3 style="color: #333; margin-top: 30px;">Attendee Information</h3>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
-              <p><strong>Name:</strong> ${holder.firstName} ${holder.lastName}</p>
-              <p><strong>Email:</strong> ${holder.email}</p>
-              <p><strong>Phone:</strong> ${holder.phone}</p>
+            <div class="receipt-details">
+              <h3>Receipt Details</h3>
+              <p><strong>Receipt Number:</strong> ${paymentReference}</p>
+              <p><strong>MPESA Receipt:</strong> ${mpesaReceiptNumber || 'N/A'}</p>
+              <p><strong>Date:</strong> ${new Date(createdAt).toLocaleDateString('en-KE')}</p>
+              <p><strong>Time:</strong> ${new Date(createdAt).toLocaleTimeString('en-KE')}</p>
             </div>
             
-            <div style="margin-top: 30px; padding: 15px; background: #fff3cd; border-radius: 5px;">
-              <h4 style="color: #856404; margin: 0;">Important Information</h4>
-              <ul style="color: #856404; margin: 10px 0;">
-                <li>Please arrive 15 minutes before the event starts</li>
-                <li>Bring a valid ID for verification</li>
-                <li>This ticket is non-transferable</li>
-                <li>QR code will be scanned at entry</li>
-              </ul>
+            <div class="receipt-details">
+              <h3>Customer Information</h3>
+              <p><strong>Name:</strong> ${customerInfo.name}</p>
+              <p><strong>Phone:</strong> ${phone}</p>
+              ${customerInfo.email ? `<p><strong>Email:</strong> ${customerInfo.email}</p>` : ''}
             </div>
-          </div>
-          
-          <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666;">
-            <p>Thank you for choosing Event-i!</p>
-            <p>If you have any questions, please contact our support team.</p>
+            
+            <div class="receipt-details">
+              <h3>Order Items</h3>
+              ${items.map(item => `
+                <div class="item">
+                  <div>
+                    <strong>${item.eventTitle}</strong><br>
+                    <small>${item.ticketType} x ${item.quantity}</small>
+                  </div>
+                  <div>KES ${item.subtotal.toFixed(2)}</div>
+                </div>
+              `).join('')}
+            </div>
+            
+            <div class="receipt-details">
+              <h3>Payment Summary</h3>
+              <div class="item">
+                <span>Subtotal:</span>
+                <span>KES ${feeBreakdown?.subtotal?.toFixed(2) || '0.00'}</span>
+              </div>
+              <div class="item">
+                <span>Processing Fee:</span>
+                <span>KES ${feeBreakdown?.processingFee?.toFixed(2) || '0.00'}</span>
+              </div>
+              ${feeBreakdown?.fixedFee > 0 ? `
+                <div class="item">
+                  <span>Fixed Fee:</span>
+                  <span>KES ${feeBreakdown.fixedFee.toFixed(2)}</span>
+                </div>
+              ` : ''}
+              <div class="item total">
+                <span>Total Paid:</span>
+                <span>KES ${totalAmount.toFixed(2)}</span>
+              </div>
+            </div>
+            
+            <div class="footer">
+              <p>Thank you for choosing Event-i!</p>
+              <p>For any inquiries, please contact our support team.</p>
+              <p><small>This is an automated receipt. Please keep it for your records.</small></p>
+            </div>
           </div>
         </div>
-      `;
+      </body>
+      </html>
+    `;
+  }
+
+  /**
+   * Send order confirmation email
+   */
+  async sendOrderConfirmation(orderData) {
+    try {
+      const { customerInfo, items, totalAmount, paymentReference } = orderData;
 
       const mailOptions = {
         from: `"Event-i" <${process.env.SMTP_USER}>`,
-        to: holder.email,
-        subject: `🎫 Your Ticket - ${event.title}`,
-        html: emailContent
+        to: customerInfo.email || customerInfo.phone + '@example.com',
+        subject: `Order Confirmation - ${paymentReference}`,
+        html: this.generateOrderConfirmationHTML(orderData)
       };
 
       const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Ticket email sent:', result.messageId);
+      console.log('Order confirmation email sent:', result.messageId);
       return result;
-
     } catch (error) {
-      console.error('❌ Failed to send ticket email:', error.message);
-      throw new Error('Failed to send ticket email');
+      console.error('Error sending order confirmation:', error);
+      throw error;
     }
   }
 
-  // Send payment failure notification
-  async sendPaymentFailureEmail(order, errorMessage) {
-    try {
-      const { customer, orderNumber } = order;
-      
-      const emailContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: #f8d7da; padding: 20px; text-align: center;">
-            <h1 style="color: #721c24; margin: 0;">⚠️ Payment Failed</h1>
-            <p style="color: #721c24; margin: 10px 0 0 0;">Order ${orderNumber}</p>
+  /**
+   * Generate order confirmation HTML
+   */
+  generateOrderConfirmationHTML(orderData) {
+    const { customerInfo, items, totalAmount, paymentReference, createdAt } = orderData;
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Order Confirmation - Event-i</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .order-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🎫 Order Confirmed!</h1>
+            <p>Your tickets are ready</p>
           </div>
           
-          <div style="padding: 20px;">
-            <h2 style="color: #333;">Payment Issue</h2>
-            <p>We're sorry, but your payment for order <strong>${orderNumber}</strong> was not successful.</p>
-            
-            <div style="background: #f8d7da; padding: 15px; border-radius: 5px; margin: 20px 0;">
-              <p><strong>Error:</strong> ${errorMessage}</p>
+          <div class="content">
+            <div class="order-details">
+              <h3>Order Information</h3>
+              <p><strong>Order Number:</strong> ${paymentReference}</p>
+              <p><strong>Date:</strong> ${new Date(createdAt).toLocaleDateString('en-KE')}</p>
+              <p><strong>Customer:</strong> ${customerInfo.name}</p>
             </div>
             
-            <h3 style="color: #333;">What to do next:</h3>
-            <ul>
-              <li>Check your MPESA balance</li>
-              <li>Ensure your phone number is correct</li>
-              <li>Try the payment again</li>
-              <li>Contact our support if the issue persists</li>
-            </ul>
-            
-            <div style="margin-top: 30px; padding: 15px; background: #d1ecf1; border-radius: 5px;">
-              <h4 style="color: #0c5460; margin: 0;">Need Help?</h4>
-              <p style="color: #0c5460; margin: 10px 0 0 0;">Our support team is here to help you complete your purchase.</p>
+            <div class="order-details">
+              <h3>Event Tickets</h3>
+              ${items.map(item => `
+                <div class="item">
+                  <div>
+                    <strong>${item.eventTitle}</strong><br>
+                    <small>${item.ticketType} x ${item.quantity}</small>
+                  </div>
+                  <div>KES ${item.subtotal.toFixed(2)}</div>
+                </div>
+              `).join('')}
+              <div class="item" style="font-weight: bold; border-top: 2px solid #667eea; margin-top: 10px;">
+                <span>Total:</span>
+                <span>KES ${totalAmount.toFixed(2)}</span>
+              </div>
             </div>
-          </div>
-          
-          <div style="background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666;">
-            <p>Thank you for choosing Event-i!</p>
-            <p>If you have any questions, please contact our support team.</p>
+            
+            <div class="footer">
+              <p>Your tickets will be sent to your email shortly.</p>
+              <p>Thank you for choosing Event-i!</p>
+            </div>
           </div>
         </div>
-      `;
+      </body>
+      </html>
+    `;
+  }
 
-      const mailOptions = {
-        from: `"Event-i" <${process.env.SMTP_USER}>`,
-        to: customer.email,
-        subject: `⚠️ Payment Failed - Order ${orderNumber}`,
-        html: emailContent
-      };
-
-      const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Payment failure email sent:', result.messageId);
-      return result;
-
+  /**
+   * Test email configuration
+   */
+  async testEmailConfiguration() {
+    try {
+      await this.transporter.verify();
+      console.log('Email configuration is valid');
+      return true;
     } catch (error) {
-      console.error('❌ Failed to send payment failure email:', error.message);
-      throw new Error('Failed to send payment failure email');
+      console.error('Email configuration error:', error);
+      return false;
     }
   }
 }

@@ -6,7 +6,7 @@ const User = require('../models/User')
 const EventCategory = require('../models/EventCategory')
 const Event = require('../models/Event')
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/event_i'
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://admin:password123@127.0.0.1:27017/event_i?authSource=admin'
 
 const categoriesSeed = [
   { name: 'Technology', description: 'Tech conferences, hackathons, and innovation events', color: '#3B82F6', icon: 'laptop' },

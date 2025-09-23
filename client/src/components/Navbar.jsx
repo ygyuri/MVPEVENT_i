@@ -1,16 +1,28 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectCartItemCount } from '../store/slices/checkoutSlice';
 import { ShoppingCart, Menu, X, User, LogOut } from 'lucide-react';
-import { ThemeToggle } from '../contexts/ThemeContext';
+import { ThemeToggle, useTheme } from '../contexts/ThemeContext';
+import CurrencySelector from './CurrencySelector';
+import { logout } from '../store/slices/authSlice';
 
-const Navbar = () => {
+const Navbar = ({ onOpenAuthModal }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  
+  const dispatch = useDispatch();
   const cartItemCount = useSelector(selectCartItemCount);
+  const { user, isAuthenticated } = useSelector(state => state.auth);
+  const { isDarkMode } = useTheme();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleLogout = async () => {
+    await dispatch(logout());
+    setIsUserMenuOpen(false);
   };
 
   return (
@@ -39,12 +51,21 @@ const Navbar = () => {
             >
               Events
             </Link>
+            <Link 
+              to="/auth-test" 
+              className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+            >
+              Auth Test
+            </Link>
           </div>
 
-          {/* Right side - Cart, Theme Toggle, User Menu */}
+          {/* Right side - Cart, Theme Toggle, Currency Selector, User Menu */}
           <div className="flex items-center space-x-4">
             {/* Theme Toggle */}
             <ThemeToggle size="default" />
+            
+            {/* Currency Selector */}
+            <CurrencySelector className="hidden md:block" />
             
             {/* Cart */}
             <Link 
@@ -59,12 +80,60 @@ const Navbar = () => {
               )}
             </Link>
 
-            {/* User Menu */}
-            <div className="relative">
-              <button className="p-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200">
-                <User className="w-6 h-6" />
+            {/* Authentication Section */}
+            {isAuthenticated ? (
+              <div className="relative">
+                <button 
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center space-x-2 p-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200"
+                >
+                  <User className="w-6 h-6" />
+                  <span className="hidden md:block text-sm font-medium">
+                    {user?.firstName || user?.username || 'User'}
+                  </span>
+                </button>
+                
+                {/* User Dropdown Menu */}
+                {isUserMenuOpen && (
+                  <div className={`absolute right-0 mt-3 w-64 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-2xl py-3 z-50 theme-transition shadow-2xl`}>
+                    <div className={`px-6 py-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                      <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {user?.firstName} {user?.lastName}
+                      </p>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>{user?.email}</p>
+                      <div className="mt-3">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize ${isDarkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'}`}>
+                          {user?.role}
+                        </span>
+                      </div>
+                    </div>
+                    <Link
+                      to="/profile"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className={`w-full px-6 py-3 text-left text-sm ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'} flex items-center space-x-3 transition-colors duration-200`}
+                    >
+                      <User className="w-4 h-4" />
+                      <span>My Profile</span>
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className={`w-full px-6 py-3 text-left text-sm ${isDarkMode ? 'text-red-400 hover:bg-red-900/20' : 'text-red-600 hover:bg-red-50'} flex items-center space-x-3 transition-colors duration-200 rounded-b-2xl`}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button 
+                onClick={onOpenAuthModal}
+                className="btn-web3-primary flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold"
+              >
+                <User className="w-5 h-5" />
+                <span className="hidden md:block">Sign In</span>
               </button>
-            </div>
+            )}
 
             {/* Mobile menu button */}
             <button
@@ -95,6 +164,13 @@ const Navbar = () => {
                 Events
               </Link>
               <Link 
+                to="/auth-test" 
+                className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Auth Test
+              </Link>
+              <Link 
                 to="/checkout" 
                 className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
                 onClick={() => setIsMenuOpen(false)}
@@ -105,6 +181,16 @@ const Navbar = () => {
           </div>
         )}
       </div>
+      
+      {/* AuthModal */}
+      
+      {/* Click outside to close user menu */}
+      {isUserMenuOpen && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setIsUserMenuOpen(false)}
+        />
+      )}
     </nav>
   );
 };

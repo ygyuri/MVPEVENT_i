@@ -21,8 +21,8 @@ const Home = () => {
     <div className="relative">
       {/* Background Accents */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 h-64 w-64 rounded-full bg-primary-500/20 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-blue-400/10 blur-3xl" />
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 h-64 w-64 rounded-full bg-blob-primary blur-3xl blob-glow" />
+        <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-blob-secondary blur-3xl blob-glow" />
       </div>
 
       {/* Hero */}
@@ -33,7 +33,7 @@ const Home = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="text-4xl md:text-6xl font-extrabold text-gray-900 tracking-tight"
+              className="text-4xl md:text-6xl font-extrabold text-web3-primary tracking-tight"
             >
               Discover. Collect. Experience.
             </motion.h1>
@@ -41,7 +41,7 @@ const Home = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.15, duration: 0.4 }}
-              className="mt-4 text-lg md:text-xl text-gray-600"
+              className="mt-4 text-lg md:text-xl text-web3-secondary"
             >
               The web3 way to explore events you love — curated feeds, real-time trends, and more.
             </motion.p>
@@ -55,12 +55,12 @@ const Home = () => {
           {/* Featured */}
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Featured</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-web3-primary">Featured</h2>
             </div>
             {featuredEvents?.length ? (
               <div className="grid-modern">
                 {featuredEvents.map((e, idx) => (
-                  <EventCard key={e._id || idx} event={e} index={idx % 9} />
+                  <EventCard key={e.id || idx} event={e} index={idx % 9} />
                 ))}
               </div>
             ) : (
@@ -71,12 +71,12 @@ const Home = () => {
           {/* Trending */}
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Trending Now</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-web3-primary">Trending Now</h2>
             </div>
             {trendingEvents?.length ? (
               <div className="grid-modern">
                 {trendingEvents.map((e, idx) => (
-                  <EventCard key={e._id || idx} event={e} index={idx % 9} />
+                  <EventCard key={e.id || idx} event={e} index={idx % 9} />
                 ))}
               </div>
             ) : (
@@ -87,12 +87,12 @@ const Home = () => {
           {/* Suggested */}
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Suggested For You</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-web3-primary">Suggested For You</h2>
             </div>
             {suggestedEvents?.length ? (
               <div className="grid-modern">
                 {suggestedEvents.map((e, idx) => (
-                  <EventCard key={e._id || idx} event={e} index={idx % 9} />
+                  <EventCard key={e.id || idx} event={e} index={idx % 9} />
                 ))}
               </div>
             ) : (
@@ -109,10 +109,10 @@ const EmptyList = ({ loading, text }) => {
   if (loading) {
     return (
       <div className="min-h-[20vh] grid place-items-center">
-        <div className="flex items-center space-x-2 text-gray-600">
+        <div className="flex items-center space-x-2 text-web3-secondary">
           <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-web3-accent opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-web3-accent" />
           </span>
           <span>Loading…</span>
         </div>
@@ -121,7 +121,7 @@ const EmptyList = ({ loading, text }) => {
   }
   return (
     <div className="min-h-[20vh] grid place-items-center">
-      <p className="text-gray-500">{text}</p>
+      <p className="text-web3-secondary">{text}</p>
     </div>
   )
 }

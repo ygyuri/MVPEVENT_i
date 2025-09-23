@@ -43,4 +43,76 @@
   .card {
     @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
   }
+  
+  /* Modal centering fix */
+  .modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 9999 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* User dropdown styling */
+  .user-dropdown {
+    background: white;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  }
+  
+  .dark .user-dropdown {
+    background: #1f2937;
+    border: 1px solid #374151;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .user-dropdown-text-primary {
+    color: #111827;
+  }
+  
+  .dark .user-dropdown-text-primary {
+    color: #ffffff;
+  }
+  
+  .user-dropdown-text-secondary {
+    color: #6b7280;
+  }
+  
+  .dark .user-dropdown-text-secondary {
+    color: #d1d5db;
+  }
+  
+  .user-dropdown-role-badge {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+  
+  .dark .user-dropdown-role-badge {
+    background: #1e3a8a;
+    color: #93c5fd;
+  }
+  
+  .user-dropdown-logout {
+    color: #dc2626;
+  }
+  
+  .dark .user-dropdown-logout {
+    color: #f87171;
+  }
+  
+  .user-dropdown-logout:hover {
+    background: #fef2f2;
+  }
+  
+  .dark .user-dropdown-logout:hover {
+    background: rgba(220, 38, 38, 0.1);
+  }
 } 

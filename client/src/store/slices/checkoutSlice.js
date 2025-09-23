@@ -16,9 +16,21 @@ export const createOrder = createAsyncThunk(
 
 export const initiatePayment = createAsyncThunk(
   'checkout/initiatePayment',
-  async ({ orderId, phoneNumber }, { rejectWithValue }) => {
+  async ({ orderId, phoneNumber }, { rejectWithValue, getState }) => {
     try {
-      const response = await api.post(`/api/orders/${orderId}/pay`, { phoneNumber });
+      const state = getState();
+      const { selectedProvider, providerCredentials } = state.checkout || {};
+      const body = {
+        phoneNumber,
+        provider: selectedProvider || 'payhero',
+      };
+      if ((selectedProvider || 'mpesa') === 'pesapal') {
+        body.credentials = {
+          consumerKey: providerCredentials?.pesapal?.consumerKey,
+          consumerSecret: providerCredentials?.pesapal?.consumerSecret,
+        };
+      }
+      const response = await api.post(`/api/orders/${orderId}/pay`, body);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || { error: 'Failed to initiate payment' });
@@ -50,32 +62,113 @@ export const getOrderDetails = createAsyncThunk(
   }
 );
 
-const initialState = {
-  // Cart state
-  cart: [],
-  cartTotal: 0,
+// Load initial state from localStorage
+const loadInitialState = () => {
+  try {
+    const savedState = localStorage.getItem('checkoutState');
+    if (savedState) {
+      const parsed = JSON.parse(savedState);
+      return {
+        // Cart state
+        cart: parsed.cart || [],
+        cartTotal: parsed.cartTotal || 0,
+        
+        // Checkout state
+        currentOrder: parsed.currentOrder || null,
+        pricing: parsed.pricing || null,
+        paymentStatus: parsed.paymentStatus || 'idle',
+        
+        // Customer info
+        customerInfo: parsed.customerInfo || {
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+        },
+        
+        // UI state
+        checkoutStep: parsed.checkoutStep || 'cart',
+        isLoading: false,
+        error: null,
+        
+        // Payment processing
+        paymentResult: parsed.paymentResult || null,
+        mpesaPrompt: parsed.mpesaPrompt || null,
+        
+        // Payment provider selection
+        selectedProvider: parsed.selectedProvider || 'payhero',
+        providerCredentials: parsed.providerCredentials || {
+          pesapal: {
+            consumerKey: '',
+            consumerSecret: '',
+          },
+        },
+      };
+    }
+  } catch (error) {
+    console.error('Error loading checkout state from localStorage:', error);
+  }
   
-  // Checkout state
-  currentOrder: null,
-  pricing: null,
-  paymentStatus: 'idle', // idle, processing, success, failed
-  
-  // Customer info
-  customerInfo: {
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-  },
-  
-  // UI state
-  checkoutStep: 'cart', // cart, customer-info, payment, confirmation
-  isLoading: false,
-  error: null,
-  
-  // Payment processing
-  paymentResult: null,
-  mpesaPrompt: null,
+  // Default state if no saved state or error
+  return {
+    // Cart state
+    cart: [],
+    cartTotal: 0,
+    
+    // Checkout state
+    currentOrder: null,
+    pricing: null,
+    paymentStatus: 'idle', // idle, processing, success, failed
+    
+    // Customer info
+    customerInfo: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+    },
+    
+    // UI state
+    checkoutStep: 'cart', // cart, customer-info, payment, confirmation
+    isLoading: false,
+    error: null,
+    
+    // Payment processing
+    paymentResult: null,
+    mpesaPrompt: null,
+    // Payment provider selection
+    selectedProvider: 'payhero',
+    providerCredentials: {
+      pesapal: {
+        consumerKey: '',
+        consumerSecret: '',
+      },
+    },
+  };
+};
+
+const initialState = loadInitialState();
+
+// Helper function to save state to localStorage
+const saveToLocalStorage = (state) => {
+  try {
+    const stateToSave = {
+      cart: state.cart,
+      cartTotal: state.cartTotal,
+      currentOrder: state.currentOrder,
+      pricing: state.pricing,
+      paymentStatus: state.paymentStatus,
+      customerInfo: state.customerInfo,
+      checkoutStep: state.checkoutStep,
+      paymentResult: state.paymentResult,
+      mpesaPrompt: state.mpesaPrompt,
+      selectedProvider: state.selectedProvider,
+      providerCredentials: state.providerCredentials,
+    };
+    localStorage.setItem('checkoutState', JSON.stringify(stateToSave));
+  } catch (error) {
+    console.error('Error saving checkout state to localStorage:', error);
+  }
 };
 
 const checkoutSlice = createSlice({
@@ -84,31 +177,46 @@ const checkoutSlice = createSlice({
   reducers: {
     // Cart actions
     addToCart: (state, action) => {
+      console.log('🛒 addToCart called with payload:', action.payload);
       const { eventId, eventTitle, ticketType, price, quantity = 1 } = action.payload;
+      
+      console.log('🛒 Extracted values:', {
+        eventId,
+        eventTitle,
+        ticketType,
+        price,
+        quantity
+      });
       
       const existingItem = state.cart.find(
         item => item.eventId === eventId && item.ticketType === ticketType
       );
       
       if (existingItem) {
+        console.log('🛒 Updating existing item:', existingItem);
         existingItem.quantity += quantity;
         existingItem.subtotal = existingItem.quantity * existingItem.unitPrice;
       } else {
-        state.cart.push({
+        const newItem = {
           eventId,
           eventTitle,
           ticketType,
           unitPrice: price,
           quantity,
           subtotal: price * quantity,
-        });
+        };
+        console.log('🛒 Adding new item to cart:', newItem);
+        state.cart.push(newItem);
       }
       
       // Recalculate cart total
       state.cartTotal = state.cart.reduce((total, item) => total + item.subtotal, 0);
       
+      // Save to localStorage
+      saveToLocalStorage(state);
+      
       // Debug logging
-      console.log('Cart updated:', {
+      console.log('🛒 Cart updated:', {
         cart: state.cart,
         cartTotal: state.cartTotal,
         action: action.payload
@@ -121,6 +229,7 @@ const checkoutSlice = createSlice({
         item => !(item.eventId === eventId && item.ticketType === ticketType)
       );
       state.cartTotal = state.cart.reduce((total, item) => total + item.subtotal, 0);
+      saveToLocalStorage(state);
     },
     
     updateCartItemQuantity: (state, action) => {
@@ -133,21 +242,25 @@ const checkoutSlice = createSlice({
         item.quantity = Math.max(1, quantity);
         item.subtotal = item.quantity * item.unitPrice;
         state.cartTotal = state.cart.reduce((total, item) => total + item.subtotal, 0);
+        saveToLocalStorage(state);
       }
     },
     
     clearCart: (state) => {
       state.cart = [];
       state.cartTotal = 0;
+      saveToLocalStorage(state);
     },
     
     // Checkout flow actions
     setCheckoutStep: (state, action) => {
       state.checkoutStep = action.payload;
+      saveToLocalStorage(state);
     },
     
     updateCustomerInfo: (state, action) => {
       state.customerInfo = { ...state.customerInfo, ...action.payload };
+      saveToLocalStorage(state);
     },
     
     setPricing: (state, action) => {
@@ -160,6 +273,18 @@ const checkoutSlice = createSlice({
     
     setMpesaPrompt: (state, action) => {
       state.mpesaPrompt = action.payload;
+    },
+    setPaymentProvider: (state, action) => {
+      state.selectedProvider = action.payload || 'mpesa';
+    },
+    setProviderCredentials: (state, action) => {
+      const { provider, credentials } = action.payload || {};
+      if (provider === 'pesapal') {
+        state.providerCredentials.pesapal = {
+          ...state.providerCredentials.pesapal,
+          ...credentials,
+        };
+      }
     },
     
     clearError: (state) => {
@@ -174,6 +299,83 @@ const checkoutSlice = createSlice({
       state.paymentResult = null;
       state.mpesaPrompt = null;
       state.error = null;
+      saveToLocalStorage(state);
+    },
+    
+    // Clear all checkout data including localStorage
+    clearAllCheckoutData: (state) => {
+      state.cart = [];
+      state.cartTotal = 0;
+      state.currentOrder = null;
+      state.pricing = null;
+      state.paymentStatus = 'idle';
+      state.customerInfo = {
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+      };
+      state.checkoutStep = 'cart';
+      state.paymentResult = null;
+      state.mpesaPrompt = null;
+      state.error = null;
+      state.selectedProvider = 'payhero';
+      state.providerCredentials = {
+        pesapal: {
+          consumerKey: '',
+          consumerSecret: '',
+        },
+      };
+      // Clear localStorage
+      localStorage.removeItem('checkoutState');
+    },
+    
+    // Validate and fix cart items
+    validateCartItems: (state) => {
+      console.log('🔍 validateCartItems called with cart:', state.cart);
+      const originalCartLength = state.cart.length;
+      
+      state.cart = state.cart.filter(item => {
+        console.log('🔍 Validating cart item:', item);
+        
+        // Remove items without eventId or with invalid data
+        if (!item.eventId || !item.eventTitle || !item.ticketType || !item.unitPrice) {
+          console.warn('❌ Removing invalid cart item:', {
+            item,
+            issues: {
+              eventId: !item.eventId,
+              eventTitle: !item.eventTitle,
+              ticketType: !item.ticketType,
+              unitPrice: !item.unitPrice
+            }
+          });
+          return false;
+        }
+        
+        // Ensure subtotal is calculated
+        if (!item.subtotal) {
+          item.subtotal = item.unitPrice * item.quantity;
+        }
+        
+        console.log('✅ Cart item is valid:', item);
+        return true;
+      });
+      
+      // Recalculate totals
+      state.cartTotal = state.cart.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+      
+      console.log('🔍 Cart validation result:', {
+        originalLength: originalCartLength,
+        newLength: state.cart.length,
+        cart: state.cart,
+        cartTotal: state.cartTotal
+      });
+      
+      // Only save if cart changed
+      if (state.cart.length !== originalCartLength) {
+        console.log('💾 Saving updated cart to localStorage');
+        saveToLocalStorage(state);
+      }
     },
   },
   extraReducers: (builder) => {
@@ -201,7 +403,20 @@ const checkoutSlice = createSlice({
       })
       .addCase(initiatePayment.fulfilled, (state, action) => {
         state.paymentStatus = 'processing';
-        state.mpesaPrompt = action.payload.data;
+        const payload = action.payload?.data || {};
+        state.mpesaPrompt = payload;
+        // Update currentOrder payment info for UI routing
+        state.currentOrder = state.currentOrder || {};
+        state.currentOrder.payment = state.currentOrder.payment || {};
+        if (payload.provider === 'pesapal') {
+          state.currentOrder.payment.method = 'pesapal';
+          state.currentOrder.payment.pesapalTrackingId = payload.trackingId || null;
+          state.currentOrder.payment.pesapalRedirectUrl = payload.redirectUrl || null;
+        } else {
+          state.currentOrder.payment.method = 'mpesa';
+          state.currentOrder.payment.mpesaCheckoutRequestId = payload.checkoutRequestId || null;
+          state.currentOrder.payment.mpesaMerchantRequestId = payload.merchantRequestId || null;
+        }
       })
       .addCase(initiatePayment.rejected, (state, action) => {
         state.paymentStatus = 'failed';
@@ -251,8 +466,12 @@ export const {
   setPricing,
   setPaymentStatus,
   setMpesaPrompt,
+  setPaymentProvider,
+  setProviderCredentials,
   clearError,
   resetCheckout,
+  clearAllCheckoutData,
+  validateCartItems,
 } = checkoutSlice.actions;
 
 // Export selectors

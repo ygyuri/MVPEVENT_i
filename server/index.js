@@ -16,6 +16,7 @@ const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
 const orderRoutes = require('./routes/orders');
 const testRoutes = require('./routes/test');
+const payheroRoutes = require('./routes/payhero');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -27,19 +28,26 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Middleware
 app.use(helmet());
-app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://192.168.0.105:3000',
-    'http://192.168.0.105:3001',
-    'http://169.254.162.55:3000',
-    'http://169.254.162.55:3001'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// In development, allow all origins to simplify mobile testing on LAN
+if (process.env.NODE_ENV !== 'production') {
+  app.use(cors({
+    origin: (origin, callback) => callback(null, true),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
+} else {
+  // In production, keep a strict allowlist
+  app.use(cors({
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }));
+}
 app.use(express.json());
 
 // Disable browser/proxy caching for API responses in development
@@ -93,6 +101,8 @@ app.use('/api/user', userRoutes);
 
 // Order routes
 app.use('/api/orders', orderRoutes);
+// PayHero routes
+app.use('/api/payhero', payheroRoutes);
 
 // Test routes
 app.use('/api/test', testRoutes);

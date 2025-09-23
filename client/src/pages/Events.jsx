@@ -127,8 +127,8 @@ const Events = () => {
   return (
     <div className="relative">
       <div className="pointer-events-none absolute inset-0 z-0">
-        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-primary-500/20 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-blue-400/10 blur-3xl" />
+        <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-blob-primary blur-3xl blob-glow" />
+        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-blob-secondary blur-3xl blob-glow" />
       </div>
 
       <section className="hero-modern relative z-10">
@@ -139,8 +139,8 @@ const Events = () => {
             transition={{ duration: 0.4 }}
             className="text-center-modern"
           >
-            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-gray-900">Explore Event-i Events</h1>
-            <p className="mt-3 text-base md:text-lg text-gray-600">{headerSubtitle}</p>
+            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-web3-primary">Explore Event-i Events</h1>
+            <p className="mt-3 text-base md:text-lg text-web3-secondary">{headerSubtitle}</p>
           </motion.div>
 
           <div className="mt-8">
@@ -154,10 +154,10 @@ const Events = () => {
           {error && !events.length && (
             <div className="min-h-[30vh] flex items-center justify-center">
               <div className="text-center">
-                <div className="text-red-500 text-6xl mb-3">⚠️</div>
-                <h2 className="text-xl md:text-2xl font-semibold text-gray-900 mb-2">We couldn't load events</h2>
-                <p className="text-gray-600 mb-4">Please try again or adjust your filters.</p>
-                <button onClick={() => loadEvents({})} className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-xl">Retry</button>
+                <div className="text-error-primary text-6xl mb-3">⚠️</div>
+                <h2 className="text-xl md:text-2xl font-semibold text-web3-primary mb-2">We couldn't load events</h2>
+                <p className="text-web3-secondary mb-4">Please try again or adjust your filters.</p>
+                <button onClick={() => loadEvents({})} className="btn-web3-primary px-6 py-2 rounded-xl">Retry</button>
               </div>
             </div>
           )}
@@ -166,7 +166,7 @@ const Events = () => {
             <div className="grid-modern">
               {events.map((event, idx) => (
                 <EventCard 
-                  key={event._id || event.id || idx} 
+                  key={event.id || idx} 
                   event={event} 
                   index={idx % 9} 
                   onFavorite={handleEventFavorite}
@@ -177,9 +177,9 @@ const Events = () => {
           ) : !loading && !error ? (
             <div className="min-h-[30vh] flex items-center justify-center">
               <div className="text-center">
-                <div className="text-gray-400 text-6xl mb-3">🔍</div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No events found</h3>
-                <p className="text-gray-600">Try different keywords or remove some filters.</p>
+                <div className="text-web3-secondary text-6xl mb-3">🔍</div>
+                <h3 className="text-xl font-semibold text-web3-primary mb-2">No events found</h3>
+                <p className="text-web3-secondary">Try different keywords or remove some filters.</p>
               </div>
             </div>
           ) : null}

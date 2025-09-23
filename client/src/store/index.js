@@ -4,6 +4,7 @@ import eventsReducer from './slices/eventsSlice';
 import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
 import checkoutReducer from './slices/checkoutSlice';
+import currencyReducer from './slices/currencySlice';
 
 export const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ export const store = configureStore({
     auth: authReducer,
     ui: uiReducer,
     checkout: checkoutReducer,
+    currency: currencyReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

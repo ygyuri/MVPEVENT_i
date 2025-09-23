@@ -68,3 +68,6 @@ eventTagSchema.statics.findPopular = function(limit = 10) {
 };
 
 module.exports = mongoose.model('EventTag', eventTagSchema);
+
+
+
