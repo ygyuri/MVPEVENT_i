@@ -57,6 +57,22 @@ const Navbar = ({ onOpenAuthModal }) => {
             >
               Auth Test
             </Link>
+            {isAuthenticated && (
+              <Link 
+                to="/wallet" 
+                className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+              >
+                Wallet
+              </Link>
+            )}
+            {isAuthenticated && (user?.role === 'admin' || user?.role === 'organizer') && (
+              <Link 
+                to="/scanner" 
+                className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+              >
+                Scanner
+              </Link>
+            )}
           </div>
 
           {/* Right side - Cart, Theme Toggle, Currency Selector, User Menu */}
@@ -170,6 +186,24 @@ const Navbar = ({ onOpenAuthModal }) => {
               >
                 Auth Test
               </Link>
+              {isAuthenticated && (
+                <Link 
+                  to="/wallet" 
+                  className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Wallet
+                </Link>
+              )}
+              {isAuthenticated && (user?.role === 'admin' || user?.role === 'organizer') && (
+                <Link 
+                  to="/scanner" 
+                  className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Scanner
+                </Link>
+              )}
               <Link 
                 to="/checkout" 
                 className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"

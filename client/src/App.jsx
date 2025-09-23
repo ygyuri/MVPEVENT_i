@@ -10,6 +10,8 @@ import EventDetails from './pages/EventDetails';
 import Checkout from './pages/Checkout';
 import AuthTest from './pages/AuthTest';
 import UserProfile from './pages/UserProfile';
+import TicketWallet from './pages/TicketWallet';
+import Scanner from './pages/Scanner';
 import { getCurrentUser } from './store/slices/authSlice';
 
 function App() {
@@ -36,6 +38,8 @@ function App() {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/auth-test" element={<AuthTest />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/wallet" element={<TicketWallet />} />
+            <Route path="/scanner" element={<Scanner />} />
           </Routes>
         </main>
         

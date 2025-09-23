@@ -5,6 +5,8 @@ import authReducer from './slices/authSlice';
 import uiReducer from './slices/uiSlice';
 import checkoutReducer from './slices/checkoutSlice';
 import currencyReducer from './slices/currencySlice';
+import ticketsReducer from './slices/ticketsSlice';
+import scannerReducer from './slices/scannerSlice';
 
 export const store = configureStore({
   reducer: {
@@ -13,6 +15,8 @@ export const store = configureStore({
     ui: uiReducer,
     checkout: checkoutReducer,
     currency: currencyReducer,
+    tickets: ticketsReducer,
+    scanner: scannerReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
