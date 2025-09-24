@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const QRCode = require('qrcode');
 
 class EmailService {
   constructor() {
@@ -10,8 +11,8 @@ class EmailService {
     // Create transporter using environment variables
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: process.env.SMTP_PORT || 587,
-      secure: false, // true for 465, false for other ports
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: false,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS
@@ -244,6 +245,70 @@ class EmailService {
       console.error('Email configuration error:', error);
       return false;
     }
+  }
+
+  /**
+   * Send individual ticket email with deep-link to wallet and optional QR
+   */
+  async sendTicketEmail(ticket, event) {
+    const to = ticket.holder?.email;
+    if (!to) return;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const walletUrl = `${frontendUrl}/wallet?open=${ticket._id}`;
+
+    // Simple template with CTA
+    const html = `
+      <!DOCTYPE html>
+      <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1" />
+      <style>body{font-family:Arial,sans-serif;color:#222} .container{max-width:600px;margin:0 auto;padding:24px}
+      .card{background:#f7f7fb;border-radius:12px;padding:20px;border:1px solid #eaeaf2}
+      .btn{display:inline-block;background:#4f46e5;color:#fff;padding:12px 16px;border-radius:10px;text-decoration:none}
+      .muted{color:#666;font-size:12px;margin-top:14px}
+      </style></head>
+      <body><div class="container">
+        <h2>Your Ticket for ${event?.title || 'Event'}</h2>
+        <div class="card">
+          <p><strong>Holder:</strong> ${ticket.holder?.firstName} ${ticket.holder?.lastName}</p>
+          <p><strong>Type:</strong> ${ticket.ticketType}</p>
+          <p><strong>Status:</strong> ${ticket.status}</p>
+          <p><a href="${walletUrl}" class="btn">View Ticket & QR</a></p>
+          <p class="muted">Tip: The QR rotates periodically for security. Open the link at the gate.</p>
+        </div>
+      </div></body></html>`;
+
+    // Optional inline QR PNG (best-effort)
+    let attachments = [];
+    try {
+      const qrPayload = ticket?.qr?.signature ? null : null; // we don't have plaintext here; deep-link preferred
+      // Generate a QR for wallet deep-link as a fallback (scanner uses app)
+      const dataUrl = await QRCode.toDataURL(walletUrl, { margin: 1, width: 240 });
+      const base64 = dataUrl.split(',')[1];
+      attachments.push({ filename: 'ticket-qr.png', content: Buffer.from(base64, 'base64'), contentType: 'image/png' });
+    } catch {}
+
+    const mailOptions = {
+      from: `"Event-i" <${process.env.SMTP_USER}>`,
+      to,
+      subject: `Your Ticket • ${event?.title || 'Event'}`,
+      html,
+      attachments
+    };
+
+    // Best-effort retry (non-persistent) up to 3 attempts with backoff
+    const trySend = async (attempt = 1) => {
+      try {
+        const res = await this.transporter.sendMail(mailOptions);
+        if (res?.messageId) return res;
+        throw new Error('sendMail did not return messageId');
+      } catch (err) {
+        if (attempt >= 3) throw err;
+        const delayMs = 500 * Math.pow(2, attempt - 1);
+        await new Promise(r => setTimeout(r, delayMs));
+        return trySend(attempt + 1);
+      }
+    };
+
+    return trySend();
   }
 }
 

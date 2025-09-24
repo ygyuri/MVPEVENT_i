@@ -108,10 +108,10 @@ router.post('/:ticketId/qr', qrIssueLimiter, verifyToken, [param('ticketId').isM
 });
 
 // POST /api/tickets/scan - validate QR and mark used (organizer/admin)
-router.post('/scan', scanLimiter, verifyToken, requireRole(['organizer', 'admin']), [body('qr').isString(), body('location').optional().isString()], async (req, res) => {
+router.post('/scan', scanLimiter, verifyToken, requireRole(['organizer', 'admin']), [body('qr').isString(), body('location').optional().isString(), body('device').optional().isObject()], async (req, res) => {
   const v = handleValidation(req, res); if (v) return v;
   try {
-    const { qr, location } = req.body;
+    const { qr, location, device } = req.body;
     const verification = await ticketService.verifyQr(qr);
     if (!verification.ok) {
       return res.status(400).json({ success: false, valid: false, code: verification.code });
@@ -130,7 +130,7 @@ router.post('/scan', scanLimiter, verifyToken, requireRole(['organizer', 'admin'
       ticket.scanHistory = ticket.scanHistory || [];
       ticket.scanHistory.push({ scannedAt: new Date(), scannedBy: req.user._id, location, result: 'denied' });
       await ticket.save();
-      await ScanLog.create({ ticketId: ticket._id, eventId: event?._id, scannedBy: req.user._id, location, result: 'denied' });
+      await ScanLog.create({ ticketId: ticket._id, eventId: event?._id, scannedBy: req.user._id, location, result: 'denied', device });
       return res.status(403).json({ success: false, valid: false, code: 'ACCESS_DENIED' });
     }
 
@@ -140,22 +140,22 @@ router.post('/scan', scanLimiter, verifyToken, requireRole(['organizer', 'admin'
       ticket.scanHistory = ticket.scanHistory || [];
       ticket.scanHistory.push({ scannedAt: now, scannedBy: req.user._id, location, result: 'invalid' });
       await ticket.save();
-      await ScanLog.create({ ticketId: ticket._id, eventId: event?._id, scannedBy: req.user._id, location, result: 'invalid' });
+      await ScanLog.create({ ticketId: ticket._id, eventId: event?._id, scannedBy: req.user._id, location, result: 'invalid', device });
       return res.status(400).json({ success: false, valid: false, code: 'INVALID_QR' });
     }
 
     const result = await ticketService.markUsed(ticket, req.user, { location });
     if (result.alreadyUsed) {
-      await ScanLog.create({ ticketId: ticket._id, eventId: event?._id, scannedBy: req.user._id, location, result: 'already_used' });
-      return res.status(409).json({ success: true, valid: false, code: 'ALREADY_USED', usedAt: ticket.usedAt, usedBy: ticket.usedBy });
+      await ScanLog.create({ ticketId: ticket._id, eventId: event?._id, scannedBy: req.user._id, location, result: 'already_used', device });
+      return res.status(409).json({ success: true, valid: false, code: 'ALREADY_USED', usedAt: result.ticket?.usedAt || ticket.usedAt, usedBy: result.ticket?.usedBy || ticket.usedBy });
     }
 
-    await ScanLog.create({ ticketId: ticket._id, eventId: event?._id, scannedBy: req.user._id, location, result: 'success' });
+    await ScanLog.create({ ticketId: ticket._id, eventId: event?._id, scannedBy: req.user._id, location, result: 'success', device });
     res.json({
       success: true,
       valid: true,
       status: 'used',
-      ticket: { id: ticket._id, holderName: `${ticket.holder.firstName} ${ticket.holder.lastName}`, ticketType: ticket.ticketType },
+      ticket: { id: result.ticket?._id || ticket._id, holderName: `${ticket.holder.firstName} ${ticket.holder.lastName}`, ticketType: ticket.ticketType },
       event: { id: event._id, title: event.title, startDate: event.dates?.startDate }
     });
   } catch (error) {

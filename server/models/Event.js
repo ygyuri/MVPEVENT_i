@@ -109,10 +109,16 @@ const eventSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'EventTag'
   }],
+  // Existing metadata map
   metadata: {
     type: Map,
     of: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  // New: per-event QR settings (optional overrides)
+  qrSettings: {
+    ttlMs: { type: Number, min: 10000 },
+    autoRotateMs: { type: Number, min: 0 }
   }
 }, {
   timestamps: true

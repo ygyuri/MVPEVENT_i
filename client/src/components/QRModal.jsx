@@ -15,8 +15,10 @@ export default function QRModal({ isOpen, onClose, ticketId, onIssue, qrData, is
   }, [isOpen, ticketId, qrData, onIssue]);
 
   useEffect(() => {
-    if (secondsLeft === 5 && onRotate) {
-      // prepare rotation soon, optional UX
+    // Auto-rotate 1s after expiry to ensure freshness
+    if (secondsLeft === 0 && onRotate) {
+      const id = setTimeout(() => onRotate(), 1000);
+      return () => clearTimeout(id);
     }
   }, [secondsLeft, onRotate]);
 

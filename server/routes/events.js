@@ -1,6 +1,6 @@
 const express = require('express');
-const { query, validationResult } = require('express-validator');
-const { optionalAuth } = require('../middleware/auth');
+const { query, validationResult, body } = require('express-validator');
+const { optionalAuth, verifyToken, requireRole } = require('../middleware/auth');
 const Event = require('../models/Event');
 const EventCategory = require('../models/EventCategory');
 const { cache } = require('../config/database');
@@ -547,3 +547,26 @@ router.post('/:slug/purchase', async (req, res) => {
 });
 
 module.exports = router; 
+
+// Organizer/admin: update per-event QR settings
+router.post('/settings/:eventId/qr', verifyToken, requireRole(['organizer', 'admin']), [
+  body('ttlMs').optional().isInt({ min: 10000 }).toInt(),
+  body('autoRotateMs').optional().isInt({ min: 0 }).toInt(),
+], async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const event = await Event.findById(eventId).select('organizer qrSettings');
+    if (!event) return res.status(404).json({ success: false, error: 'Event not found' });
+    const isOrganizer = String(event.organizer) === String(req.user._id);
+    const isAdmin = req.user.role === 'admin';
+    if (!isOrganizer && !isAdmin) return res.status(403).json({ success: false, error: 'ACCESS_DENIED' });
+
+    event.qrSettings = event.qrSettings || {};
+    if (req.body.ttlMs !== undefined) event.qrSettings.ttlMs = req.body.ttlMs;
+    if (req.body.autoRotateMs !== undefined) event.qrSettings.autoRotateMs = req.body.autoRotateMs;
+    await event.save();
+    res.json({ success: true, data: { qrSettings: event.qrSettings } });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to update QR settings' });
+  }
+});

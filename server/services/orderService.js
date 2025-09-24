@@ -5,6 +5,7 @@ const mpesaService = require('./mpesaService');
 const emailService = require('./emailService');
 const pesapalService = require('./pesapalService');
 const payheroService = require('./payheroService');
+const ticketService = require('./ticketService');
 
 class OrderService {
   // Calculate service fee (5% of subtotal)
@@ -306,6 +307,18 @@ class OrderService {
         
         // Send emails
         await this.sendOrderEmails(order, tickets);
+        // Send individual ticket emails with deep-links (best effort)
+        try {
+          const EventModel = require('../models/Event');
+          const events = await EventModel.find({ _id: { $in: tickets.map(t => t.eventId) } }).select('title');
+          const idToEvent = new Map(events.map(e => [String(e._id), e]));
+          for (const t of tickets) {
+            const ev = idToEvent.get(String(t.eventId));
+            await emailService.sendTicketEmail(t, ev);
+          }
+        } catch (e) {
+          // Non-blocking
+        }
         
         console.log('✅ Payment completed successfully:', order.orderNumber);
       } else {
@@ -373,6 +386,15 @@ class OrderService {
 
         const tickets = await this.createTickets(order);
         await this.sendOrderEmails(order, tickets);
+        try {
+          const EventModel = require('../models/Event');
+          const events = await EventModel.find({ _id: { $in: tickets.map(t => t.eventId) } }).select('title');
+          const idToEvent = new Map(events.map(e => [String(e._id), e]));
+          for (const t of tickets) {
+            const ev = idToEvent.get(String(t.eventId));
+            await emailService.sendTicketEmail(t, ev);
+          }
+        } catch (e) {}
       } else {
         order.payment.status = 'failed';
         order.status = 'cancelled';
@@ -418,6 +440,12 @@ class OrderService {
         });
 
         await ticket.save();
+        // Auto-issue initial QR so ticket is immediately scannable; wallet can rotate later
+        try {
+          await ticketService.issueQr(ticket._id);
+        } catch (e) {
+          // Non-fatal: ticket remains valid, wallet can issue on demand
+        }
         tickets.push(ticket);
       }
     }

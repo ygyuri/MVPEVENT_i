@@ -12,6 +12,8 @@ import AuthTest from './pages/AuthTest';
 import UserProfile from './pages/UserProfile';
 import TicketWallet from './pages/TicketWallet';
 import Scanner from './pages/Scanner';
+import AdminScans from './pages/AdminScans';
+import EventQRSettings from './pages/EventQRSettings';
 import { getCurrentUser } from './store/slices/authSlice';
 
 function App() {
@@ -40,6 +42,8 @@ function App() {
             <Route path="/profile" element={<UserProfile />} />
             <Route path="/wallet" element={<TicketWallet />} />
             <Route path="/scanner" element={<Scanner />} />
+            <Route path="/admin/scans" element={<AdminScans />} />
+            <Route path="/organizer/events/:eventId/qr-settings" element={<EventQRSettings />} />
           </Routes>
         </main>
         
