@@ -1,0 +1,264 @@
+{
+  "info": {
+    "name": "MVPEVENT-i Organizer M6",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection to test organizer event creation & management endpoints"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (organizer)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api","auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"org@example.com\",\n  \"password\": \"ChangeMe123!\",\n  \"username\": \"org_user\",\n  \"firstName\": \"Org\",\n  \"lastName\": \"User\",\n  \"role\": \"organizer\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.tokens && json.tokens.accessToken) {",
+                  "  pm.environment.set('accessToken', json.tokens.accessToken);",
+                  "  pm.environment.set('refreshToken', json.tokens.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"org@example.com\",\n  \"password\": \"ChangeMe123!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.tokens && json.tokens.accessToken) {",
+                  "  pm.environment.set('accessToken', json.tokens.accessToken);",
+                  "  pm.environment.set('refreshToken', json.tokens.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Organizer",
+      "item": [
+        {
+          "name": "Overview",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/organizer/overview", "host": ["{{baseUrl}}"], "path": ["api","organizer","overview"] }
+          }
+        },
+        {
+          "name": "Create Draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/organizer/events", "host": ["{{baseUrl}}"], "path": ["api","organizer","events"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sample Event\",\n  \"description\": \"Event description\",\n  \"shortDescription\": \"Short desc\",\n  \"location\": { \"venueName\": \"Main Hall\", \"city\": \"Nairobi\", \"country\": \"KE\" },\n  \"dates\": { \"startDate\": \"2025-10-03T08:00:00.000Z\", \"endDate\": \"2025-10-03T16:00:00.000Z\", \"timezone\": \"Africa/Nairobi\" },\n  \"capacity\": 500,\n  \"pricing\": { \"isFree\": false, \"price\": 20, \"currency\": \"KES\" },\n  \"ticketTypes\": [ { \"name\": \"General\", \"price\": 20, \"quantity\": 400 }, { \"name\": \"VIP\", \"price\": 60, \"quantity\": 50 } ],\n  \"recurrence\": { \"enabled\": false }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set('eventId', json.data.id);",
+                  "if (json.data && json.data.version !== undefined) pm.environment.set('eventVersion', json.data.version);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Draft",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/organizer/events/{{eventId}}", "host": ["{{baseUrl}}"], "path": ["api","organizer","events","{{eventId}}"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{eventVersion}},\n  \"title\": \"Sample Event Updated\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.version !== undefined) pm.environment.set('eventVersion', json.data.version);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Replace Ticket Types",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/organizer/events/{{eventId}}/tickets", "host": ["{{baseUrl}}"], "path": ["api","organizer","events","{{eventId}}","tickets"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketTypes\": [\n    { \"name\": \"General\", \"price\": 25, \"quantity\": 450 },\n    { \"name\": \"VIP\", \"price\": 70, \"quantity\": 50 }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Publish (single)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/organizer/events/{{eventId}}/publish", "host": ["{{baseUrl}}"], "path": ["api","organizer","events","{{eventId}}","publish"] }
+          }
+        },
+        {
+          "name": "Create Draft (recurring)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/organizer/events", "host": ["{{baseUrl}}"], "path": ["api","organizer","events"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Weekly Meetup\",\n  \"description\": \"Weekly session\",\n  \"dates\": { \"startDate\": \"2025-10-03T18:00:00.000Z\", \"endDate\": \"2025-10-03T20:00:00.000Z\", \"timezone\": \"UTC\" },\n  \"recurrence\": { \"enabled\": true, \"frequency\": \"weekly\", \"interval\": 1, \"count\": 4 }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set('recurringEventId', json.data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Publish (recurring)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/organizer/events/{{recurringEventId}}/publish", "host": ["{{baseUrl}}"], "path": ["api","organizer","events","{{recurringEventId}}","publish"] }
+          }
+        },
+        {
+          "name": "Unpublish",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/organizer/events/{{eventId}}/unpublish", "host": ["{{baseUrl}}"], "path": ["api","organizer","events","{{eventId}}","unpublish"] }
+          }
+        },
+        {
+          "name": "Cancel",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/organizer/events/{{eventId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api","organizer","events","{{eventId}}","cancel"] }
+          }
+        },
+        {
+          "name": "Clone",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{baseUrl}}/api/organizer/events/{{eventId}}/clone", "host": ["{{baseUrl}}"], "path": ["api","organizer","events","{{eventId}}","clone"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shiftDays\": 7,\n  \"copyMedia\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.id) pm.environment.set('clonedEventId', json.data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List My Events",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/organizer/events?status=draft&page=1&pageSize=10", "host": ["{{baseUrl}}"], "path": ["api","organizer","events"], "query": [
+              { "key": "status", "value": "draft" },
+              { "key": "page", "value": "1" },
+              { "key": "pageSize", "value": "10" }
+            ] }
+          }
+        },
+        {
+          "name": "Get Event (by id)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": { "raw": "{{baseUrl}}/api/organizer/events/{{eventId}}", "host": ["{{baseUrl}}"], "path": ["api","organizer","events","{{eventId}}"] }
+          }
+        }
+      ]
+    }
+  ]
+}
+
+

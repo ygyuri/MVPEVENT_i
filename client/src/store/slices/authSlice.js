@@ -1,6 +1,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../utils/api';
 
+// Request deduplication cache for auth API
+const authRequestCache = new Map();
+
 // Async thunks
 export const login = createAsyncThunk(
   'auth/login',
@@ -65,10 +68,51 @@ export const getCurrentUser = createAsyncThunk(
       const token = getState().auth.authToken;
       if (!token) throw new Error('No token available');
       
-      const response = await api.get('/api/auth/me');
+      const requestKey = '/api/auth/me';
+      const now = Date.now();
+      
+      // Check if we have a recent request for the same URL
+      if (authRequestCache.has(requestKey)) {
+        const lastRequest = authRequestCache.get(requestKey);
+        if (now - lastRequest < 5000) { // 5 seconds cache for auth
+          console.log('🚫 [API AUTH] Deduplicating request:', requestKey);
+          return new Promise((resolve) => {
+            // Return cached promise or wait for ongoing request
+            setTimeout(() => {
+              resolve(authRequestCache.get(requestKey + '_result'));
+            }, 100);
+          });
+        }
+      }
+      
+      // Store request timestamp
+      authRequestCache.set(requestKey, now);
+      
+      console.log('🔄 [API AUTH] Request:', {
+        url: requestKey,
+        timestamp: new Date().toISOString()
+      });
+      
+      const response = await api.get(requestKey);
+      
+      // Store result in cache
+      authRequestCache.set(requestKey + '_result', response.data.user);
+      
+      console.log('✅ [API AUTH] Response:', {
+        status: response.status,
+        data: response.data.user,
+        timestamp: new Date().toISOString()
+      });
       
       return response.data.user;
     } catch (error) {
+      console.error('❌ [API AUTH] Error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+      
       const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to get user';
       return rejectWithValue(errorMessage);
     }

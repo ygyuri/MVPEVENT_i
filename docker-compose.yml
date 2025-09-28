@@ -40,7 +40,7 @@ services:
       ME_CONFIG_BASICAUTH_USERNAME: admin
       ME_CONFIG_BASICAUTH_PASSWORD: password123
     ports:
-      - "8081:8081"
+      - "8082:8081"
     depends_on:
       - mongodb
     networks:
@@ -76,6 +76,7 @@ services:
     volumes:
       - ./server:/app
       - /app/node_modules
+      - event_uploads:/app/uploads
     networks:
       - event_i_network
     command: sh -c "sleep 10 && npm run seed && npm run dev"
@@ -101,6 +102,8 @@ services:
 volumes:
   mongodb_data:
   redis_data:
+  event_uploads:
+    driver: local
 
 networks:
   event_i_network:

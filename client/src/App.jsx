@@ -14,7 +14,11 @@ import TicketWallet from './pages/TicketWallet';
 import Scanner from './pages/Scanner';
 import AdminScans from './pages/AdminScans';
 import EventQRSettings from './pages/EventQRSettings';
+import OrganizerDashboard from './pages/OrganizerDashboard';
+import EventCreate from './pages/EventCreate';
+import EventManagement from './pages/EventManagement';
 import { getCurrentUser } from './store/slices/authSlice';
+import './utils/testAuth'; // Load test authentication helper
 
 function App() {
   const dispatch = useDispatch();
@@ -43,6 +47,11 @@ function App() {
             <Route path="/wallet" element={<TicketWallet />} />
             <Route path="/scanner" element={<Scanner />} />
             <Route path="/admin/scans" element={<AdminScans />} />
+            <Route path="/organizer" element={<OrganizerDashboard />} />
+            <Route path="/organizer/dashboard" element={<OrganizerDashboard />} />
+            <Route path="/organizer/events" element={<EventManagement />} />
+            <Route path="/organizer/events/create" element={<EventCreate />} />
+            <Route path="/organizer/events/:eventId/edit" element={<EventCreate />} />
             <Route path="/organizer/events/:eventId/qr-settings" element={<EventQRSettings />} />
           </Routes>
         </main>

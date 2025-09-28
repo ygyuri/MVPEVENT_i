@@ -23,18 +23,27 @@ const CurrencySelector = ({ className = '', showConversion = true }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
 
-  // Fetch exchange rates on component mount
+  // Fetch exchange rates on component mount (only if not already loaded)
   useEffect(() => {
-    dispatch(fetchExchangeRates())
-  }, [dispatch])
+    if (!exchangeRates || Object.keys(exchangeRates).length === 0) {
+      console.log('🔄 [CURRENCY SELECTOR] Fetching exchange rates on mount');
+      dispatch(fetchExchangeRates());
+    } else {
+      console.log('🚫 [CURRENCY SELECTOR] Exchange rates already loaded, skipping fetch');
+    }
+  }, [dispatch, exchangeRates])
 
-  // Auto-refresh rates every 5 minutes
+  // Auto-refresh rates every 5 minutes (only if component is still mounted)
   useEffect(() => {
     const interval = setInterval(() => {
-      dispatch(fetchExchangeRates())
+      console.log('🔄 [CURRENCY SELECTOR] Auto-refreshing exchange rates');
+      dispatch(fetchExchangeRates());
     }, 5 * 60 * 1000) // 5 minutes
 
-    return () => clearInterval(interval)
+    return () => {
+      console.log('🧹 [CURRENCY SELECTOR] Cleaning up auto-refresh interval');
+      clearInterval(interval);
+    }
   }, [dispatch])
 
   const handleCurrencySelect = (currencyCode) => {

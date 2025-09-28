@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import { login, register, clearError } from '../store/slices/authSlice'
 import { useTheme } from '../contexts/ThemeContext'
 
@@ -22,7 +23,8 @@ const AuthModal = ({ isOpen, onClose }) => {
   const [isNewUser, setIsNewUser] = useState(false)
 
   const dispatch = useDispatch()
-  const { loading, error, isAuthenticated } = useSelector(state => state.auth)
+  const navigate = useNavigate()
+  const { loading, error, isAuthenticated, user } = useSelector(state => state.auth)
   const { isDarkMode } = useTheme()
 
   if (!isOpen) return null
@@ -35,11 +37,24 @@ const AuthModal = ({ isOpen, onClose }) => {
 
     try {
       if (isLogin) {
-        await dispatch(login({ email: formData.email, password: formData.password })).unwrap()
+        const result = await dispatch(login({ email: formData.email, password: formData.password })).unwrap()
+        console.log('✅ [AUTH MODAL] Login successful:', result.user);
+        
         setSuccessMessage('Welcome back! You have successfully signed in.')
+        
+        // Close modal and navigate based on user role
         setTimeout(() => {
           onClose()
-        }, 2000)
+          
+          // Navigate based on user role
+          if (result.user.role === 'organizer') {
+            console.log('🔄 [AUTH MODAL] Redirecting organizer to dashboard');
+            navigate('/organizer/dashboard');
+          } else {
+            console.log('🔄 [AUTH MODAL] Redirecting customer to home');
+            navigate('/');
+          }
+        }, 1500)
       } else {
         if (!formData.firstName || !formData.lastName || !formData.username) {
           setLocalError('Please fill in all required fields.');
@@ -53,7 +68,7 @@ const AuthModal = ({ isOpen, onClose }) => {
           setLocalError('Passwords do not match.')
           return
         }
-        await dispatch(register({
+        const result = await dispatch(register({
           email: formData.email,
           password: formData.password,
           username: formData.username,
@@ -63,11 +78,23 @@ const AuthModal = ({ isOpen, onClose }) => {
           role: formData.role
         })).unwrap()
         
+        console.log('✅ [AUTH MODAL] Registration successful:', result.user);
+        
         setSuccessMessage(`🎉 Welcome to Event-i, ${formData.firstName}! Your account has been created successfully. You can now explore events and join the community!`)
         setIsNewUser(true)
+        
         setTimeout(() => {
           onClose()
-        }, 4000)
+          
+          // Navigate based on user role
+          if (result.user.role === 'organizer') {
+            console.log('🔄 [AUTH MODAL] Redirecting new organizer to dashboard');
+            navigate('/organizer/dashboard');
+          } else {
+            console.log('🔄 [AUTH MODAL] Redirecting new customer to home');
+            navigate('/');
+          }
+        }, 3000)
       }
     } catch (err) {
       // handled by slice

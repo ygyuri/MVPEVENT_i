@@ -8,7 +8,7 @@ const eventSchema = new mongoose.Schema({
   },
   title: {
     type: String,
-    required: true,
+    required: function() { return this.status === 'published'; },
     trim: true,
     maxlength: 255
   },
@@ -20,7 +20,7 @@ const eventSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: true
+    required: function() { return this.status === 'published'; }
   },
   shortDescription: {
     type: String,
@@ -45,11 +45,11 @@ const eventSchema = new mongoose.Schema({
   dates: {
     startDate: {
       type: Date,
-      required: true
+      required: function() { return this.status === 'published'; }
     },
     endDate: {
       type: Date,
-      required: true
+      required: function() { return this.status === 'published'; }
     },
     timezone: {
       type: String,
@@ -95,6 +95,22 @@ const eventSchema = new mongoose.Schema({
     enum: ['draft', 'published', 'cancelled', 'completed'],
     default: 'draft'
   },
+  // Parent event for recurrence series (children reference the master)
+  parentEventId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Event',
+    default: null
+  },
+  // Recurrence rules (only meaningful on master event)
+  recurrence: {
+    enabled: { type: Boolean, default: false },
+    frequency: { type: String, enum: ['daily', 'weekly', 'monthly'], default: undefined },
+    interval: { type: Number, min: 1, default: undefined },
+    byWeekday: [{ type: Number, min: 0, max: 6 }],
+    byMonthday: [{ type: Number, min: 1, max: 31 }],
+    count: { type: Number, min: 1, default: undefined },
+    until: { type: Date, default: undefined }
+  },
   media: {
     coverImageUrl: String,
     galleryUrls: [String]
@@ -103,11 +119,16 @@ const eventSchema = new mongoose.Schema({
     name: String,
     price: Number,
     quantity: Number,
-    description: String
+    description: String,
+    currency: String,
+    salesStart: Date,
+    salesEnd: Date,
+    minPerOrder: Number,
+    maxPerOrder: Number
   }],
   tags: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'EventTag'
+    type: String,
+    trim: true
   }],
   // Existing metadata map
   metadata: {
@@ -119,7 +140,9 @@ const eventSchema = new mongoose.Schema({
   qrSettings: {
     ttlMs: { type: Number, min: 10000 },
     autoRotateMs: { type: Number, min: 0 }
-  }
+  },
+  // Optimistic concurrency version for drafts
+  version: { type: Number, default: 0 }
 }, {
   timestamps: true
 });
@@ -130,6 +153,7 @@ eventSchema.index({ organizer: 1 });
 eventSchema.index({ category: 1 });
 eventSchema.index({ status: 1 });
 eventSchema.index({ 'dates.startDate': 1 });
+eventSchema.index({ parentEventId: 1 });
 eventSchema.index({ 'flags.isFeatured': 1, 'dates.startDate': 1 });
 eventSchema.index({ 'flags.isTrending': 1, 'dates.startDate': 1 });
 eventSchema.index({ 'location.city': 1, 'location.state': 1, 'location.country': 1 });
@@ -155,13 +179,26 @@ eventSchema.virtual('priceDisplay').get(function() {
 });
 
 // Pre-save middleware
-eventSchema.pre('save', function(next) {
+eventSchema.pre('save', async function(next) {
   // Auto-generate slug if not provided
   if (!this.slug && this.title) {
-    this.slug = this.title
+    let baseSlug = this.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
+    
+    // Check for uniqueness and add suffix if needed
+    let slug = baseSlug;
+    let counter = 1;
+    
+    while (true) {
+      const existing = await this.constructor.findOne({ slug: slug, _id: { $ne: this._id } });
+      if (!existing) break;
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+    
+    this.slug = slug;
   }
   next();
 });

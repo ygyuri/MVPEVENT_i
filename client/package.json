@@ -21,6 +21,7 @@
     "clsx": "^2.0.0",
     "dayjs": "1.11.18",
     "framer-motion": "^10.16.4",
+    "heic2any": "^0.0.4",
     "lucide-react": "^0.292.0",
     "qrcode.react": "4.2.0",
     "react": "^18.2.0",

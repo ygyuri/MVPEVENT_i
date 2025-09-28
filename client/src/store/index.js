@@ -7,6 +7,8 @@ import checkoutReducer from './slices/checkoutSlice';
 import currencyReducer from './slices/currencySlice';
 import ticketsReducer from './slices/ticketsSlice';
 import scannerReducer from './slices/scannerSlice';
+import organizerReducer from './slices/organizerSlice';
+import eventFormReducer from './slices/eventFormSlice';
 
 export const store = configureStore({
   reducer: {
@@ -17,6 +19,8 @@ export const store = configureStore({
     currency: currencyReducer,
     tickets: ticketsReducer,
     scanner: scannerReducer,
+    organizer: organizerReducer,
+    eventForm: eventFormReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

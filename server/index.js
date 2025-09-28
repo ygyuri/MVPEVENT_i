@@ -13,6 +13,16 @@ require('./models/Ticket');
 require('./models/EventStaff');
 require('./models/ScanLog');
 
+// Inspect runtime schema to verify 'tags' type once models are loaded
+try {
+  const Event = require('./models/Event');
+  const tagsPath = Event.schema.path('tags');
+  const tagsType = tagsPath?.instance || tagsPath?.caster?.instance || 'unknown';
+  console.log('🧩 [BOOT] Event.tags schema type:', tagsType, 'options:', tagsPath?.options || {});
+} catch (e) {
+  console.warn('⚠️ [BOOT] Unable to inspect Event.tags schema:', e?.message);
+}
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
@@ -36,7 +46,7 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(cors({
     origin: (origin, callback) => callback(null, true),
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
   }));
 } else {
@@ -47,11 +57,12 @@ if (process.env.NODE_ENV !== 'production') {
       'http://localhost:3001'
     ],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
   }));
 }
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Disable browser/proxy caching for API responses in development
 if (process.env.NODE_ENV !== 'production') {

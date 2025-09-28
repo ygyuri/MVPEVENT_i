@@ -3,6 +3,9 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 // Currency API for real-time rates
 const CURRENCY_API_URL = 'https://api.exchangerate-api.com/v4/latest/USD'
 
+// Request deduplication cache for currency API
+const currencyRequestCache = new Map();
+
 // Supported currencies with their details
 export const SUPPORTED_CURRENCIES = {
   KES: { name: 'Kenyan Shilling', symbol: 'KSh', flag: '🇰🇪', default: true },
@@ -135,11 +138,45 @@ export const fetchExchangeRates = createAsyncThunk(
   'currency/fetchExchangeRates',
   async () => {
     try {
+      const now = Date.now();
+      const requestKey = CURRENCY_API_URL;
+      
+      // Check if we have a recent request for the same URL
+      if (currencyRequestCache.has(requestKey)) {
+        const lastRequest = currencyRequestCache.get(requestKey);
+        if (now - lastRequest < 30000) { // 30 seconds cache for currency
+          console.log('🚫 [CURRENCY API] Deduplicating request:', requestKey);
+          return new Promise((resolve) => {
+            // Return cached promise or wait for ongoing request
+            setTimeout(() => {
+              resolve(currencyRequestCache.get(requestKey + '_result'));
+            }, 100);
+          });
+        }
+      }
+      
+      // Store request timestamp
+      currencyRequestCache.set(requestKey, now);
+      
+      console.log('🔄 [CURRENCY API] Request:', {
+        url: requestKey,
+        timestamp: new Date().toISOString()
+      });
+
       const response = await fetch(CURRENCY_API_URL)
       const data = await response.json()
+      
+      // Store result in cache
+      currencyRequestCache.set(requestKey + '_result', data.rates);
+      
+      console.log('✅ [CURRENCY API] Response:', {
+        status: response.status,
+        timestamp: new Date().toISOString()
+      });
+
       return data.rates
     } catch (error) {
-      console.error('Failed to fetch exchange rates:', error)
+      console.error('❌ [CURRENCY API] Error:', error)
       // Fallback rates (approximate)
       return {
         KES: 150, USD: 1, EUR: 0.85, GBP: 0.73, JPY: 110, CAD: 1.25,
