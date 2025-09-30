@@ -9,6 +9,7 @@ import ticketsReducer from './slices/ticketsSlice';
 import scannerReducer from './slices/scannerSlice';
 import organizerReducer from './slices/organizerSlice';
 import eventFormReducer from './slices/eventFormSlice';
+import analyticsReducer from './slices/analyticsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -21,11 +22,13 @@ export const store = configureStore({
     scanner: scannerReducer,
     organizer: organizerReducer,
     eventForm: eventFormReducer,
+    analytics: analyticsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: ['persist/PERSIST'],
+        ignoredPaths: ['analytics.cache'],
       },
     }),
 });

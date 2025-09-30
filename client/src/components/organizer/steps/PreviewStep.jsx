@@ -11,7 +11,6 @@ const PreviewStep = ({ onSubmit }) => {
   const { formData } = useSelector(state => state.eventForm);
   const { loading } = useSelector(state => state.organizer);
   
-  const [publishing, setPublishing] = useState(false);
   const [validationResults, setValidationResults] = useState(null);
   const [missingFields, setMissingFields] = useState([]);
 
@@ -44,64 +43,6 @@ const PreviewStep = ({ onSubmit }) => {
     
     setMissingFields(missing);
   }, [formData]);
-
-  const handlePublish = async () => {
-    if (!validationResults?.isValid) {
-      return;
-    }
-
-    setPublishing(true);
-    try {
-      // Log the final payload before submission
-      console.log('🚀 [PUBLISH EVENT] Final payload being sent to backend:', {
-        formData: formData,
-        timestamp: new Date().toISOString(),
-        validationResults: validationResults,
-        missingFields: missingFields
-      });
-      
-      // Log specific sections for debugging
-      console.log('📋 [PUBLISH EVENT] Event Details:', {
-        title: formData.title,
-        description: formData.description,
-        shortDescription: formData.shortDescription,
-        category: formData.category
-      });
-      
-      console.log('📍 [PUBLISH EVENT] Location Details:', {
-        location: formData.location
-      });
-      
-      console.log('📅 [PUBLISH EVENT] Schedule Details:', {
-        dates: formData.dates
-      });
-      
-      console.log('💰 [PUBLISH EVENT] Pricing Details:', {
-        capacity: formData.capacity,
-        pricing: formData.pricing,
-        ticketTypes: formData.ticketTypes
-      });
-      
-      console.log('🎨 [PUBLISH EVENT] Media Details:', {
-        media: formData.media
-      });
-      
-      console.log('🔄 [PUBLISH EVENT] Recurrence Details:', {
-        recurrence: formData.recurrence
-      });
-      
-      console.log('🏷️ [PUBLISH EVENT] Tags & Flags:', {
-        tags: formData.tags,
-        flags: formData.flags
-      });
-      
-      await onSubmit(formData);
-    } catch (error) {
-      console.error('❌ [PUBLISH EVENT] Publish failed:', error);
-    } finally {
-      setPublishing(false);
-    }
-  };
 
   const formatDuration = () => {
     if (formData.dates?.startDate && formData.dates?.endDate) {
@@ -446,26 +387,11 @@ const PreviewStep = ({ onSubmit }) => {
           </div>
         </div>
 
-        {/* Publish Actions */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <EnhancedButton
-            variant="secondary"
-            onClick={() => window.history.back()}
-            disabled={publishing}
-          >
-            Back to Edit
-          </EnhancedButton>
-          
-          <EnhancedButton
-            variant="primary"
-            onClick={handlePublish}
-            disabled={!validationResults?.isValid || publishing}
-            loading={publishing}
-            icon={Eye}
-            className="btn-web3-primary"
-          >
-            {publishing ? 'Publishing...' : 'Publish Event'}
-          </EnhancedButton>
+        {/* Instructions */}
+        <div className="text-center">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Review your event details above. Use the navigation buttons at the bottom to go back and edit or publish your event.
+          </p>
         </div>
 
         {/* Publish Info */}

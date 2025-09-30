@@ -28,19 +28,35 @@ const BasicInfoStep = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchCategories = async () => {
       try {
         setCategoriesLoading(true);
+        // Deduplicate by caching in sessionStorage for the session
+        const cached = sessionStorage.getItem('event_categories_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && isMounted) {
+            setCategories(parsed);
+            setCategoriesLoading(false);
+            return;
+          }
+        }
         const data = await categoriesAPI.getCategories();
+        if (!isMounted) return;
         setCategories(data);
+        try {
+          sessionStorage.setItem('event_categories_cache', JSON.stringify(data));
+        } catch (_) {}
       } catch (error) {
         console.error('Failed to fetch categories:', error);
       } finally {
-        setCategoriesLoading(false);
+        if (isMounted) setCategoriesLoading(false);
       }
     };
 
     fetchCategories();
+    return () => { isMounted = false; };
   }, []);
 
   // Cleanup on unmount

@@ -223,6 +223,40 @@ export const updateTicketTypes = createAsyncThunk(
   }
 );
 
+// Generic partial update for any event fields (title, description, dates, location, pricing, flags, media, ticketTypes, tags, metadata, qrSettings, recurrence)
+export const updateEventFields = createAsyncThunk(
+  'organizer/updateEventFields',
+  async ({ eventId, fields, version }, { rejectWithValue }) => {
+    try {
+      const payload = { ...fields };
+      if (version !== undefined) payload.version = version;
+      const response = await api.patch(`/api/organizer/events/${eventId}`, payload);
+      return { eventId, data: response.data.data };
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to update event';
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+// Upload event images (draft only). Accepts a FileList or array of Files
+export const uploadEventImages = createAsyncThunk(
+  'organizer/uploadEventImages',
+  async ({ eventId, files }, { rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      (Array.from(files) || []).forEach((file) => formData.append('images', file));
+      const response = await api.post(`/api/organizer/events/${eventId}/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return { eventId, urls: response.data?.data?.urls || [] };
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to upload images';
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 export const getEventDetails = createAsyncThunk(
   'organizer/getEventDetails',
   async (eventId, { rejectWithValue }) => {
@@ -431,8 +465,9 @@ const organizerSlice = createSlice({
       })
       .addCase(fetchMyEvents.fulfilled, (state, action) => {
         state.loading.events = false;
-        state.events = action.payload.data.items;
-        state.eventsPagination = action.payload.data.pagination;
+        const data = action.payload && (action.payload.data || action.payload);
+        state.events = data?.items || [];
+        state.eventsPagination = data?.pagination || state.eventsPagination;
       })
       .addCase(fetchMyEvents.rejected, (state, action) => {
         state.loading.events = false;
@@ -577,6 +612,32 @@ const organizerSlice = createSlice({
         // Update current event if it's the same
         if (state.currentEvent && state.currentEvent._id === eventId) {
           state.currentEvent.ticketTypes = ticketTypes;
+        }
+      })
+      
+      // Update Event Fields (generic partial update)
+      .addCase(updateEventFields.fulfilled, (state, action) => {
+        const { eventId, data } = action.payload;
+        const eventIndex = state.events.findIndex(event => event._id === eventId);
+        if (eventIndex !== -1) {
+          state.events[eventIndex] = { ...state.events[eventIndex], ...data };
+        }
+        if (state.currentEvent && state.currentEvent._id === eventId) {
+          state.currentEvent = { ...state.currentEvent, ...data };
+        }
+      })
+      
+      // Upload Event Images
+      .addCase(uploadEventImages.fulfilled, (state, action) => {
+        const { eventId, urls } = action.payload;
+        const eventIndex = state.events.findIndex(event => event._id === eventId);
+        if (eventIndex !== -1) {
+          const prev = state.events[eventIndex].media || {};
+          state.events[eventIndex].media = { ...prev, galleryUrls: urls };
+        }
+        if (state.currentEvent && state.currentEvent._id === eventId) {
+          const prev = state.currentEvent.media || {};
+          state.currentEvent.media = { ...prev, galleryUrls: urls };
         }
       })
       

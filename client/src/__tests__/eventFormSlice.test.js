@@ -183,3 +183,4 @@ describe('eventFormSlice', () => {
     expect(actual.formData.location.country).toEqual('USA');
   });
 });
+

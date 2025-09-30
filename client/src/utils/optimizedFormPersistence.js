@@ -10,6 +10,7 @@ class OptimizedFormPersistence {
     this.localStorageDebounce = 500; // 500ms debounce for localStorage
     this.localStorageTimer = null;
     this.apiSaveTimer = null;
+    this.creatingDraftPromise = null; // lock to ensure only one draft creation
   }
 
   // Immediate Redux update (fastest - no persistence)
@@ -56,7 +57,17 @@ class OptimizedFormPersistence {
           version: options.version 
         })).unwrap();
       } else {
-        const result = await dispatch(apiActions.createEventDraft(formData)).unwrap();
+        // Ensure only one create draft runs at a time
+        if (this.creatingDraftPromise) {
+          const existing = await this.creatingDraftPromise;
+          return { created: true, eventId: existing?.data?.id };
+        }
+        this.creatingDraftPromise = dispatch(apiActions.createEventDraft(formData)).unwrap()
+          .finally(() => {
+            // Release lock shortly after to allow subsequent updates
+            setTimeout(() => { this.creatingDraftPromise = null; }, 0);
+          });
+        const result = await this.creatingDraftPromise;
         return { created: true, eventId: result.data?.id };
       }
       
@@ -78,12 +89,13 @@ class OptimizedFormPersistence {
     // 3. Smart API save (only when appropriate)
     if (options.immediateApiSave || this.shouldTriggerApiSave(field, value, formData)) {
       try {
-        await this.saveToAPI(formData, eventId, dispatch, apiActions, options);
+        return await this.saveToAPI(formData, eventId, dispatch, apiActions, options);
       } catch (error) {
         // Don't throw - localStorage already saved the data
         console.warn('API save failed, but localStorage saved:', error);
       }
     }
+    return { skipped: true };
   }
 
   // Determine if API save should be triggered

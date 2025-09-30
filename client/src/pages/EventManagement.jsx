@@ -27,15 +27,17 @@ import {
   deleteEvent, 
   cloneEvent,
   cancelEvent,
-  unpublishEvent
+  unpublishEvent,
+  publishEvent
 } from '../store/slices/organizerSlice';
+import { setSelectedEvent } from '../store/slices/analyticsSlice';
 import { dateUtils } from '../utils/eventHelpers';
 
 const EventManagement = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user, isAuthenticated, loading: authLoading } = useSelector(state => state.auth);
-  const { events, loading, error, meta } = useSelector(state => state.organizer);
+  const { events, loading, error, eventsPagination } = useSelector(state => state.organizer);
   
   // Local state for filtering and sorting
   const [filters, setFilters] = useState({
@@ -65,6 +67,10 @@ const EventManagement = () => {
 
   // Optimized fetch function to prevent duplicate calls
   const fetchEventsData = useCallback(async (forceRefresh = false) => {
+    // Gate on auth and role to avoid 401s and redundant calls
+    if (authLoading || !isAuthenticated || !user || user.role !== 'organizer') {
+      return;
+    }
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchTime;
     
@@ -87,7 +93,7 @@ const EventManagement = () => {
     console.log('🔄 [DASHBOARD] Fetching events data:', { params, forceRefresh, timeSinceLastFetch });
     setLastFetchTime(now);
     await dispatch(fetchMyEvents(params));
-  }, [dispatch, currentPage, sortBy, sortOrder, debouncedSearch, filters, lastFetchTime]);
+  }, [dispatch, currentPage, sortBy, sortOrder, debouncedSearch, filters, lastFetchTime, authLoading, isAuthenticated, user]);
   
   // Single useEffect for initial load and filter changes
   useEffect(() => {
@@ -146,38 +152,6 @@ const EventManagement = () => {
     }
   }, [fetchEventsData]);
 
-  // Show loading state while authentication is in progress
-  if (authLoading || !isAuthenticated) {
-    return (
-      <div className="container-modern">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error if user is not an organizer
-  if (user && user.role !== 'organizer') {
-    return (
-      <div className="container-modern">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Access Denied
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              You need organizer privileges to access this page.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
   // Filtered and sorted events
   const filteredEvents = useMemo(() => {
     let filtered = [...events];
@@ -231,7 +205,7 @@ const EventManagement = () => {
           break;
           
         case 'clone':
-          await dispatch(cloneEvent(eventId)).unwrap();
+          await dispatch(cloneEvent({ eventId })).unwrap();
           toast.success('Event cloned successfully!');
           break;
           
@@ -254,6 +228,18 @@ const EventManagement = () => {
             await dispatch(unpublishEvent(eventId)).unwrap();
             toast.success('Event unpublished successfully!');
           }
+          break;
+
+        case 'publish':
+          await dispatch(publishEvent(eventId)).unwrap();
+          toast.success('Event published successfully!');
+          break;
+
+        case 'analytics':
+          if (eventData) {
+            dispatch(setSelectedEvent(eventData));
+          }
+          navigate('/organizer/analytics');
           break;
           
         case 'view':
@@ -353,6 +339,38 @@ const EventManagement = () => {
     { value: 'status', label: 'Status' },
     { value: 'capacity', label: 'Capacity' }
   ];
+
+  // Show loading state while authentication is in progress
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="container-modern">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if user is not an organizer
+  if (user && user.role !== 'organizer') {
+    return (
+      <div className="container-modern">
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Access Denied
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              You need organizer privileges to access this page.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="container-modern">
@@ -406,31 +424,31 @@ const EventManagement = () => {
           {/* Search */}
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search events by title, description, or venue..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input-modern pl-10 w-full"
+                className="input-modern pl-12 w-full"
               />
             </div>
           </div>
           
           {/* Status Filter */}
-          <div className="flex gap-2 overflow-x-auto">
+          <div className="flex gap-2 flex-wrap overflow-x-auto">
             {statusOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => setFilters(prev => ({ ...prev, status: option.value }))}
-                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors duration-200 ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors duration-200 inline-flex items-center gap-2 ${
                   filters.status === option.value
                     ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
                     : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
-                {option.label}
-                <span className="ml-2 px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded-full text-xs">
+                <span className="truncate max-w-[8rem]">{option.label}</span>
+                <span className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded-full text-xs shrink-0">
                   {option.count}
                 </span>
               </button>
@@ -527,7 +545,7 @@ const EventManagement = () => {
       {/* Event List */}
       <EventList
         events={filteredEvents}
-        loading={loading}
+        loading={loading?.events}
         error={error}
         onEventAction={handleEventAction}
         onEventSelect={handleEventSelect}
@@ -539,7 +557,7 @@ const EventManagement = () => {
       />
       
       {/* Pagination */}
-      {meta && meta.totalPages > 1 && (
+      {eventsPagination && eventsPagination.totalPages > 1 && (
         <div className="mt-8 flex justify-center">
           <div className="flex items-center gap-2">
             <button
@@ -551,7 +569,7 @@ const EventManagement = () => {
             </button>
             
             <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, meta.totalPages) }, (_, i) => {
+              {Array.from({ length: Math.min(5, eventsPagination.totalPages) }, (_, i) => {
                 const page = i + 1;
                 return (
                   <button
@@ -570,8 +588,8 @@ const EventManagement = () => {
             </div>
             
             <button
-              onClick={() => setCurrentPage(prev => Math.min(meta.totalPages, prev + 1))}
-              disabled={currentPage === meta.totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(eventsPagination.totalPages, prev + 1))}
+              disabled={currentPage === eventsPagination.totalPages}
               className="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
             >
               Next

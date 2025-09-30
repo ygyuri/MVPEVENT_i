@@ -281,3 +281,4 @@ describe('EventManagement', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/organizer/events/create');
   });
 });
+

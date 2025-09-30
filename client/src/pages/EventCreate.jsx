@@ -19,21 +19,32 @@ const EventCreate = () => {
   const navigate = useNavigate();
   const { eventId } = useParams();
   
-  const { currentStep, formData } = useSelector(state => state.eventForm);
+  const { currentStep, formData, eventId: storedEventId, version } = useSelector(state => state.eventForm);
 
   // Handle form submission (publish event) with comprehensive error handling
   const handleSubmit = async (formData) => {
     try {
+      // Show initial loading message
+      toast.loading('Preparing to publish your event...', {
+        id: 'publish-loading',
+        duration: 0 // Keep loading until we dismiss it
+      });
+
       // Final validation
       const validation = validateForm(formData);
       
       if (!validation.isValid) {
+        toast.dismiss('publish-loading');
         toast.error('Please fix all errors before publishing');
         return;
       }
 
+      // Determine effective eventId (route param may be 'create')
+      const effectiveEventId = (eventId && eventId !== 'create') ? eventId : storedEventId;
+
       // Additional checks before publishing
-      if (!eventId) {
+      if (!effectiveEventId) {
+        toast.dismiss('publish-loading');
         toast.error('Event ID is required for publishing');
         return;
       }
@@ -43,22 +54,40 @@ const EventCreate = () => {
       
       // Validate that we have essential data
       if (!apiData.title || !apiData.description || !apiData.dates?.startDate) {
+        toast.dismiss('publish-loading');
         toast.error('Title, description, and start date are required');
         return;
       }
       
+      // Update loading message
+      toast.loading('Saving final draft...', {
+        id: 'publish-loading'
+      });
+      
       // First, ensure the latest form data is saved to the draft
       console.log('💾 [PUBLISH] Saving latest form data before publishing...');
-      await dispatch(updateEventDraft({ 
-        eventId: eventId, 
+      const saveRes = await dispatch(updateEventDraft({ 
+        eventId: effectiveEventId, 
         eventData: apiData, 
-        version: formData.version || 0
+        version: version || 0
       })).unwrap();
+      // Sync version into form state before publish
+      if (saveRes?.data?.version !== undefined) {
+        // We cannot import setVersion here easily without circular deps; rely on final publish to work with server's latest version post-save.
+      }
       
       console.log('✅ [PUBLISH] Draft updated, now publishing...');
       
+      // Update loading message
+      toast.loading('Publishing your event...', {
+        id: 'publish-loading'
+      });
+      
       // Publish the event
-      const result = await dispatch(publishEvent(eventId)).unwrap();
+      const result = await dispatch(publishEvent(effectiveEventId)).unwrap();
+      
+      // Dismiss loading toast
+      toast.dismiss('publish-loading');
       
       // Show comprehensive success message
       toast.success(
@@ -98,6 +127,9 @@ const EventCreate = () => {
       
     } catch (error) {
       console.error('Failed to publish event:', error);
+      
+      // Dismiss loading toast if it's still showing
+      toast.dismiss('publish-loading');
       
       // Extract meaningful error message
       let errorMessage = 'Failed to publish event';

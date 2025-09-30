@@ -141,7 +141,7 @@ const EventList = ({
   return (
     <div className="space-y-4">
       {/* Table Header */}
-      <div className="hidden lg:block bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
+      <div className="hidden lg:block bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 overflow-x-auto">
         <div className="grid grid-cols-12 gap-4 items-center">
           {/* Select All */}
           <div className="col-span-1">
@@ -218,7 +218,7 @@ const EventList = ({
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                       <Calendar className="w-4 h-4" />
-                      <span>{dateUtils.formatEventDate(event.dates)}</span>
+                      <span>{dateUtils.formatDate(event.dates?.startDate, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                     </div>
                     
                     {event.location && (
@@ -275,8 +275,8 @@ const EventList = ({
                 </div>
                 
                 {/* Event Title */}
-                <div className="col-span-3">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+            <div className="col-span-3 min-w-0">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1 truncate">
                     {event.title}
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400 text-sm line-clamp-1">
@@ -285,17 +285,17 @@ const EventList = ({
                 </div>
                 
                 {/* Event Date */}
-                <div className="col-span-2">
+                <div className="col-span-2 min-w-[10rem]">
                   <div className="text-sm text-gray-900 dark:text-white">
-                    {dateUtils.formatEventDate(event.dates)}
+                    {dateUtils.formatDate(event.dates?.startDate, { year: 'numeric', month: 'short', day: 'numeric' })}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {dateUtils.formatEventTime(event.dates)}
+                    {`${dateUtils.formatDate(event.dates?.startDate, { hour: '2-digit', minute: '2-digit' })} - ${dateUtils.formatDate(event.dates?.endDate, { hour: '2-digit', minute: '2-digit' })}`}
                   </div>
                 </div>
                 
                 {/* Location */}
-                <div className="col-span-2">
+                <div className="col-span-2 min-w-[10rem]">
                   <div className="text-sm text-gray-900 dark:text-white truncate">
                     {event.location?.venueName || 'TBD'}
                   </div>
@@ -305,7 +305,7 @@ const EventList = ({
                 </div>
                 
                 {/* Capacity */}
-                <div className="col-span-2">
+                <div className="col-span-2 min-w-[8rem]">
                   <div className="text-sm text-gray-900 dark:text-white">
                     {event.attendees?.length || 0} / {event.capacity || '∞'}
                   </div>
@@ -319,8 +319,8 @@ const EventList = ({
                 </div>
                 
                 {/* Status */}
-                <div className="col-span-1">
-                  <EventStatusBadge status={event.status} />
+                <div className="col-span-1 flex items-center">
+                  <EventStatusBadge status={event.status} className="whitespace-nowrap" />
                 </div>
                 
                 {/* Actions */}
@@ -341,3 +341,4 @@ const EventList = ({
 };
 
 export default EventList;
+

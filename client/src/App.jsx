@@ -17,6 +17,7 @@ import EventQRSettings from './pages/EventQRSettings';
 import OrganizerDashboard from './pages/OrganizerDashboard';
 import EventCreate from './pages/EventCreate';
 import EventManagement from './pages/EventManagement';
+import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import { getCurrentUser } from './store/slices/authSlice';
 import './utils/testAuth'; // Load test authentication helper
 
@@ -53,6 +54,7 @@ function App() {
             <Route path="/organizer/events/create" element={<EventCreate />} />
             <Route path="/organizer/events/:eventId/edit" element={<EventCreate />} />
             <Route path="/organizer/events/:eventId/qr-settings" element={<EventQRSettings />} />
+            <Route path="/organizer/analytics" element={<AnalyticsDashboard />} />
           </Routes>
         </main>
         

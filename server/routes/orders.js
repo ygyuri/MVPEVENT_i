@@ -1,7 +1,10 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
+const { body, param, validationResult } = require('express-validator');
 const orderService = require('../services/orderService');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, requireRole } = require('../middleware/auth');
+const Order = require('../models/Order');
+const Event = require('../models/Event');
+const analyticsService = require('../services/analyticsService');
 
 const router = express.Router();
 const pesapalService = require('../services/pesapalService');
@@ -283,6 +286,102 @@ router.get('/health', (req, res) => {
     message: 'Order service is running',
     timestamp: new Date().toISOString()
   });
+});
+
+/**
+ * @route POST /api/orders/:orderId/refund
+ * @desc Mark order as refunded
+ * @access Private (Organizer/Admin)
+ */
+router.post('/:orderId/refund', verifyToken, requireRole(['organizer', 'admin']), [
+  param('orderId').isMongoId().withMessage('Invalid order ID'),
+  body('reason').optional().isString().trim().withMessage('Invalid refund reason')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    const { orderId } = req.params;
+    const { reason } = req.body;
+
+    // Find the order
+    const order = await Order.findById(orderId).populate('items.eventId');
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found'
+      });
+    }
+
+    // Check if user has permission to refund this order
+    const eventIds = order.items.map(item => item.eventId._id);
+    const events = await Event.find({ _id: { $in: eventIds } });
+    
+    const hasPermission = events.some(event => 
+      String(event.organizer) === String(req.user._id) || req.user.role === 'admin'
+    );
+
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied - not event organizer'
+      });
+    }
+
+    // Check if order can be refunded
+    if (order.status === 'refunded') {
+      return res.status(400).json({
+        success: false,
+        error: 'Order is already refunded'
+      });
+    }
+
+    if (order.status !== 'paid' && order.status !== 'confirmed') {
+      return res.status(400).json({
+        success: false,
+        error: 'Only paid or confirmed orders can be refunded'
+      });
+    }
+
+    // Update order status
+    order.status = 'refunded';
+    order.refundedAt = new Date();
+    order.refundReason = reason;
+    order.refundedBy = req.user._id;
+
+    await order.save();
+
+    // Clear analytics cache for affected events
+    for (const eventId of eventIds) {
+      analyticsService.clearEventCache(eventId);
+    }
+
+    console.log(`✅ Order ${orderId} refunded by ${req.user._id}`);
+
+    res.json({
+      success: true,
+      message: 'Order refunded successfully',
+      data: {
+        orderId: order._id,
+        status: order.status,
+        refundedAt: order.refundedAt,
+        refundReason: order.refundReason
+      }
+    });
+
+  } catch (error) {
+    console.error('Refund order error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to refund order'
+    });
+  }
 });
 
 module.exports = router;

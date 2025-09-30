@@ -6,6 +6,9 @@ const initialState = {
   totalSteps: 7,
   isDirty: false,
   
+  // Auto-save on blur tracking
+  blurField: null,
+  
   // Form data
   formData: {
     // Step 1: Basic Information
@@ -108,6 +111,10 @@ const eventFormSlice = createSlice({
   name: 'eventForm',
   initialState,
   reducers: {
+    // Blur tracking for auto-save-on-blur
+    setBlurField: (state, action) => {
+      state.blurField = action.payload;
+    },
     // Navigation
     setCurrentStep: (state, action) => {
       state.currentStep = action.payload;
@@ -440,7 +447,8 @@ export const {
   clearForm,
   setLoading,
   setError,
-  clearError
+  clearError,
+  setBlurField
 } = eventFormSlice.actions;
 
 export default eventFormSlice.reducer;

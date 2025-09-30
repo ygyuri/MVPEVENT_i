@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Calendar, Clock, Timer, AlertCircle, CheckCircle, Zap, CalendarDays, Clock3 } from 'lucide-react';
-import { updateNestedFormData, setStepValidation } from '../../../store/slices/eventFormSlice';
+import { updateNestedFormData, setStepValidation, setBlurField } from '../../../store/slices/eventFormSlice';
 import { validateField, stepValidators } from '../../../utils/eventValidation';
 import FormValidation, { FieldValidation, FieldSuccess } from '../../common/FormValidation';
 import { dateUtils } from '../../../utils/eventHelpers';
@@ -177,7 +177,10 @@ const ScheduleStep = () => {
                       validateAndUpdateField('dates.startDate', null);
                     }
                   }}
-                  onBlur={() => setTouched(prev => ({ ...prev, startDate: true }))}
+                  onBlur={() => {
+                    setTouched(prev => ({ ...prev, startDate: true }));
+                    dispatch(setBlurField('dates.startDate'));
+                  }}
                   min={new Date().toISOString().slice(0, 10)}
                   className={`
                     input-modern w-full
@@ -215,7 +218,10 @@ const ScheduleStep = () => {
                       validateAndUpdateField('dates.startDate', existingDate.toISOString());
                     }
                   }}
-                  onBlur={() => setTouched(prev => ({ ...prev, startDate: true }))}
+                  onBlur={() => {
+                    setTouched(prev => ({ ...prev, startDate: true }));
+                    dispatch(setBlurField('dates.startDate'));
+                  }}
                   className={`
                     input-modern w-full
                     ${fieldErrors.startDate && touched.startDate 
@@ -344,7 +350,10 @@ const ScheduleStep = () => {
                         validateAndUpdateField('dates.endDate', null);
                       }
                     }}
-                    onBlur={() => setTouched(prev => ({ ...prev, endDate: true }))}
+                    onBlur={() => {
+                      setTouched(prev => ({ ...prev, endDate: true }));
+                      dispatch(setBlurField('dates.endDate'));
+                    }}
                     min={formData.dates?.startDate ? new Date(formData.dates.startDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)}
                     className={`
                       input-modern w-full
@@ -383,7 +392,10 @@ const ScheduleStep = () => {
                         validateAndUpdateField('dates.endDate', endDate.toISOString());
                       }
                     }}
-                    onBlur={() => setTouched(prev => ({ ...prev, endDate: true }))}
+                    onBlur={() => {
+                      setTouched(prev => ({ ...prev, endDate: true }));
+                      dispatch(setBlurField('dates.endDate'));
+                    }}
                     className={`
                       input-modern w-full
                       ${fieldErrors.endDate && touched.endDate 

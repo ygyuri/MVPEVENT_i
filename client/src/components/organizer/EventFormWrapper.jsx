@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -8,6 +8,7 @@ import { useFocusManagement, SkipToContent } from '../common/AccessibilityEnhanc
 import StepIndicator from '../common/StepIndicator';
 import SaveIndicator from '../common/SaveIndicator';
 import FormValidation from '../common/FormValidation';
+import RecoveryModal from '../common/RecoveryModal';
 import EnhancedButton from '../EnhancedButton';
 import { 
   setCurrentStep, 
@@ -21,8 +22,10 @@ import {
   loadExistingEvent,
   clearForm,
   setValidation,
+  setVersion,
   setEventId,
-  setLoading
+  setLoading,
+  setBlurField
 } from '../../store/slices/eventFormSlice';
 import { createEventDraft, updateEventDraft, getEventDetails } from '../../store/slices/organizerSlice';
 import { validateForm } from '../../utils/eventValidation';
@@ -37,6 +40,15 @@ const EventFormWrapper = ({ children, onSubmit }) => {
   const isTouchDevice = useTouchOptimization();
   useFocusManagement();
   
+  // Recovery modal state
+  const [recoveryModal, setRecoveryModal] = useState({
+    isOpen: false,
+    type: 'draft', // 'draft' or 'recovery'
+    lastSavedTime: null,
+    onRecover: null,
+    onDiscard: null
+  });
+  
   // Swipe navigation for mobile
   const swipeHandlers = useSwipeNavigation(
     () => handleNextStep(), // Swipe left to go to next step
@@ -46,6 +58,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { eventId } = useParams();
+  const [isPublishing, setIsPublishing] = useState(false);
   
   const { user } = useSelector(state => state.auth);
   const { 
@@ -111,8 +124,12 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     }
   }, [formData, formEventId, currentStep, version]);
 
-  // Check for recovery data on component mount
+  // Check for recovery data on component mount (skip when creating new event)
   useEffect(() => {
+    // When starting a brand new event or no id in route, never prompt for recovery
+    if (!eventId || eventId === 'create') {
+      return;
+    }
     try {
       const recoveryData = localStorage.getItem('eventForm_recovery');
       if (recoveryData) {
@@ -128,22 +145,30 @@ const EventFormWrapper = ({ children, onSubmit }) => {
           const isDifferentEvent = formEventId && formEventId !== parsed.eventId;
           
           if (currentFormEmpty || isDifferentEvent) {
-            const shouldRecover = window.confirm(
-              `Found unsaved changes from ${Math.round(age / 1000)} seconds ago. Would you like to recover them?`
-            );
-            
-            if (shouldRecover) {
-              dispatch(loadExistingEvent(parsed.formData));
-              dispatch(setCurrentStep(parsed.currentStep));
-              toast.success('Form data recovered successfully');
-            }
+            // Show recovery modal instead of browser confirm
+            setRecoveryModal({
+              isOpen: true,
+              type: 'recovery',
+              lastSavedTime: parsed.timestamp,
+              onRecover: () => {
+                dispatch(loadExistingEvent(parsed.formData));
+                dispatch(setCurrentStep(parsed.currentStep));
+                toast.success('Form data recovered successfully');
+                setRecoveryModal(prev => ({ ...prev, isOpen: false }));
+              },
+              onDiscard: () => {
+                // Clear recovery data
+                localStorage.removeItem('eventForm_recovery');
+                setRecoveryModal(prev => ({ ...prev, isOpen: false }));
+              }
+            });
           }
         }
       }
     } catch (error) {
       console.warn('⚠️ [RECOVERY] Failed to check recovery data:', error);
     }
-  }, []); // Only run on mount
+  }, [eventId]);
   
   const { loading: organizerLoading } = useSelector(state => state.organizer);
 
@@ -194,6 +219,10 @@ const EventFormWrapper = ({ children, onSubmit }) => {
           eventData: apiData, 
           version 
         })).unwrap();
+        // Sync form version from server
+        if (result?.data?.version !== undefined) {
+          dispatch(setVersion(result.data.version));
+        }
         // Return the existing ID for callers
         console.log('✅ [SAVE DRAFT] Updated draft:', { id: formEventId, result });
         dispatch(setLastSaved(new Date().toISOString()));
@@ -212,6 +241,10 @@ const EventFormWrapper = ({ children, onSubmit }) => {
           dispatch(setEventId(result.data.id));
           // Update localStorage with the new event ID
           formPersistence.saveFormData(data, result.data.id);
+        }
+        // Sync version from server for new draft
+        if (result?.data?.version !== undefined) {
+          dispatch(setVersion(result.data.version));
         }
         // Update last saved timestamp
         dispatch(setLastSaved(new Date().toISOString()));
@@ -301,34 +334,20 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       
       loadEvent();
     } else {
-      // Check for saved draft data for new events
-      const savedData = formPersistence.loadFormData();
-      if (savedData && savedData.formData) {
-        // Show recovery dialog
-        const shouldRecover = window.confirm(
-          `You have a saved draft from ${savedData.ageText}. Would you like to recover it?`
-        );
-        
-        if (shouldRecover) {
-          // Load the saved form data
-          dispatch(loadExistingEvent(savedData.formData));
-          toast.success('Draft recovered successfully');
-        } else {
-          // Clear the saved data and start fresh
-          formPersistence.clearFormData();
-          dispatch(clearForm());
-        }
-      } else {
-        // Clear form for new event
-        dispatch(clearForm());
-      }
+      // Starting a brand new event: do NOT prompt for draft recovery
+      // Always clear any saved draft data and start fresh
+      formPersistence.clearFormData();
+      dispatch(clearForm());
     }
   }, [eventId, dispatch, navigate]);
 
 
+  // Prevent concurrent saves
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+
   // Periodic auto-save (every 30 seconds)
   useEffect(() => {
-    if (!formEventId || !formData) return;
+    if (!formEventId || !formData || isPublishing) return;
     
     const hasBasicData = formData.title || formData.description || formData.dates?.startDate;
     if (!hasBasicData) return;
@@ -336,6 +355,11 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     const interval = setInterval(async () => {
       try {
         console.log('⏰ [PERIODIC AUTO-SAVE] Saving every 30 seconds');
+        if (isAutoSaving) {
+          console.log('🚫 [PERIODIC AUTO-SAVE] Save in-flight, skipping');
+          return;
+        }
+        setIsAutoSaving(true);
         
         // Transform form data to API format
         const apiData = formUtils.transformFormDataToAPI(formData);
@@ -344,11 +368,21 @@ const EventFormWrapper = ({ children, onSubmit }) => {
         console.log('🔄 [PERIODIC AUTO-SAVE] Current form data state:', formData);
         
         // Update the draft with current data
-        await dispatch(updateEventDraft({ 
+        const res = await dispatch(updateEventDraft({ 
           eventId: formEventId, 
           eventData: apiData, 
           version 
-        })).unwrap();
+        })).unwrap().catch(async (err) => {
+          // If 409, try once without version to let server resolve latest
+          if (typeof err === 'string' && err.toLowerCase().includes('conflict')) {
+            console.warn('🔁 [PERIODIC AUTO-SAVE] Retrying without version due to 409');
+            return await dispatch(updateEventDraft({ eventId: formEventId, eventData: apiData })).unwrap();
+          }
+          throw err;
+        });
+        if (res?.data?.version !== undefined) {
+          dispatch(setVersion(res.data.version));
+        }
         
         console.log('✅ [PERIODIC AUTO-SAVE] Successfully saved');
         
@@ -357,11 +391,13 @@ const EventFormWrapper = ({ children, onSubmit }) => {
         
       } catch (error) {
         console.warn('⚠️ [PERIODIC AUTO-SAVE] Failed to save:', error);
+      } finally {
+        setIsAutoSaving(false);
       }
     }, 30000); // 30 seconds
     
     return () => clearInterval(interval);
-  }, [formEventId, formData, version, dispatch]);
+  }, [formEventId, formData, version, dispatch, isPublishing]);
 
   // Auto-save on page unload/refresh
   useEffect(() => {
@@ -404,6 +440,102 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     };
   }, []);
 
+  // Auto-save on field blur (enhanced with server-side draft creation)
+  const { blurField } = useSelector(state => state.eventForm);
+  
+  useEffect(() => {
+    if (blurField) {
+      // Check if we need to create a server-side draft for better persistence
+      const hasSignificantData = formData.title?.trim() || 
+                                formData.description?.trim() || 
+                                formData.location?.venueName?.trim() || 
+                                formData.dates?.startDate;
+      
+      if (hasSignificantData && !formEventId) {
+        // Create a session-based draft identifier
+        const sessionDraftKey = `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Save to localStorage with session identifier
+        autoSaveForm.save(formData, sessionDraftKey);
+        
+        // Also attempt to create server-side draft for significant data
+        saveDraftToServer(formData, false); // false = auto-save (not manual)
+      } else {
+        // Regular auto-save for existing drafts or complete forms
+        autoSaveForm.save(formData, formEventId);
+      }
+      
+      // Clear the blur field flag
+      dispatch(setBlurField(null));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blurField, formData, formEventId, dispatch]);
+
+  // Enhanced auto-save function that handles server-side draft creation
+  const saveDraftToServer = useCallback(async (data, isManual = false) => {
+    // Basic validation - only save meaningful data to server
+    const hasSignificantData = data.title?.trim() || 
+                               data.description?.trim() || 
+                               data.location?.venueName?.trim() || 
+                               data.dates?.startDate;
+    
+    if (!hasSignificantData) {
+      return; // Not enough data to warrant a server-side draft
+    }
+    
+    // Prevent duplicate saves
+    if (autoSave.isSaving) {
+      return;
+    }
+    
+    try {
+      dispatch(setSaving(true));
+      
+      // Transform form data to API format
+      const apiData = formUtils.transformFormDataToAPI(data);
+      
+      if (formEventId && formEventId !== 'create') {
+        // Update existing draft
+        const res = await dispatch(updateEventDraft({ 
+          eventId: formEventId, 
+          eventData: apiData, 
+          version 
+        })).unwrap();
+        if (res?.data?.version !== undefined) {
+          dispatch(setVersion(res.data.version));
+        }
+      } else {
+        // Create new draft for substantial data
+        const result = await dispatch(createEventDraft(apiData)).unwrap();
+        if (result.data?.id) {
+          dispatch(setEventId(result.data.id));
+          // Update localStorage with the new event ID
+          formPersistence.saveFormData(data, result.data.id);
+        }
+        if (result?.data?.version !== undefined) {
+          dispatch(setVersion(result.data.version));
+        }
+      }
+      
+      dispatch(setLastSaved(new Date().toISOString()));
+      dispatch(setSaving(false));
+      
+      // Only show toast for manual saves
+      if (isManual) {
+        toast.success('Draft saved successfully');
+      }
+      
+    } catch (error) {
+      console.error('❌ [AUTO SAVE] Failed to save draft:', error);
+      dispatch(setSaving(false));
+      
+      // Don't show error toast for auto-saves to avoid spamming user
+      if (isManual) {
+        toast.error('Failed to save draft');
+      }
+    }
+  }, [formEventId, version, formData, dispatch, autoSave.isSaving]);
+
   // Auto-save function that triggers on step navigation
   const autoSaveOnStepChange = useCallback(async (newStep, previousStep) => {
     // Only auto-save if we have meaningful data and an event ID
@@ -421,12 +553,21 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       console.log('📍 [AUTO-SAVE] POST call location: EventFormWrapper.jsx - autoSaveOnStepChange function');
       console.log('🔄 [AUTO-SAVE] Current form data state:', formData);
       
-      // Update the draft with current data
-      await dispatch(updateEventDraft({ 
+      // Update the draft with current data, handle 409 with a retry (no version)
+      let res = await dispatch(updateEventDraft({ 
         eventId: formEventId, 
         eventData: apiData, 
         version 
-      })).unwrap();
+      })).unwrap().catch(async (err) => {
+        if (typeof err === 'string' && err.toLowerCase().includes('conflict')) {
+          console.warn('🔁 [AUTO-SAVE] Retrying without version due to 409');
+          return await dispatch(updateEventDraft({ eventId: formEventId, eventData: apiData })).unwrap();
+        }
+        throw err;
+      });
+      if (res?.data?.version !== undefined) {
+        dispatch(setVersion(res.data.version));
+      }
       
       console.log('✅ [AUTO-SAVE] Successfully saved on step change');
       
@@ -440,7 +581,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
   }, [formEventId, formData, version, dispatch]);
 
   // Enhanced step navigation with auto-save
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     console.log('🔄 [NEXT STEP] Button clicked', { 
       currentStep, 
       totalSteps, 
@@ -469,7 +610,73 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       
       dispatch(nextStep());
     } else {
-      console.log('❌ [NEXT STEP] Already at last step');
+      // We're at the last step (Preview), validate and call the parent submit handler
+      console.log('🚀 [FINAL STEP] Submitting event for publication');
+      
+      if (isPublishing) {
+        console.log('🚫 [FINAL STEP] Already submitting, ignoring duplicate click');
+        return;
+      }
+      
+      // Final validation before submission
+      const finalValidation = validateForm(formData);
+      
+      if (!finalValidation.isValid) {
+        console.log('❌ [FINAL STEP] Validation failed:', finalValidation.errors);
+        
+        // Determine the first step that has blocking errors and navigate there
+        const errors = finalValidation.errors || {};
+        const errorFields = Object.keys(errors);
+
+        const stepPriority = [
+          { step: 1, fields: ['title', 'description'] },
+          { step: 2, fields: ['venueName', 'city', 'country', 'address', 'state', 'postalCode'] },
+          { step: 3, fields: ['startDate', 'endDate', 'timezone', 'dateRange'] },
+          { step: 4, fields: ['capacity', 'price', 'currency'] },
+          { step: 5, fields: ['ticketTypes', 'totalQuantity'] },
+          { step: 6, fields: ['coverImageUrl', 'galleryUrls.0'] }
+        ];
+
+        let targetStep = null;
+        for (const group of stepPriority) {
+          if (errorFields.some(f => group.fields.some(gf => f.startsWith(gf)))) {
+            targetStep = group.step;
+            break;
+          }
+        }
+
+        if (targetStep) {
+          dispatch(setCurrentStep(targetStep));
+        }
+
+        // Build a concise message for the first problematic step
+        let message = 'Please fix all errors before publishing';
+        if (targetStep === 1) {
+          message = 'Complete Basic Info: Title and Description required';
+        } else if (targetStep === 2) {
+          message = 'Complete Location: Venue name, City, Country';
+        } else if (targetStep === 3) {
+          message = 'Complete Schedule: Start date and End date';
+        } else if (targetStep === 4) {
+          message = 'Review Pricing & Tickets: capacity/price/currency';
+        } else if (targetStep === 5) {
+          message = 'Fix Ticket Types: names, prices, quantities';
+        } else if (targetStep === 6) {
+          message = 'Fix Media URLs if invalid';
+        }
+
+        toast.error(message);
+        return;
+      }
+      
+      try {
+        setIsPublishing(true);
+        if (onSubmit) {
+          await onSubmit(formData);
+        }
+      } finally {
+        setIsPublishing(false);
+      }
     }
   };
 
@@ -516,79 +723,27 @@ const EventFormWrapper = ({ children, onSubmit }) => {
 
   const handleCancel = () => {
     if (isDirty) {
-      const confirmLeave = window.confirm(
-        'You have unsaved changes. Are you sure you want to leave?'
-      );
-      if (!confirmLeave) return;
+      // Show recovery modal for unsaved changes
+      setRecoveryModal({
+        isOpen: true,
+        type: 'recovery',
+        lastSavedTime: autoSave.lastSaved,
+        onRecover: () => {
+          // Stay on the form
+          setRecoveryModal(prev => ({ ...prev, isOpen: false }));
+        },
+        onDiscard: () => {
+          // Navigate away
+          navigate('/organizer');
+          setRecoveryModal(prev => ({ ...prev, isOpen: false }));
+        }
+      });
+      return;
     }
     
     navigate('/organizer');
   };
 
-  const handleSubmit = async () => {
-    try {
-      // Final validation
-      const finalValidation = validateForm(formData);
-      
-      if (!finalValidation.isValid) {
-        dispatch(setValidation({
-          isValid: false,
-          errors: finalValidation.errors,
-          stepErrors: {}
-        }));
-
-        // Determine the first step that has blocking errors and navigate there
-        const errors = finalValidation.errors || {};
-        const errorFields = Object.keys(errors);
-
-        const stepPriority = [
-          { step: 2, fields: ['venueName', 'city', 'country', 'address', 'state', 'postalCode'] },
-          { step: 3, fields: ['startDate', 'endDate', 'timezone', 'dateRange'] },
-          { step: 4, fields: ['capacity', 'price', 'currency'] },
-          { step: 5, fields: ['ticketTypes', 'totalQuantity'] },
-          { step: 6, fields: ['coverImageUrl', 'galleryUrls.0'] }
-        ];
-
-        let targetStep = null;
-        for (const group of stepPriority) {
-          if (errorFields.some(f => group.fields.some(gf => f.startsWith(gf)))) {
-            targetStep = group.step;
-            break;
-          }
-        }
-
-        if (targetStep) {
-          dispatch(setCurrentStep(targetStep));
-        }
-
-        // Build a concise message for the first problematic step
-        let message = 'Please fix all errors before publishing';
-        if (targetStep === 2) {
-          message = 'Complete Location: Venue name, City, Country';
-        } else if (targetStep === 3) {
-          message = 'Complete Schedule: Start date and End date';
-        } else if (targetStep === 4) {
-          message = 'Review Pricing & Tickets: capacity/price/currency';
-        } else if (targetStep === 5) {
-          message = 'Fix Ticket Types: names, prices, quantities';
-        } else if (targetStep === 6) {
-          message = 'Fix Media URLs if invalid';
-        }
-
-        toast.error(message);
-        return;
-      }
-      
-      // Call parent submit handler
-      if (onSubmit) {
-        await onSubmit(formData);
-      }
-      
-    } catch (error) {
-      console.error('Submit failed:', error);
-      toast.error('Failed to publish event');
-    }
-  };
 
   // Loading state
   if (loading.loading) {
@@ -718,28 +873,16 @@ const EventFormWrapper = ({ children, onSubmit }) => {
                   </EnhancedButton>
 
                   <div className="flex items-center gap-3 w-full sm:w-auto">
-                    {currentStep === totalSteps ? (
-                      <EnhancedButton
-                        variant="primary"
-                        onClick={handleSubmit}
-                        disabled={!validation.isValid || organizerLoading.actions}
-                        icon={Eye}
-                        className={`btn-web3-primary w-full sm:w-auto ${isTouchDevice ? 'min-h-[44px]' : ''}`}
-                        aria-label="Preview and publish event"
-                      >
-                        Preview & Publish
-                      </EnhancedButton>
-                    ) : (
-                      <EnhancedButton
-                        variant="primary"
-                        onClick={handleNextStep}
-                        disabled={false} // Temporarily disable validation to test navigation
-                        className={`w-full sm:w-auto ${isTouchDevice ? 'min-h-[44px]' : ''}`}
-                        aria-label="Go to next step"
-                      >
-                        Next Step
-                      </EnhancedButton>
-                    )}
+                    <EnhancedButton
+                      variant="primary"
+                      onClick={handleNextStep}
+                      disabled={isPublishing}
+                      loading={isPublishing}
+                      className={`w-full sm:w-auto ${isTouchDevice ? 'min-h-[44px]' : ''}`}
+                      aria-label={currentStep === totalSteps ? 'Publish event' : 'Go to next step'}
+                    >
+                      {currentStep === totalSteps ? (isPublishing ? 'Publishing…' : 'Publish Event') : 'Next Step'}
+                    </EnhancedButton>
                   </div>
                 </div>
 
@@ -752,6 +895,16 @@ const EventFormWrapper = ({ children, onSubmit }) => {
           </span>
         </p>
       </div>
+
+      {/* Recovery Modal */}
+      <RecoveryModal
+        isOpen={recoveryModal.isOpen}
+        onClose={() => setRecoveryModal(prev => ({ ...prev, isOpen: false }))}
+        onRecover={recoveryModal.onRecover}
+        onDiscard={recoveryModal.onDiscard}
+        lastSavedTime={recoveryModal.lastSavedTime}
+        type={recoveryModal.type}
+      />
     </div>
   );
 };

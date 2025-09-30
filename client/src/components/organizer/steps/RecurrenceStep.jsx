@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Repeat, Calendar, Clock, AlertCircle } from 'lucide-react';
-import { updateNestedFormData, setStepValidation } from '../../../store/slices/eventFormSlice';
+import { updateNestedFormData, setStepValidation, setBlurField } from '../../../store/slices/eventFormSlice';
 import { validateField, stepValidators } from '../../../utils/eventValidation';
 import FormValidation, { FieldValidation, FieldSuccess } from '../../common/FormValidation';
 import { recurrenceUtils, dateUtils } from '../../../utils/eventHelpers';

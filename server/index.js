@@ -79,11 +79,19 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Database connections
 const { connectMongoDB, connectRedis } = require('./config/database');
+const databaseIndexes = require('./services/databaseIndexes');
 
 // Connect to databases
 const initializeDatabases = async () => {
   await connectMongoDB();
   await connectRedis();
+  
+  // Create analytics indexes for performance
+  try {
+    await databaseIndexes.createAnalyticsIndexes();
+  } catch (error) {
+    console.warn('⚠️ Failed to create analytics indexes:', error.message);
+  }
 };
 
 initializeDatabases();
@@ -108,6 +116,10 @@ app.use('/api/admin', adminRoutes);
 // Organizer routes (protected)
 const organizerRoutes = require('./routes/organizer');
 app.use('/api/organizer', organizerRoutes);
+
+// Analytics routes (protected)
+const analyticsRoutes = require('./routes/analytics');
+app.use('/api/organizer/analytics', analyticsRoutes);
 
 // User routes (protected)
 const userRoutes = require('./routes/user');
@@ -141,4 +153,7 @@ app.use('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-}); 
+});
+
+// Export app for testing
+module.exports = app; 

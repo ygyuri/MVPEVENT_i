@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { MapPin, Globe, Building, Navigation } from 'lucide-react';
-import { updateNestedFormData, setStepValidation } from '../../../store/slices/eventFormSlice';
+import { updateNestedFormData, setStepValidation, setBlurField } from '../../../store/slices/eventFormSlice';
 import { validateField, stepValidators } from '../../../utils/eventValidation';
 import FormValidation, { FieldValidation, FieldSuccess } from '../../common/FormValidation';
 import { timezoneUtils } from '../../../utils/eventHelpers';
@@ -84,7 +84,10 @@ const LocationStep = () => {
               type="text"
               value={formData.location?.venueName || ''}
               onChange={(e) => validateAndUpdateField('location.venueName', e.target.value)}
-              onBlur={() => setTouched(prev => ({ ...prev, venueName: true }))}
+              onBlur={() => {
+                setTouched(prev => ({ ...prev, venueName: true }));
+                dispatch(setBlurField('location.venueName'));
+              }}
               placeholder="e.g., KICC Convention Centre"
               className={`
                 input-modern w-full
@@ -121,7 +124,10 @@ const LocationStep = () => {
               type="text"
               value={formData.location?.address || ''}
               onChange={(e) => validateAndUpdateField('location.address', e.target.value)}
-              onBlur={() => setTouched(prev => ({ ...prev, address: true }))}
+              onBlur={() => {
+              setTouched(prev => ({ ...prev, address: true }));
+              dispatch(setBlurField('location.address'));
+            }}
               placeholder="e.g., 123 Main Street"
               className="input-modern w-full"
             />
@@ -147,7 +153,10 @@ const LocationStep = () => {
               type="text"
               value={formData.location?.city || ''}
               onChange={(e) => validateAndUpdateField('location.city', e.target.value)}
-              onBlur={() => setTouched(prev => ({ ...prev, city: true }))}
+              onBlur={() => {
+                setTouched(prev => ({ ...prev, city: true }));
+                dispatch(setBlurField('location.city'));
+              }}
               placeholder="e.g., Nairobi"
               className={`
                 input-modern w-full
@@ -183,7 +192,10 @@ const LocationStep = () => {
             type="text"
             value={formData.location?.state || ''}
             onChange={(e) => validateAndUpdateField('location.state', e.target.value)}
-            onBlur={() => setTouched(prev => ({ ...prev, state: true }))}
+            onBlur={() => {
+              setTouched(prev => ({ ...prev, state: true }));
+              dispatch(setBlurField('location.state'));
+            }}
             placeholder="e.g., Nairobi County"
             className="input-modern w-full"
           />
@@ -205,7 +217,10 @@ const LocationStep = () => {
               type="text"
               value={formData.location?.country || ''}
               onChange={(e) => validateAndUpdateField('location.country', e.target.value)}
-              onBlur={() => setTouched(prev => ({ ...prev, country: true }))}
+              onBlur={() => {
+                setTouched(prev => ({ ...prev, country: true }));
+                dispatch(setBlurField('location.country'));
+              }}
               placeholder="e.g., Kenya"
               className={`
                 input-modern w-full
@@ -241,7 +256,10 @@ const LocationStep = () => {
             type="text"
             value={formData.location?.postalCode || ''}
             onChange={(e) => validateAndUpdateField('location.postalCode', e.target.value)}
-            onBlur={() => setTouched(prev => ({ ...prev, postalCode: true }))}
+            onBlur={() => {
+              setTouched(prev => ({ ...prev, postalCode: true }));
+              dispatch(setBlurField('location.postalCode'));
+            }}
             placeholder="e.g., 00100"
             className="input-modern w-full"
           />
@@ -262,7 +280,10 @@ const LocationStep = () => {
               id="timezone"
               value={formData.dates?.timezone || userTimezone}
               onChange={(e) => handleTimezoneChange(e.target.value)}
-              onBlur={() => setTouched(prev => ({ ...prev, timezone: true }))}
+              onBlur={() => {
+                setTouched(prev => ({ ...prev, timezone: true }));
+                dispatch(setBlurField('dates.timezone'));
+              }}
               className={`
                 input-modern w-full
                 ${fieldErrors.timezone && touched.timezone 

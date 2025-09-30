@@ -338,6 +338,36 @@ router.post('/events', verifyToken, requireRole(['organizer','admin']), [
     // Do not allow client to set slug on draft creation
     delete payload.slug;
     
+    // Prevent duplicate drafts: Check if user already has a recent draft with similar content
+    if (payload.title?.trim()) {
+      const recentDuplicate = await Event.findOne({
+        organizer: req.user._id,
+        status: 'draft',
+        title: payload.title.trim(),
+        createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
+      });
+      
+      if (recentDuplicate) {
+        console.log('🗑️ [DUPLICATE PREVENTION] Found recent similar draft, updating instead:', recentDuplicate._id);
+        
+        // Update the existing draft instead of creating a new one
+        Object.assign(recentDuplicate, payload);
+        recentDuplicate.version = (recentDuplicate.version || 0) + 1;
+        await recentDuplicate.save();
+        
+        return res.json({
+          success: true, 
+          message: 'Draft updated successfully',
+          data: { 
+            id: recentDuplicate._id, 
+            status: recentDuplicate.status,
+            version: recentDuplicate.version,
+            updatedAt: recentDuplicate.updatedAt
+          }
+        });
+      }
+    }
+    
     console.log('📝 [CREATE EVENT] Final payload:', payload);
     
     // Extra schema introspection for debugging

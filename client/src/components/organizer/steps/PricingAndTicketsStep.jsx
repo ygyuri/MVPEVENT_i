@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { 
   updateFormData, updateNestedFormData, setStepValidation,
-  addTicketType, updateTicketType, removeTicketType 
+  addTicketType, updateTicketType, removeTicketType, setBlurField
 } from '../../../store/slices/eventFormSlice';
 import { validateField, stepValidators } from '../../../utils/eventValidation';
 import FormValidation, { FieldValidation, FieldSuccess } from '../../common/FormValidation';
@@ -305,7 +305,10 @@ const PricingAndTicketsStep = () => {
                   type="number"
                   value={formData.capacity || ''}
                   onChange={(e) => validateAndUpdateField('capacity', parseInt(e.target.value) || null)}
-                  onBlur={() => setTouched(prev => ({ ...prev, capacity: true }))}
+                  onBlur={() => {
+                    setTouched(prev => ({ ...prev, capacity: true }));
+                    dispatch(setBlurField('capacity'));
+                  }}
                   placeholder="e.g., 100"
                   min="1"
                   className="input-modern w-full"
@@ -489,7 +492,10 @@ const PricingAndTicketsStep = () => {
                         type="number"
                         value={formData.capacity || ''}
                         onChange={(e) => validateAndUpdateField('capacity', parseInt(e.target.value) || null)}
-                        onBlur={() => setTouched(prev => ({ ...prev, capacity: true }))}
+                        onBlur={() => {
+                          setTouched(prev => ({ ...prev, capacity: true }));
+                          dispatch(setBlurField('capacity'));
+                        }}
                         placeholder="100"
                         min="1"
                         className="input-modern w-full"
@@ -633,7 +639,10 @@ const PricingAndTicketsStep = () => {
                                   type="text"
                                   value={ticket.name || ''}
                                   onChange={(e) => handleUpdateTicketType(index, 'name', e.target.value)}
-                                  onBlur={() => setTouched(prev => ({ ...prev, [`ticketTypes.${index}.name`]: true }))}
+                                    onBlur={() => {
+                                      setTouched(prev => ({ ...prev, [`ticketTypes.${index}.name`]: true }));
+                                      dispatch(setBlurField(`ticketTypes.${index}.name`));
+                                    }}
                                   placeholder="e.g., General Admission, VIP, Early Bird"
                                   className="input-modern w-full"
                                 />
@@ -654,7 +663,10 @@ const PricingAndTicketsStep = () => {
                                     type="number"
                                     value={ticket.price || ''}
                                     onChange={(e) => handleUpdateTicketType(index, 'price', parseFloat(e.target.value) || 0)}
-                                    onBlur={() => setTouched(prev => ({ ...prev, [`ticketTypes.${index}.price`]: true }))}
+                                    onBlur={() => {
+                                      setTouched(prev => ({ ...prev, [`ticketTypes.${index}.price`]: true }));
+                                      dispatch(setBlurField(`ticketTypes.${index}.price`));
+                                    }}
                                     placeholder="0.00"
                                     min="0"
                                     step="0.01"
@@ -674,7 +686,10 @@ const PricingAndTicketsStep = () => {
                                     type="number"
                                     value={ticket.quantity || ''}
                                     onChange={(e) => handleUpdateTicketType(index, 'quantity', parseInt(e.target.value) || 0)}
-                                    onBlur={() => setTouched(prev => ({ ...prev, [`ticketTypes.${index}.quantity`]: true }))}
+                                    onBlur={() => {
+                                      setTouched(prev => ({ ...prev, [`ticketTypes.${index}.quantity`]: true }));
+                                      dispatch(setBlurField(`ticketTypes.${index}.quantity`));
+                                    }}
                                     placeholder="100"
                                     min="1"
                                     className="input-modern w-full"
@@ -694,7 +709,10 @@ const PricingAndTicketsStep = () => {
                                 <textarea
                                   value={ticket.description || ''}
                                   onChange={(e) => handleUpdateTicketType(index, 'description', e.target.value)}
-                                  onBlur={() => setTouched(prev => ({ ...prev, [`ticketTypes.${index}.description`]: true }))}
+                                  onBlur={() => {
+                                    setTouched(prev => ({ ...prev, [`ticketTypes.${index}.description`]: true }));
+                                    dispatch(setBlurField(`ticketTypes.${index}.description`));
+                                  }}
                                   placeholder="Describe what's included with this ticket type..."
                                   rows={2}
                                   className="input-modern w-full resize-none"

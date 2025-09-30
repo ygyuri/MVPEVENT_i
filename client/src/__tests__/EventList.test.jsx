@@ -229,3 +229,4 @@ describe('EventList', () => {
     expect(screen.getByText('Test Event 2')).toBeInTheDocument();
   });
 });
+
