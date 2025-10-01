@@ -321,6 +321,13 @@ class OrderService {
         }
         
         console.log('✅ Payment completed successfully:', order.orderNumber);
+        // Schedule reminders for this purchase (best-effort)
+        try {
+          const reminderService = require('./reminderService');
+          await reminderService.scheduleForTickets(order, { timezone: order.customerInfo?.timezone });
+        } catch (e) {
+          console.warn('⚠️ Failed to schedule reminders:', e?.message);
+        }
       } else {
         order.payment.status = 'failed';
         order.status = 'cancelled';

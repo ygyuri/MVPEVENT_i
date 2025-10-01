@@ -59,7 +59,7 @@ services:
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       JWT_REFRESH_SECRET: your-super-secret-refresh-key-change-in-production
       PORT: 5000
-      FRONTEND_URL: http://172.20.10.13:3000
+      FRONTEND_URL: http://localhost:3000
       TICKET_QR_SECRET: replace-with-strong-random-secret
       # base64 32-byte key for AES-256-GCM; generate with: openssl rand -base64 32
       TICKET_QR_ENC_KEY: "h138xvXG9wlW6y0gEBrih129REjACUTFN1hpFG0GkzI="
@@ -88,7 +88,7 @@ services:
       dockerfile: Dockerfile
     container_name: event_i_client
     environment:
-      VITE_API_URL: http://172.20.10.13:5000
+      VITE_API_URL: http://localhost:5000
     ports:
       - "3000:3000"
     depends_on:

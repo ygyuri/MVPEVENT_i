@@ -161,6 +161,30 @@ cd client
 npm test
 ```
 
+### Backend Testing (Jest + Supertest)
+```bash
+# Install server test deps
+cd server
+npm install
+
+# Run all server tests
+npm test
+
+# Run only reminders tests (fastest feedback)
+NODE_ENV=test npx jest __tests__/reminders.test.js --runInBand
+
+# Watch mode
+npx jest --watch
+
+# Debug open handles/leaks
+npx jest --detectOpenHandles --runInBand
+```
+
+Notes:
+- Tests mock external services (SMTP, Twilio, Redis/BullMQ) for speed and determinism.
+- `NODE_ENV=test` skips DB initialization and background schedulers.
+- Prefer `--runInBand` for focused runs that interact with shared singletons.
+
 ## 🚀 Deployment
 
 ### Production Build

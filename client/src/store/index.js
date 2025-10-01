@@ -10,6 +10,7 @@ import scannerReducer from './slices/scannerSlice';
 import organizerReducer from './slices/organizerSlice';
 import eventFormReducer from './slices/eventFormSlice';
 import analyticsReducer from './slices/analyticsSlice';
+import remindersReducer from './slices/remindersSlice';
 
 export const store = configureStore({
   reducer: {
@@ -23,6 +24,7 @@ export const store = configureStore({
     organizer: organizerReducer,
     eventForm: eventFormReducer,
     analytics: analyticsReducer,
+    reminders: remindersReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -5,6 +5,7 @@ import { fetchEventDetails, fetchEventTickets } from '../store/slices/eventsSlic
 import { addToCart } from '../store/slices/checkoutSlice'
 import { Calendar, MapPin, Users, Ticket, ArrowLeft, Clock, Star, Shield, Zap, Globe, Wallet, ShoppingCart, User } from 'lucide-react'
 import { PriceDisplay } from '../components/CurrencyConverter'
+import { scheduleReminders } from '../utils/remindersAPI'
 import { useTheme } from '../contexts/ThemeContext'
 
 const EventDetails = () => {
@@ -17,6 +18,8 @@ const EventDetails = () => {
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [quantity, setQuantity] = useState(1)
   const [addingToCart, setAddingToCart] = useState(false)
+  const [remindersEnabled, setRemindersEnabled] = useState(true)
+  const [reminderMethod, setReminderMethod] = useState('email')
 
   useEffect(() => {
     if (slug) {
@@ -87,6 +90,16 @@ const EventDetails = () => {
     } finally {
       setAddingToCart(false)
     }
+  }
+
+  const handleQuickReminderToggle = async (checked) => {
+    setRemindersEnabled(checked)
+    try {
+      const order = useSelector((state) => state.checkout.currentOrder)
+      if (checked && order) {
+        await scheduleReminders({ ...order, status: 'paid' }, Intl.DateTimeFormat().resolvedOptions().timeZone)
+      }
+    } catch {}
   }
 
   if (loading) {
@@ -434,7 +447,7 @@ const EventDetails = () => {
                         )}
                       </button>
 
-                      <div className="flex space-x-2">
+            <div className="flex space-x-2">
                         <button
                           onClick={() => navigate('/checkout')}
                           className={`flex-1 py-2 px-4 rounded-2xl font-medium transition-colors ${
@@ -452,6 +465,25 @@ const EventDetails = () => {
                           Checkout
                         </button>
                       </div>
+
+            {/* Quick Reminder Toggle */}
+            <div className="flex items-center justify-between mt-3">
+              <label className={`${isDarkMode ? 'text-gray-300' : 'text-gray-700'} text-sm`}>
+                <input type="checkbox" className="mr-2" checked={remindersEnabled} onChange={e => handleQuickReminderToggle(e.target.checked)} /> Reminders
+              </label>
+              <select
+                value={reminderMethod}
+                onChange={e => setReminderMethod(e.target.value)}
+                className={`px-3 py-2 rounded-md border text-sm focus:outline-none focus:ring-2 transition
+                  ${isDarkMode
+                    ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-300 focus:ring-indigo-500'
+                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-indigo-500'}`}
+              >
+                <option value="email">Email</option>
+                <option value="sms">SMS</option>
+                <option value="both">Both</option>
+              </select>
+            </div>
 
                       <p className={`text-xs text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                         🛒 Secure checkout with MPESA

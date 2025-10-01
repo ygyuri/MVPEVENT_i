@@ -12,6 +12,8 @@ require('./models/Order');
 require('./models/Ticket');
 require('./models/EventStaff');
 require('./models/ScanLog');
+require('./models/Reminder');
+require('./models/ReminderTemplate');
 
 // Inspect runtime schema to verify 'tags' type once models are loaded
 try {
@@ -94,7 +96,9 @@ const initializeDatabases = async () => {
   }
 };
 
-initializeDatabases();
+if (process.env.NODE_ENV !== 'test') {
+  initializeDatabases();
+}
 
 // Routes
 app.get('/api/health', (req, res) => {
@@ -133,6 +137,16 @@ app.use('/api/payhero', payheroRoutes);
 // Ticket routes
 app.use('/api/tickets', ticketRoutes);
 
+// Reminder routes
+const reminderRoutes = require('./routes/reminders');
+app.use('/api/reminders', reminderRoutes);
+
+// Debug auth routes (development only)
+if (process.env.NODE_ENV !== 'production') {
+  const debugAuthRoutes = require('./routes/debug-auth');
+  app.use('/api/debug', debugAuthRoutes);
+}
+
 // Test routes
 app.use('/api/test', testRoutes);
 
@@ -154,6 +168,17 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
 });
+
+// Start background schedulers (non-blocking)
+if (process.env.NODE_ENV !== 'test') {
+  try {
+    const { startReminderScanner } = require('./services/scheduler/reminderScanner');
+    startReminderScanner();
+    console.log('⏰ Reminder scanner started (hourly)');
+  } catch (e) {
+    console.warn('⚠️ Failed to start reminder scanner:', e?.message);
+  }
+}
 
 // Export app for testing
 module.exports = app; 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectCartItemCount } from '../store/slices/checkoutSlice';
-import { ShoppingCart, Menu, X, User, LogOut } from 'lucide-react';
+import { ShoppingCart, Menu, X, User, LogOut, Bell, Settings, BarChart3, Calendar } from 'lucide-react';
 import { ThemeToggle, useTheme } from '../contexts/ThemeContext';
 import CurrencySelector from './CurrencySelector';
 import { logout } from '../store/slices/authSlice';
@@ -51,12 +51,6 @@ const Navbar = ({ onOpenAuthModal }) => {
             >
               Events
             </Link>
-            <Link 
-              to="/auth-test" 
-              className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
-            >
-              Auth Test
-            </Link>
             {isAuthenticated && (
               <Link 
                 to="/wallet" 
@@ -67,12 +61,18 @@ const Navbar = ({ onOpenAuthModal }) => {
             )}
             {isAuthenticated && (user?.role === 'admin' || user?.role === 'organizer') && (
               <Link 
-                to="/scanner" 
+                to="/organizer" 
                 className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
               >
-                Scanner
+                Organizer
               </Link>
             )}
+            <Link 
+              to="/auth-test" 
+              className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+            >
+              Auth Test
+            </Link>
           </div>
 
           {/* Right side - Cart, Theme Toggle, Currency Selector, User Menu */}
@@ -123,6 +123,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                         </span>
                       </div>
                     </div>
+                    {/* User Section */}
                     <Link
                       to="/profile"
                       onClick={() => setIsUserMenuOpen(false)}
@@ -131,6 +132,49 @@ const Navbar = ({ onOpenAuthModal }) => {
                       <User className="w-4 h-4" />
                       <span>My Profile</span>
                     </Link>
+
+                    {/* Reminders Section */}
+                    <Link
+                      to="/preferences/reminders"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className={`w-full px-6 py-3 text-left text-sm ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'} flex items-center space-x-3 transition-colors duration-200`}
+                    >
+                      <Bell className="w-4 h-4" />
+                      <span>Reminder Preferences</span>
+                    </Link>
+                    <Link
+                      to="/reminders/history"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className={`w-full px-6 py-3 text-left text-sm ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'} flex items-center space-x-3 transition-colors duration-200`}
+                    >
+                      <Calendar className="w-4 h-4" />
+                      <span>Reminder History</span>
+                    </Link>
+
+                    {/* Organizer Section */}
+                    {(user?.role === 'admin' || user?.role === 'organizer') && (
+                      <>
+                        <div className={`px-6 py-2 text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} uppercase tracking-wider`}>
+                          Organizer Tools
+                        </div>
+                        <Link
+                          to="/scanner"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className={`w-full px-6 py-3 text-left text-sm ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'} flex items-center space-x-3 transition-colors duration-200`}
+                        >
+                          <Settings className="w-4 h-4" />
+                          <span>QR Scanner</span>
+                        </Link>
+                        <Link
+                          to="/organizer/analytics"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className={`w-full px-6 py-3 text-left text-sm ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'} flex items-center space-x-3 transition-colors duration-200`}
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                          <span>Analytics</span>
+                        </Link>
+                      </>
+                    )}
                     <button
                       onClick={handleLogout}
                       className={`w-full px-6 py-3 text-left text-sm ${isDarkMode ? 'text-red-400 hover:bg-red-900/20' : 'text-red-600 hover:bg-red-50'} flex items-center space-x-3 transition-colors duration-200 rounded-b-2xl`}
@@ -179,13 +223,6 @@ const Navbar = ({ onOpenAuthModal }) => {
               >
                 Events
               </Link>
-              <Link 
-                to="/auth-test" 
-                className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Auth Test
-              </Link>
               {isAuthenticated && (
                 <Link 
                   to="/wallet" 
@@ -195,6 +232,22 @@ const Navbar = ({ onOpenAuthModal }) => {
                   Wallet
                 </Link>
               )}
+              {isAuthenticated && (user?.role === 'admin' || user?.role === 'organizer') && (
+                <Link 
+                  to="/organizer" 
+                  className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Organizer
+                </Link>
+              )}
+              <Link 
+                to="/auth-test" 
+                className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Auth Test
+              </Link>
               {isAuthenticated && (user?.role === 'admin' || user?.role === 'organizer') && (
                 <Link 
                   to="/scanner" 
@@ -211,6 +264,25 @@ const Navbar = ({ onOpenAuthModal }) => {
               >
                 Cart ({cartItemCount})
               </Link>
+              {/* Mobile Reminder Links */}
+              {isAuthenticated && (
+                <>
+                  <Link 
+                    to="/preferences/reminders" 
+                    className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Reminder Preferences
+                  </Link>
+                  <Link 
+                    to="/reminders/history" 
+                    className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Reminder History
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}

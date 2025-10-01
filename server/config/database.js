@@ -12,20 +12,16 @@ const connectMongoDB = async () => {
   }
 };
 
-// Redis connection (temporarily disabled)
+// Redis connection
 const connectRedis = async () => {
   try {
-    // Temporarily disable Redis to avoid connection errors
-    console.log('⚠️ Redis temporarily disabled');
-    return null;
-    
-    // const client = Redis.createClient({
-    //   url: process.env.REDIS_URL || 'redis://127.0.0.1:6379'
-    // });
-    
-    // await client.connect();
-    // console.log('✅ Redis connected successfully');
-    // return client;
+    const client = Redis.createClient({
+      url: process.env.REDIS_URL || 'redis://127.0.0.1:6379'
+    });
+    client.on('error', (err) => console.log('Redis Client Error', err));
+    await client.connect();
+    console.log('✅ Redis connected successfully');
+    return client;
   } catch (error) {
     console.log('⚠️ Redis connection failed (non-critical):', error.message);
     return null;

@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { ShoppingCart, User, CreditCard, CheckCircle } from 'lucide-react';
 import CartComponent from '../components/Cart';
 import CustomerInfoForm from '../components/CustomerInfoForm';
 import MpesaPayment from '../components/MpesaPayment';
+import { scheduleReminders } from '../utils/remindersAPI';
 import OrderConfirmation from '../components/OrderConfirmation';
 import CurrencySelector from '../components/CurrencySelector';
 import { PriceDisplay } from '../components/CurrencyConverter';
@@ -17,6 +18,8 @@ const Checkout = () => {
   const dispatch = useDispatch();
   const { checkoutStep } = useSelector((state) => state.checkout);
   const { isDarkMode } = useTheme();
+  const [enableReminders, setEnableReminders] = useState(true);
+  const [deliveryMethod, setDeliveryMethod] = useState('email');
   
   // Move hooks to top level to fix React Hooks error
   const paymentMethod = useSelector((state) => state.checkout.currentOrder?.payment?.method);
@@ -35,6 +38,15 @@ const Checkout = () => {
   ];
 
   const currentStepIndex = steps.findIndex(step => step.id === checkoutStep);
+
+  const handlePaymentSuccess = async () => {
+    try {
+      const order = useSelector((state) => state.checkout.currentOrder);
+      if (enableReminders && order) {
+        await scheduleReminders({ ...order, status: 'paid' }, Intl.DateTimeFormat().resolvedOptions().timeZone);
+      }
+    } catch {}
+  };
 
   const LoadingSpinner = () => (
     <div className={`flex items-center justify-center min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
@@ -178,7 +190,7 @@ const Checkout = () => {
                       />
                     );
                   default:
-                    return <MpesaPayment />;
+                    return <MpesaPayment onPaymentSuccess={handlePaymentSuccess} />;
                 }
               })()}
             </div>
@@ -189,6 +201,34 @@ const Checkout = () => {
               <OrderConfirmation />
             </div>
           )}
+          {/* Inline Reminder Setup */}
+          <div className="max-w-2xl mx-auto mt-6">
+            <div className={`rounded-xl border ${isDarkMode ? 'border-gray-700 bg-gray-900/60' : 'border-gray-200 bg-white/70'} p-4`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className={`font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Reminders</div>
+                  <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Receive event start reminders</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <input type="checkbox" checked={enableReminders} onChange={e => setEnableReminders(e.target.checked)} /> Enable
+                  </label>
+                  <select
+                    value={deliveryMethod}
+                    onChange={e => setDeliveryMethod(e.target.value)}
+                    className={`px-3 py-2 rounded-md border text-sm focus:outline-none focus:ring-2 transition
+                      ${isDarkMode
+                        ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-300 focus:ring-indigo-500'
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-indigo-500'}`}
+                  >
+                    <option value="email">Email</option>
+                    <option value="sms">SMS</option>
+                    <option value="both">Both</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
