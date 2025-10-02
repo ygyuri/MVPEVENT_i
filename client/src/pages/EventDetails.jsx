@@ -7,6 +7,7 @@ import { Calendar, MapPin, Users, Ticket, ArrowLeft, Clock, Star, Shield, Zap, G
 import { PriceDisplay } from '../components/CurrencyConverter'
 import { scheduleReminders } from '../utils/remindersAPI'
 import { useTheme } from '../contexts/ThemeContext'
+import { Link } from 'react-router-dom'
 
 const EventDetails = () => {
   const { slug } = useParams()
@@ -266,6 +267,12 @@ const EventDetails = () => {
                       <span className={`text-xs px-2 py-1 rounded-full ${isDarkMode ? 'bg-blue-900/50 text-blue-300' : 'bg-blue-100 text-blue-700'}`}>
                         Verified Organizer
                       </span>
+                      <Link
+                        to={`/events/${currentEvent.id}/updates`}
+                        className={`text-xs px-2 py-1 rounded-full ${isDarkMode ? 'bg-green-900/40 text-green-300 hover:bg-green-900/60' : 'bg-green-100 text-green-700 hover:bg-green-200'} transition-colors`}
+                      >
+                        Live Updates
+                      </Link>
                     </div>
                   </div>
                 </div>

@@ -1,6 +1,9 @@
 const Order = require('../models/Order');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
+const EventUpdate = require('../models/EventUpdate');
+const EventUpdateReaction = require('../models/EventUpdateReaction');
+const EventUpdateRead = require('../models/EventUpdateRead');
 const mongoose = require('mongoose');
 
 /**
@@ -11,6 +14,76 @@ class AnalyticsService {
   constructor() {
     this.cache = new Map();
     this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+  }
+
+  /**
+   * Get update analytics for an event
+   * @param {string} eventId - Event ID
+   * @returns {Object} Update analytics data
+   */
+  async getUpdateAnalytics(eventId) {
+    try {
+      const cacheKey = `update_analytics_${eventId}`;
+      const cached = this.getCachedData(cacheKey);
+      if (cached) return cached;
+
+      // Get total updates count
+      const totalUpdates = await EventUpdate.countDocuments({ eventId });
+      
+      // Get updates by priority
+      const updatesByPriority = await EventUpdate.aggregate([
+        { $match: { eventId: mongoose.Types.ObjectId(eventId) } },
+        { $group: { _id: '$priority', count: { $sum: 1 } } }
+      ]);
+
+      // Get total reactions count
+      const totalReactions = await EventUpdateReaction.countDocuments({ eventId });
+      
+      // Get reactions by type
+      const reactionsByType = await EventUpdateReaction.aggregate([
+        { $match: { eventId: mongoose.Types.ObjectId(eventId) } },
+        { $group: { _id: '$reactionType', count: { $sum: 1 } } }
+      ]);
+
+      // Get total reads count
+      const totalReads = await EventUpdateRead.countDocuments({ eventId });
+
+      // Get engagement rate (reads / total possible reads)
+      const totalTickets = await Ticket.countDocuments({ eventId });
+      const engagementRate = totalTickets > 0 ? (totalReads / (totalUpdates * totalTickets)) * 100 : 0;
+
+      // Get recent updates (last 10)
+      const recentUpdates = await EventUpdate.find({ eventId })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .select('content priority createdAt')
+        .lean();
+
+      const result = {
+        summary: {
+          totalUpdates,
+          totalReactions,
+          totalReads,
+          engagementRate: Math.round(engagementRate * 100) / 100
+        },
+        updatesByPriority: updatesByPriority.reduce((acc, item) => {
+          acc[item._id] = item.count;
+          return acc;
+        }, {}),
+        reactionsByType: reactionsByType.reduce((acc, item) => {
+          acc[item._id] = item.count;
+          return acc;
+        }, {}),
+        recentUpdates,
+        lastUpdated: new Date()
+      };
+
+      this.setCachedData(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error('Update analytics error:', error);
+      throw error;
+    }
   }
 
   /**

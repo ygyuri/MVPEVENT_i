@@ -141,6 +141,14 @@ app.use('/api/tickets', ticketRoutes);
 const reminderRoutes = require('./routes/reminders');
 app.use('/api/reminders', reminderRoutes);
 
+// Updates routes
+const updatesRoutes = require('./routes/updates');
+app.use('/api', updatesRoutes);
+
+// Push registration routes
+const pushRoutes = require('./routes/push');
+app.use('/api/push', pushRoutes);
+
 // Debug auth routes (development only)
 if (process.env.NODE_ENV !== 'production') {
   const debugAuthRoutes = require('./routes/debug-auth');
@@ -159,15 +167,37 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// 404 handler
+// Initialize Socket.io server with Redis adapter (skip in tests)
+let httpServer;
+if (process.env.NODE_ENV !== 'test') {
+  try {
+    const { initializeSocket } = require('./realtime/socket');
+    const { setBroadcast } = require('./realtime/socketInstance');
+    const { server, broadcastUpdate } = initializeSocket(app);
+    httpServer = server;
+    setBroadcast(broadcastUpdate);
+    console.log('🔌 Socket.io server initialized');
+  } catch (e) {
+    console.warn('⚠️ Failed to initialize Socket.io:', e?.message);
+  }
+}
+
+// 404 handler (after Socket.io initialization)
 app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-});
+// Start the server
+if (process.env.NODE_ENV !== 'test') {
+  const runner = httpServer || app;
+  runner.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+    if (httpServer) {
+      console.log(`🔌 WebSocket available at: http://localhost:${PORT}/socket.io/`);
+    }
+  });
+}
 
 // Start background schedulers (non-blocking)
 if (process.env.NODE_ENV !== 'test') {

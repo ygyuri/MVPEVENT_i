@@ -1,6 +1,9 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const app = require('../index');
+const { connectMongoDB } = require('../config/database');
+
+jest.setTimeout(20000);
 const User = require('../models/User');
 const Event = require('../models/Event');
 const Order = require('../models/Order');
@@ -15,12 +18,15 @@ describe('Analytics API', () => {
   let testTicket;
 
   beforeAll(async () => {
+    await connectMongoDB();
     // Create test organizer
     const organizer = new User({
       email: 'organizer@test.com',
       password: 'password123',
       role: 'organizer',
-      username: 'testorganizer'
+      username: 'testorganizer',
+      firstName: 'Org',
+      lastName: 'User'
     });
     await organizer.save();
     
@@ -29,7 +35,9 @@ describe('Analytics API', () => {
       email: 'admin@test.com',
       password: 'password123',
       role: 'admin',
-      username: 'testadmin'
+      username: 'testadmin',
+      firstName: 'Admin',
+      lastName: 'User'
     });
     await admin.save();
 
@@ -191,7 +199,9 @@ describe('Analytics API', () => {
         email: 'other@test.com',
         password: 'password123',
         role: 'organizer',
-        username: 'otherorganizer'
+        username: 'otherorganizer',
+        firstName: 'Other',
+        lastName: 'User'
       });
       await otherOrganizer.save();
 

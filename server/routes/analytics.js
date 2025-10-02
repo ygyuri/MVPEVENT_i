@@ -80,6 +80,53 @@ const validateEventOwnership = async (eventId, userId, userRole) => {
 };
 
 /**
+ * @route GET /api/organizer/analytics/updates/:eventId
+ * @desc Get update analytics for an event
+ * @access Private (Organizer/Admin)
+ */
+router.get('/updates/:eventId', verifyToken, requireRole(['organizer', 'admin']), [
+  param('eventId').isMongoId().withMessage('Invalid event ID')
+], async (req, res) => {
+  try {
+    if (!handleValidation(req, res)) return;
+    
+    const { eventId } = req.params;
+    
+    // Validate event ownership
+    await validateEventOwnership(eventId, req.user._id, req.user.role);
+    
+    // Get update analytics data
+    const updateAnalytics = await analyticsService.getUpdateAnalytics(eventId);
+    
+    res.json({
+      success: true,
+      data: updateAnalytics
+    });
+  } catch (error) {
+    console.error('Update analytics error:', error);
+    
+    if (error.message === 'Event not found') {
+      return res.status(404).json({
+        success: false,
+        error: 'Event not found'
+      });
+    }
+    
+    if (error.message === 'Access denied - not event owner') {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load update analytics'
+    });
+  }
+});
+
+/**
  * @route GET /api/organizer/analytics/dashboard-overview
  * @desc Get dashboard overview for organizer
  * @access Private (Organizer/Admin)

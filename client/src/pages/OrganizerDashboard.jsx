@@ -1,16 +1,27 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
-import { Plus, Calendar, Users, TrendingUp, Eye } from 'lucide-react';
+import { Plus, Calendar, Users, TrendingUp, Eye, MessageSquare, Clock, Bell } from 'lucide-react';
 import EnhancedButton from '../components/EnhancedButton';
 import EventStatusBadge from '../components/organizer/EventStatusBadge';
+import UpdateComposer from '../components/organizer/UpdateComposer';
 import { getOrganizerOverview, fetchMyEvents } from '../store/slices/organizerSlice';
 import { dateUtils } from '../utils/eventHelpers';
+import { useEventUpdates } from '../hooks/useEventUpdates';
+import { useSocket } from '../hooks/useSocket';
 
 const OrganizerDashboard = () => {
   const dispatch = useDispatch();
   const { user, isAuthenticated, loading: authLoading } = useSelector(state => state.auth);
   const { overview, events, loading } = useSelector(state => state.organizer);
+  
+  // Update composer state
+  const [showUpdateComposer, setShowUpdateComposer] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState(null);
+  
+  // Recent updates state
+  const [recentUpdates, setRecentUpdates] = useState([]);
+  const [allEventUpdates, setAllEventUpdates] = useState({});
 
   useEffect(() => {
     // Only load data if user is authenticated and user data is loaded
@@ -81,6 +92,37 @@ const OrganizerDashboard = () => {
   }
 
   const recentEvents = events.slice(0, 5);
+  
+  // Handle update composer
+  const handlePostUpdate = (eventId) => {
+    setSelectedEventId(eventId);
+    setShowUpdateComposer(true);
+  };
+
+  const handleUpdateCreated = (update) => {
+    console.log('Update created:', update);
+    
+    // Add the new update to recent updates
+    const newUpdate = {
+      ...update,
+      eventTitle: events.find(e => e._id === update.eventId)?.title || 'Unknown Event',
+      eventId: update.eventId
+    };
+    
+    setRecentUpdates(prev => [newUpdate, ...prev].slice(0, 5)); // Keep only 5 most recent
+    
+    // Update the specific event's updates
+    setAllEventUpdates(prev => ({
+      ...prev,
+      [update.eventId]: [newUpdate, ...(prev[update.eventId] || [])].slice(0, 3)
+    }));
+  };
+
+  const handleCloseComposer = () => {
+    setShowUpdateComposer(false);
+    setSelectedEventId(null);
+  };
+
   const stats = [
     {
       label: 'Total Events',
@@ -231,11 +273,25 @@ const OrganizerDashboard = () => {
                     </div>
                     
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePostUpdate(event._id)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+                        disabled={event.status === 'cancelled'}
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        Post Update
+                      </button>
                       <Link
                         to={`/organizer/events/${event._id}/edit`}
                         className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
                       >
                         Edit
+                      </Link>
+                      <Link
+                        to={`/organizer/events/${event._id}/updates`}
+                        className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm font-medium"
+                      >
+                        Live Updates
                       </Link>
                     </div>
                   </div>
@@ -310,6 +366,64 @@ const OrganizerDashboard = () => {
             </div>
           </div>
 
+          {/* Recent Updates Card */}
+          <div className="bg-web3-card rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Recent Updates
+              </h3>
+              <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            
+            {recentUpdates.length > 0 ? (
+              <div className="space-y-3">
+                {recentUpdates.map((update, index) => (
+                  <div key={update._id || index} className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                          {update.eventTitle}
+                        </h4>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          {update.content?.length > 100 
+                            ? `${update.content.substring(0, 100)}...` 
+                            : update.content}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 ml-2">
+                        {update.priority === 'urgent' && (
+                          <span className="text-red-500 text-xs">🔴</span>
+                        )}
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(update.createdAt).toLocaleTimeString([], { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                    <Link
+                      to={`/organizer/events/${update.eventId}/updates`}
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                    >
+                      View all updates →
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <MessageSquare className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  No updates posted yet
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                  Post your first update to see it here
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* Tips Card */}
           <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
@@ -321,6 +435,17 @@ const OrganizerDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Update Composer Modal */}
+      {showUpdateComposer && selectedEventId && (
+        <UpdateComposer
+          eventId={selectedEventId}
+          isOpen={showUpdateComposer}
+          onClose={handleCloseComposer}
+          onUpdateCreated={handleUpdateCreated}
+          eventStatus={events.find(e => e._id === selectedEventId)?.status || 'published'}
+        />
+      )}
     </div>
   );
 };
