@@ -8,10 +8,16 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-i
 // Verify JWT token middleware
 const verifyToken = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1] || req.cookies?.token;
+    const tokenHeader = req.headers.authorization || '';
+    const token = tokenHeader.startsWith('Bearer ') ? tokenHeader.split(' ')[1] : (req.cookies?.token);
     
     if (!token) {
-      return res.status(401).json({ 
+      // Debug log for missing token
+      console.warn('[AUTH] Missing token on', req.method, req.originalUrl, {
+        hasAuthHeader: !!req.headers.authorization,
+        hasCookie: !!req.cookies?.token
+      });
+      return res.status(401).json({
         error: 'Access denied. No token provided.',
         code: 'NO_TOKEN'
       });

@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
+import DebugAuth from './components/DebugAuth';
 import Home from './pages/Home';
 import Events from './pages/Events';
 import EventDetails from './pages/EventDetails';
@@ -20,6 +21,8 @@ import EventManagement from './pages/EventManagement';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import UserPreferences from './pages/UserPreferences';
 import ReminderHistory from './pages/ReminderHistory';
+import PollsPage from './pages/PollsPage';
+import PollsTest from './pages/PollsTest';
 import { OrganizerUpdatesDashboard, AttendeeUpdatesView } from './pages/EventUpdates';
 import { getCurrentUser } from './store/slices/authSlice';
 import './utils/testAuth'; // Load test authentication helper
@@ -62,6 +65,8 @@ function App() {
             <Route path="/reminders/history" element={<ReminderHistory />} />
             <Route path="/organizer/events/:eventId/updates" element={<OrganizerUpdatesDashboard />} />
             <Route path="/events/:eventId/updates" element={<AttendeeUpdatesView />} />
+            <Route path="/events/:eventId/polls" element={<PollsPage />} />
+            <Route path="/polls-test" element={<PollsTest />} />
           </Routes>
         </main>
         
@@ -70,6 +75,9 @@ function App() {
           isOpen={isAuthModalOpen} 
           onClose={() => setIsAuthModalOpen(false)} 
         />
+        
+        {/* Debug component for development */}
+        <DebugAuth />
       </div>
     </ThemeProvider>
   );

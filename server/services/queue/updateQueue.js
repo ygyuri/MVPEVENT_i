@@ -1,29 +1,15 @@
-let Queue, Worker, QueueEvents, IORedis;
-try {
-  ({ Queue, Worker, QueueEvents } = require('bullmq'));
-  IORedis = require('ioredis');
-} catch (e) {
-  Queue = class { constructor() {} add() { return Promise.resolve(); } getJobCounts() { return Promise.resolve({}); } };
-  Worker = class { constructor() {} };
-  QueueEvents = class { constructor() {} on() {} };
-  IORedis = class {};
-}
-
+const redisManager = require('../../config/redis');
 const presence = require('../../realtime/presence');
 const SmsService = require('../smsService');
 // Placeholder for web push/FCM; wired later via pushService
 const PushService = require('../pushService');
 
-const connectionUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-let redis;
-try { redis = new IORedis(connectionUrl, { maxRetriesPerRequest: null }); } catch (e) { redis = undefined; }
-
 const queueName = 'event-updates';
-const updateQueue = new Queue(queueName, { connection: redis });
-const updateQueueEvents = new QueueEvents(queueName, { connection: redis });
+const updateQueue = redisManager.createQueue(queueName);
+const updateQueueEvents = redisManager.createQueueEvents(queueName);
 
 // Worker: deliver fallback notifications to offline users
-const worker = new Worker(queueName, async (job) => {
+const worker = redisManager.createWorker(queueName, async (job) => {
   const { eventId, updatePayload } = job.data || {};
   if (!eventId || !updatePayload) return;
 
@@ -37,7 +23,7 @@ const worker = new Worker(queueName, async (job) => {
   } catch (e) {
     // Best-effort; do not throw unless critical
   }
-}, { connection: redis, concurrency: 10 });
+}, { concurrency: 10 });
 
 if (updateQueueEvents && updateQueueEvents.on) {
   updateQueueEvents.on('failed', ({ jobId, failedReason }) => {

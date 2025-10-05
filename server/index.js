@@ -3,6 +3,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
 
+// Initialize Redis connection manager
+const redisManager = require('./config/redis');
+
 // Import models (must be imported before routes)
 require('./models/User');
 require('./models/Event');
@@ -14,6 +17,8 @@ require('./models/EventStaff');
 require('./models/ScanLog');
 require('./models/Reminder');
 require('./models/ReminderTemplate');
+require('./models/Poll');
+require('./models/PollVote');
 
 // Inspect runtime schema to verify 'tags' type once models are loaded
 try {
@@ -32,6 +37,7 @@ const orderRoutes = require('./routes/orders');
 const testRoutes = require('./routes/test');
 const payheroRoutes = require('./routes/payhero');
 const ticketRoutes = require('./routes/tickets');
+const pollsSimpleRoutes = require('./routes/polls-simple');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -65,6 +71,14 @@ if (process.env.NODE_ENV !== 'production') {
 }
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Make Socket.io available on req once it's initialized (set later)
+app.use((req, res, next) => {
+  if (!req.io && req.app?.locals?.io) {
+    req.io = req.app.locals.io;
+  }
+  next();
+});
 
 // Disable browser/proxy caching for API responses in development
 if (process.env.NODE_ENV !== 'production') {
@@ -145,6 +159,13 @@ app.use('/api/reminders', reminderRoutes);
 const updatesRoutes = require('./routes/updates');
 app.use('/api', updatesRoutes);
 
+// Poll routes (mount at /api so route file can expose /events/:eventId/polls and /polls/:pollId)
+const pollRoutes = require('./routes/polls');
+app.use('/api', pollRoutes);
+
+// Simple polls routes (no Redis dependency)
+app.use('/api', pollsSimpleRoutes);
+
 // Push registration routes
 const pushRoutes = require('./routes/push');
 app.use('/api/push', pushRoutes);
@@ -173,8 +194,10 @@ if (process.env.NODE_ENV !== 'test') {
   try {
     const { initializeSocket } = require('./realtime/socket');
     const { setBroadcast } = require('./realtime/socketInstance');
-    const { server, broadcastUpdate } = initializeSocket(app);
+    const { server, io, broadcastUpdate } = initializeSocket(app);
     httpServer = server;
+    // Store io for earlier middleware to pick up per-request
+    app.locals.io = io;
     setBroadcast(broadcastUpdate);
     console.log('🔌 Socket.io server initialized');
   } catch (e) {
@@ -190,11 +213,18 @@ app.use('*', (req, res) => {
 // Start the server
 if (process.env.NODE_ENV !== 'test') {
   const runner = httpServer || app;
-  runner.listen(PORT, () => {
+  runner.listen(PORT, async () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
     if (httpServer) {
       console.log(`🔌 WebSocket available at: http://localhost:${PORT}/socket.io/`);
+    }
+    
+    // Initialize Redis connection
+    try {
+      await redisManager.connect();
+    } catch (error) {
+      console.warn('⚠️ Redis initialization failed, continuing without Redis:', error.message);
     }
   });
 }

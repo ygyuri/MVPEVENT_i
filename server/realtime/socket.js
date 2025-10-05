@@ -1,14 +1,13 @@
 const http = require('http');
-let Server, createAdapter, Redis;
+const redisManager = require('../config/redis');
+let Server, createAdapter;
 try {
   ({ Server } = require('socket.io'));
   ({ createAdapter } = require('@socket.io/redis-adapter'));
-  Redis = require('ioredis');
 } catch (e) {
   // Lightweight stubs for tests without socket deps
   Server = class { constructor() {} on() {} use() {} to() { return { emit() {} }; } of() { return this; } adapter = {}; }; 
   createAdapter = () => ({});
-  Redis = class {};
 }
 
 const { verifySocketAuth } = require('./socketAuth');
@@ -25,13 +24,18 @@ function initializeSocket(app) {
   });
 
   // Redis adapter for multi-node scaling
-  try {
-    const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-    const pubClient = new Redis(redisUrl, { maxRetriesPerRequest: null });
-    const subClient = pubClient.duplicate();
-    io.adapter(createAdapter(pubClient, subClient));
-  } catch (e) {
-    // Non-fatal in local/dev or tests
+  if (redisManager.isRedisAvailable()) {
+    try {
+      const redis = redisManager.getRedis();
+      const pubClient = redis;
+      const subClient = redis.duplicate();
+      io.adapter(createAdapter(pubClient, subClient));
+      console.log('🔌 Socket.io Redis adapter enabled');
+    } catch (e) {
+      console.warn('⚠️ Failed to enable Socket.io Redis adapter:', e.message);
+    }
+  } else {
+    console.log('🔌 Socket.io running without Redis adapter (single instance mode)');
   }
 
   // Auth middleware
@@ -49,6 +53,18 @@ function initializeSocket(app) {
       socket.join(`event:${eventId}`);
       try { await presence.markOnline(eventId, user?._id); } catch (e) {}
       socket.emit('joined:event', { eventId });
+    });
+
+    // Optional: join a specific poll room for finer-grained updates
+    socket.on('join:poll', ({ pollId }) => {
+      if (!pollId) return;
+      socket.join(`poll:${pollId}`);
+      socket.emit('joined:poll', { pollId });
+    });
+
+    socket.on('leave:poll', ({ pollId }) => {
+      if (!pollId) return;
+      socket.leave(`poll:${pollId}`);
     });
 
     socket.on('leave:event', async ({ eventId }) => {

@@ -3,11 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchEventDetails, fetchEventTickets } from '../store/slices/eventsSlice'
 import { addToCart } from '../store/slices/checkoutSlice'
-import { Calendar, MapPin, Users, Ticket, ArrowLeft, Clock, Star, Shield, Zap, Globe, Wallet, ShoppingCart, User } from 'lucide-react'
+import { Calendar, MapPin, Users, Ticket, ArrowLeft, Clock, Star, Shield, Zap, Globe, Wallet, ShoppingCart, User, TrendingUp } from 'lucide-react'
 import { PriceDisplay } from '../components/CurrencyConverter'
 import { scheduleReminders } from '../utils/remindersAPI'
 import { useTheme } from '../contexts/ThemeContext'
 import { Link } from 'react-router-dom'
+import { PollList } from '../components/polls'
 
 const EventDetails = () => {
   const { slug } = useParams()
@@ -312,6 +313,28 @@ const EventDetails = () => {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Polls Section */}
+            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl shadow-xl p-6 border border-gray-200 dark:border-gray-700`}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} flex items-center`}>
+                  <TrendingUp className={`w-5 h-5 mr-2 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                  Event Polls
+                </h2>
+                <Link
+                  to={`/events/${currentEvent.id}/polls`}
+                  className={`text-sm px-3 py-1 rounded-full transition-colors ${
+                    isDarkMode 
+                      ? 'bg-blue-900/50 text-blue-300 hover:bg-blue-900/70' 
+                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  }`}
+                >
+                  View All
+                </Link>
+              </div>
+              
+              <PollList eventId={currentEvent.id} />
             </div>
           </div>
 

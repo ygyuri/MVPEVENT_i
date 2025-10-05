@@ -73,6 +73,12 @@ const Navbar = ({ onOpenAuthModal }) => {
             >
               Auth Test
             </Link>
+            <Link 
+              to="/polls-test" 
+              className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+            >
+              Polls Test
+            </Link>
           </div>
 
           {/* Right side - Cart, Theme Toggle, Currency Selector, User Menu */}
@@ -247,6 +253,13 @@ const Navbar = ({ onOpenAuthModal }) => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Auth Test
+              </Link>
+              <Link 
+                to="/polls-test" 
+                className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Polls Test
               </Link>
               {isAuthenticated && (user?.role === 'admin' || user?.role === 'organizer') && (
                 <Link 

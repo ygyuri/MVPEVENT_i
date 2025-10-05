@@ -1,33 +1,15 @@
-let Queue, Worker, QueueEvents, IORedis;
-try {
-  // Lazy require; if not installed (e.g., in tests), fall back to stubs
-  ({ Queue, Worker, QueueEvents } = require('bullmq'));
-  IORedis = require('ioredis');
-} catch (e) {
-  Queue = class { constructor() {} add() { return Promise.resolve(); } getJobCounts() { return Promise.resolve({}); } };
-  Worker = class { constructor() {} };
-  QueueEvents = class { constructor() {} on() {} };
-  IORedis = class {};
-}
+const redisManager = require('../../config/redis');
 const Reminder = require('../../models/Reminder');
 const EmailService = require('../emailService');
 const SmsService = require('../smsService');
 const path = require('path');
 
-const connection = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-let redis;
-try {
-  // BullMQ requires maxRetriesPerRequest to be null to avoid blocking behavior
-  redis = new IORedis(connection, { maxRetriesPerRequest: null });
-} catch (e) { redis = undefined; }
-
 const queueName = 'reminders';
-
-const reminderQueue = new Queue(queueName, { connection: redis });
-const reminderQueueEvents = new QueueEvents(queueName, { connection: redis });
+const reminderQueue = redisManager.createQueue(queueName);
+const reminderQueueEvents = redisManager.createQueueEvents(queueName);
 
 // Worker processor
-const worker = new Worker(queueName, async (job) => {
+const worker = redisManager.createWorker(queueName, async (job) => {
   const { reminderId } = job.data || {};
   if (!reminderId) return;
   const reminder = await Reminder.findById(reminderId)
@@ -78,7 +60,6 @@ const worker = new Worker(queueName, async (job) => {
     throw err;
   }
 }, {
-  connection: redis,
   concurrency: 10,
   settings: {
     backoffStrategies: {

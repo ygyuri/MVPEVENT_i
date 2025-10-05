@@ -11,6 +11,7 @@ import organizerReducer from './slices/organizerSlice';
 import eventFormReducer from './slices/eventFormSlice';
 import analyticsReducer from './slices/analyticsSlice';
 import remindersReducer from './slices/remindersSlice';
+import pollsReducer from './slices/pollsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -25,6 +26,7 @@ export const store = configureStore({
     eventForm: eventFormReducer,
     analytics: analyticsReducer,
     reminders: remindersReducer,
+    polls: pollsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
