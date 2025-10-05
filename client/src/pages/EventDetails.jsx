@@ -9,6 +9,7 @@ import { scheduleReminders } from '../utils/remindersAPI'
 import { useTheme } from '../contexts/ThemeContext'
 import { Link } from 'react-router-dom'
 import { PollList } from '../components/polls'
+import ActivePollsWidget from '../components/attendee/ActivePollsWidget'
 
 const EventDetails = () => {
   const { slug } = useParams()
@@ -231,6 +232,13 @@ const EventDetails = () => {
             )}
           </div>
         </div>
+
+        {/* Active Polls - attendee widget (near top, under hero) */}
+        {currentEvent?.id && (
+          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl shadow-xl p-6 border border-gray-200 dark:border-gray-700 mb-8`}>
+            <ActivePollsWidget eventId={currentEvent.id} />
+          </div>
+        )}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

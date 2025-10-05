@@ -26,6 +26,8 @@ import PollsTest from './pages/PollsTest';
 import { OrganizerUpdatesDashboard, AttendeeUpdatesView } from './pages/EventUpdates';
 import { getCurrentUser } from './store/slices/authSlice';
 import './utils/testAuth'; // Load test authentication helper
+import ErrorBoundary from './components/shared/ErrorBoundary';
+import { ToastProvider } from './components/shared/Toast';
 
 function App() {
   const dispatch = useDispatch();
@@ -40,46 +42,46 @@ function App() {
   }, [dispatch]);
 
   return (
-    <ThemeProvider>
-      <div className="min-h-screen bg-web3-primary theme-transition">
-        <Navbar onOpenAuthModal={() => setIsAuthModalOpen(true)} />
-        <main>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/events/:slug" element={<EventDetails />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/auth-test" element={<AuthTest />} />
-            <Route path="/profile" element={<UserProfile />} />
-            <Route path="/wallet" element={<TicketWallet />} />
-            <Route path="/scanner" element={<Scanner />} />
-            <Route path="/admin/scans" element={<AdminScans />} />
-            <Route path="/organizer" element={<OrganizerDashboard />} />
-            <Route path="/organizer/dashboard" element={<OrganizerDashboard />} />
-            <Route path="/organizer/events" element={<EventManagement />} />
-            <Route path="/organizer/events/create" element={<EventCreate />} />
-            <Route path="/organizer/events/:eventId/edit" element={<EventCreate />} />
-            <Route path="/organizer/events/:eventId/qr-settings" element={<EventQRSettings />} />
-            <Route path="/organizer/analytics" element={<AnalyticsDashboard />} />
-            <Route path="/preferences/reminders" element={<UserPreferences />} />
-            <Route path="/reminders/history" element={<ReminderHistory />} />
-            <Route path="/organizer/events/:eventId/updates" element={<OrganizerUpdatesDashboard />} />
-            <Route path="/events/:eventId/updates" element={<AttendeeUpdatesView />} />
-            <Route path="/events/:eventId/polls" element={<PollsPage />} />
-            <Route path="/polls-test" element={<PollsTest />} />
-          </Routes>
-        </main>
-        
-        {/* AuthModal rendered at root level */}
-        <AuthModal 
-          isOpen={isAuthModalOpen} 
-          onClose={() => setIsAuthModalOpen(false)} 
-        />
-        
-        {/* Debug component for development */}
-        <DebugAuth />
-      </div>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <ThemeProvider>
+          <div className="min-h-screen bg-web3-primary theme-transition">
+            <Navbar onOpenAuthModal={() => setIsAuthModalOpen(true)} />
+            <main>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/events" element={<Events />} />
+                <Route path="/events/:slug" element={<EventDetails />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/auth-test" element={<AuthTest />} />
+                <Route path="/profile" element={<UserProfile />} />
+                <Route path="/wallet" element={<TicketWallet />} />
+                <Route path="/scanner" element={<Scanner />} />
+                <Route path="/admin/scans" element={<AdminScans />} />
+                <Route path="/organizer" element={<OrganizerDashboard />} />
+                <Route path="/organizer/dashboard" element={<OrganizerDashboard />} />
+                <Route path="/organizer/events" element={<EventManagement />} />
+                <Route path="/organizer/events/create" element={<EventCreate />} />
+                <Route path="/organizer/events/:eventId/edit" element={<EventCreate />} />
+                <Route path="/organizer/events/:eventId/qr-settings" element={<EventQRSettings />} />
+                <Route path="/organizer/analytics" element={<AnalyticsDashboard />} />
+                <Route path="/preferences/reminders" element={<UserPreferences />} />
+                <Route path="/reminders/history" element={<ReminderHistory />} />
+                <Route path="/organizer/events/:eventId/updates" element={<OrganizerUpdatesDashboard />} />
+                <Route path="/events/:eventId/updates" element={<AttendeeUpdatesView />} />
+                <Route path="/events/:eventId/polls" element={<PollsPage />} />
+                <Route path="/polls-test" element={<PollsTest />} />
+              </Routes>
+            </main>
+            <AuthModal 
+              isOpen={isAuthModalOpen} 
+              onClose={() => setIsAuthModalOpen(false)} 
+            />
+            <DebugAuth />
+          </div>
+        </ThemeProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }
 

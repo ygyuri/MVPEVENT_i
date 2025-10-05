@@ -23,6 +23,7 @@ import AttendeeExport from '../components/analytics/AttendeeExport';
 import EventSelector from '../components/analytics/EventSelector';
 import DateRangePicker from '../components/analytics/DateRangePicker';
 import AnalyticsFilters from '../components/analytics/AnalyticsFilters';
+import PollAnalyticsDashboard from '../components/organizer/PollAnalyticsDashboard'
 
 // Redux actions
 import {
@@ -185,7 +186,8 @@ const AnalyticsDashboard = () => {
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'sales', label: 'Sales Chart', icon: TrendingUp },
     { id: 'revenue', label: 'Revenue', icon: TrendingUp },
-    { id: 'export', label: 'Export', icon: Download }
+    { id: 'export', label: 'Export', icon: Download },
+    { id: 'polls', label: 'Polls', icon: TrendingUp }
   ];
 
   const formatCurrency = (amount) => {
@@ -479,6 +481,10 @@ const AnalyticsDashboard = () => {
                 loading={false}
                 error={null}
               />
+            )}
+
+            {activeTab === 'polls' && selectedEvent && (
+              <PollAnalyticsDashboard eventId={selectedEvent._id} />
             )}
           </motion.div>
         </AnimatePresence>
