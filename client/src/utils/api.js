@@ -2,10 +2,16 @@ import axios from 'axios';
 
 // Dynamic API URL for mobile and desktop access
 const getApiBaseUrl = () => {
+  // Use VITE_API_URL if available (for Docker environments)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
   // Check if we're in development
   if (import.meta.env.DEV) {
     // Get the current hostname (works for both localhost and IP addresses)
-    const hostname = window.location.hostname;
+    // Safe access for test environments
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
     const port = '5000';
     return `http://${hostname}:${port}`;
   }
@@ -15,13 +21,15 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-// Debug logging for mobile access
-console.log('🌐 API Configuration:', {
-  hostname: window.location.hostname,
-  port: window.location.port,
-  apiUrl: API_BASE_URL,
-  isDev: import.meta.env.DEV
-});
+// Debug logging for mobile access (only in browser environment)
+if (typeof window !== 'undefined') {
+  console.log('🌐 API Configuration:', {
+    hostname: window.location.hostname,
+    port: window.location.port,
+    apiUrl: API_BASE_URL,
+    isDev: import.meta.env.DEV
+  });
+}
 
 // Create axios instance
 const api = axios.create({
@@ -68,9 +76,12 @@ api.interceptors.response.use(
         if (!refreshToken) throw new Error('No refresh token');
 
         const refreshResponse = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken });
-        const { accessToken } = refreshResponse.data.tokens;
+        const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.tokens;
 
         localStorage.setItem('authToken', accessToken);
+        if (newRefreshToken) {
+          localStorage.setItem('refreshToken', newRefreshToken);
+        }
 
         // Update header and retry original request
         originalRequest.headers = originalRequest.headers || {};

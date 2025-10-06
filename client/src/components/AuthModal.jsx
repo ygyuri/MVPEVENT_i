@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { login, register, clearError } from '../store/slices/authSlice'
@@ -27,8 +27,14 @@ const AuthModal = ({ isOpen, onClose }) => {
   const { loading, error, isAuthenticated, user } = useSelector(state => state.auth)
   const { isDarkMode } = useTheme()
 
+  // Close modal after authentication without updating during render
+  useEffect(() => {
+    if (isAuthenticated && isOpen) {
+      onClose()
+    }
+  }, [isAuthenticated, isOpen, onClose])
+
   if (!isOpen) return null
-  if (isAuthenticated) { onClose(); return null }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -393,4 +399,4 @@ const AuthModal = ({ isOpen, onClose }) => {
   )
 }
 
-export default AuthModal 
+export default AuthModal;

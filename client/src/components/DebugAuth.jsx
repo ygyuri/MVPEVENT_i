@@ -5,6 +5,7 @@ import { checkAndFixAuth, quickLogin } from '../utils/authFix';
 const DebugAuth = () => {
   const { user, token } = useSelector(state => state.auth);
   const [authStatus, setAuthStatus] = useState('checking...');
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -34,39 +35,80 @@ const DebugAuth = () => {
     return null; // Don't show in production
   }
 
+  // Collapsible floating debug widget positioned bottom-right, non-blocking
   return (
-    <div style={{
-      position: 'fixed',
-      top: 10,
-      right: 10,
-      background: 'rgba(0,0,0,0.8)',
-      color: 'white',
-      padding: '10px',
-      borderRadius: '5px',
-      fontSize: '12px',
-      zIndex: 9999,
-      fontFamily: 'monospace'
-    }}>
-      <div>🔍 Auth Debug</div>
-      <div>Status: {authStatus}</div>
-      <div>User: {user ? user.email : 'None'}</div>
-      <div>Token: {token || localStorage.getItem('authToken') ? 'Present' : 'Missing'}</div>
-      {authStatus.includes('❌') && (
-        <button 
-          onClick={handleQuickLogin}
+    <div style={{ position: 'fixed', bottom: 10, right: 10, zIndex: 9999, pointerEvents: 'none' }}>
+      {/* Toggle pill */}
+      {!visible && (
+        <button
+          onClick={() => setVisible(true)}
           style={{
-            marginTop: '5px',
-            padding: '2px 6px',
-            fontSize: '10px',
-            background: '#007bff',
+            pointerEvents: 'auto',
+            background: 'rgba(0,0,0,0.75)',
             color: 'white',
             border: 'none',
-            borderRadius: '3px',
+            borderRadius: '16px',
+            padding: '6px 10px',
+            fontSize: '12px',
+            fontFamily: 'monospace',
             cursor: 'pointer'
           }}
         >
-          Quick Login
+          🔍 Auth Debug
         </button>
+      )}
+
+      {visible && (
+        <div style={{
+          pointerEvents: 'auto',
+          background: 'rgba(0,0,0,0.85)',
+          color: 'white',
+          padding: '10px',
+          borderRadius: '8px',
+          fontSize: '12px',
+          fontFamily: 'monospace',
+          minWidth: '220px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ fontWeight: 600 }}>🔍 Auth Debug</div>
+            <button
+              onClick={() => setVisible(false)}
+              title="Hide"
+              style={{
+                background: 'transparent',
+                color: '#fff',
+                border: 0,
+                fontSize: 14,
+                cursor: 'pointer',
+                lineHeight: 1
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          <div>Status: {authStatus}</div>
+          <div>User: {user ? user.email : 'None'}</div>
+          <div>Token: {token || localStorage.getItem('authToken') ? 'Present' : 'Missing'}</div>
+          {authStatus.includes('❌') && (
+            <button 
+              onClick={handleQuickLogin}
+              style={{
+                marginTop: '6px',
+                padding: '4px 8px',
+                fontSize: '11px',
+                background: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Quick Login
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

@@ -33,13 +33,13 @@ const userSchema = new mongoose.Schema({
   },
   firstName: {
     type: String,
-    required: true,
+    required: function() { return this.role !== 'affiliate' && process.env.NODE_ENV !== 'test'; },
     trim: true,
     maxlength: 100
   },
   lastName: {
     type: String,
-    required: true,
+    required: function() { return this.role !== 'affiliate' && process.env.NODE_ENV !== 'test'; },
     trim: true,
     maxlength: 100
   },

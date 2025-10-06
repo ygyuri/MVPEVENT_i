@@ -1,4 +1,4 @@
-import organizerSlice, {
+import organizerReducer, {
   clearError,
   setCurrentEvent,
   clearCurrentEvent,
@@ -24,40 +24,52 @@ import {
 } from '../store/slices/organizerSlice';
 
 describe('organizerSlice', () => {
-  const initialState = organizerSlice.getInitialState();
+  const initialState = organizerReducer(undefined, { type: '@@INIT' });
 
   it('should return the initial state', () => {
-    expect(organizerSlice.reducer(undefined, { type: 'unknown' })).toEqual(initialState);
+    expect(organizerReducer(undefined, { type: 'unknown' })).toEqual(initialState);
   });
 
   it('should handle clearError', () => {
     const stateWithError = { ...initialState, error: 'Some error' };
-    const actual = organizerSlice.reducer(stateWithError, clearError());
+    const actual = organizerReducer(stateWithError, clearError());
     expect(actual.error).toBeNull();
   });
 
   it('should handle setCurrentEvent', () => {
     const event = { _id: 'event1', title: 'Test Event' };
-    const actual = organizerSlice.reducer(initialState, setCurrentEvent(event));
+    const actual = organizerReducer(initialState, setCurrentEvent(event));
     expect(actual.currentEvent).toEqual(event);
   });
 
   it('should handle clearCurrentEvent', () => {
     const stateWithEvent = { ...initialState, currentEvent: { _id: 'event1' } };
-    const actual = organizerSlice.reducer(stateWithEvent, clearCurrentEvent());
+    const actual = organizerReducer(stateWithEvent, clearCurrentEvent());
     expect(actual.currentEvent).toBeNull();
   });
 
   it('should handle setFilters', () => {
     const filters = { status: 'published', search: 'test' };
-    const actual = organizerSlice.reducer(initialState, setFilters(filters));
-    expect(actual.filters).toEqual(filters);
+    const actual = organizerReducer(initialState, setFilters(filters));
+    // setFilters merges with existing filters
+    expect(actual.filters).toEqual({
+      status: 'published',
+      search: 'test',
+      sortBy: 'createdAt',
+      sortOrder: 'desc'
+    });
   });
 
   it('should handle clearFilters', () => {
     const stateWithFilters = { ...initialState, filters: { status: 'published' } };
-    const actual = organizerSlice.reducer(stateWithFilters, clearFilters());
-    expect(actual.filters).toEqual({});
+    const actual = organizerReducer(stateWithFilters, clearFilters());
+    // clearFilters resets to default filter state
+    expect(actual.filters).toEqual({
+      status: null,
+      search: '',
+      sortBy: 'createdAt',
+      sortOrder: 'desc'
+    });
   });
 
   it('should handle updateEventInList', () => {
@@ -66,9 +78,9 @@ describe('organizerSlice', () => {
       { _id: 'event2', title: 'Event 2' },
     ];
     const stateWithEvents = { ...initialState, events };
-    const updatedEvent = { _id: 'event1', title: 'Updated Event 1' };
-    const actual = organizerSlice.reducer(stateWithEvents, updateEventInList(updatedEvent));
-    expect(actual.events[0]).toEqual(updatedEvent);
+    const updates = { title: 'Updated Event 1' };
+    const actual = organizerReducer(stateWithEvents, updateEventInList({ eventId: 'event1', updates }));
+    expect(actual.events[0]).toEqual({ _id: 'event1', title: 'Updated Event 1' });
     expect(actual.events[1]).toEqual(events[1]);
   });
 
@@ -78,7 +90,7 @@ describe('organizerSlice', () => {
       { _id: 'event2', title: 'Event 2' },
     ];
     const stateWithEvents = { ...initialState, events };
-    const actual = organizerSlice.reducer(stateWithEvents, removeEventFromList('event1'));
+    const actual = organizerReducer(stateWithEvents, removeEventFromList('event1'));
     expect(actual.events).toHaveLength(1);
     expect(actual.events[0]._id).toBe('event2');
   });
@@ -87,19 +99,19 @@ describe('organizerSlice', () => {
     const events = [{ _id: 'event1', title: 'Event 1' }];
     const stateWithEvents = { ...initialState, events };
     const newEvent = { _id: 'event2', title: 'Event 2' };
-    const actual = organizerSlice.reducer(stateWithEvents, addEventToList(newEvent));
+    const actual = organizerReducer(stateWithEvents, addEventToList(newEvent));
     expect(actual.events).toHaveLength(2);
     expect(actual.events[0]).toEqual(newEvent);
   });
 
   it('should handle setLoading', () => {
-    const actual = organizerSlice.reducer(initialState, setLoading({ key: 'events', loading: true }));
+    const actual = organizerReducer(initialState, setLoading({ key: 'events', loading: true }));
     expect(actual.loading.events).toBe(true);
   });
 
   describe('async thunks', () => {
     it('should handle fetchMyEvents.pending', () => {
-      const actual = organizerSlice.reducer(initialState, fetchMyEvents.pending());
+      const actual = organizerReducer(initialState, fetchMyEvents.pending());
       expect(actual.loading.events).toBe(true);
       expect(actual.error).toBeNull();
     });
@@ -111,7 +123,7 @@ describe('organizerSlice', () => {
           pagination: { page: 1, totalPages: 1 },
         },
       };
-      const actual = organizerSlice.reducer(initialState, fetchMyEvents.fulfilled(mockResponse));
+      const actual = organizerReducer(initialState, fetchMyEvents.fulfilled(mockResponse));
       expect(actual.loading.events).toBe(false);
       expect(actual.events).toEqual(mockResponse.data.items);
       expect(actual.eventsPagination).toEqual(mockResponse.data.pagination);
@@ -119,13 +131,13 @@ describe('organizerSlice', () => {
 
     it('should handle fetchMyEvents.rejected', () => {
       const error = 'Failed to fetch events';
-      const actual = organizerSlice.reducer(initialState, fetchMyEvents.rejected(null, null, null, error));
+      const actual = organizerReducer(initialState, fetchMyEvents.rejected(null, null, null, error));
       expect(actual.loading.events).toBe(false);
       expect(actual.error).toBe(error);
     });
 
     it('should handle createEventDraft.pending', () => {
-      const actual = organizerSlice.reducer(initialState, createEventDraft.pending());
+      const actual = organizerReducer(initialState, createEventDraft.pending());
       expect(actual.loading.actions).toBe(true);
       expect(actual.error).toBeNull();
     });
@@ -135,7 +147,7 @@ describe('organizerSlice', () => {
         data: { id: 'event1', version: 1, updatedAt: '2025-01-01T00:00:00Z' },
       };
       const mockArg = { title: 'New Event' };
-      const actual = organizerSlice.reducer(
+      const actual = organizerReducer(
         initialState,
         createEventDraft.fulfilled(mockResponse, null, mockArg)
       );
@@ -149,7 +161,7 @@ describe('organizerSlice', () => {
       const events = [{ _id: 'event1', title: 'Event 1', version: 1 }];
       const stateWithEvents = { ...initialState, events };
       const mockResponse = { eventId: 'event1', data: { version: 2, updatedAt: '2025-01-01T00:00:00Z' } };
-      const actual = organizerSlice.reducer(stateWithEvents, updateEventDraft.fulfilled(mockResponse));
+      const actual = organizerReducer(stateWithEvents, updateEventDraft.fulfilled(mockResponse));
       expect(actual.events[0].version).toBe(2);
     });
 
@@ -157,7 +169,7 @@ describe('organizerSlice', () => {
       const events = [{ _id: 'event1', title: 'Event 1', status: 'draft' }];
       const stateWithEvents = { ...initialState, events };
       const mockResponse = { eventId: 'event1', data: { slug: 'event-1' } };
-      const actual = organizerSlice.reducer(stateWithEvents, publishEvent.fulfilled(mockResponse));
+      const actual = organizerReducer(stateWithEvents, publishEvent.fulfilled(mockResponse));
       expect(actual.events[0].status).toBe('published');
       expect(actual.events[0].slug).toBe('event-1');
     });
@@ -165,22 +177,22 @@ describe('organizerSlice', () => {
     it('should handle cancelEvent.fulfilled', () => {
       const events = [{ _id: 'event1', title: 'Event 1', status: 'published' }];
       const stateWithEvents = { ...initialState, events };
-      const mockResponse = { eventId: 'event1', data: {} };
-      const actual = organizerSlice.reducer(stateWithEvents, cancelEvent.fulfilled(mockResponse));
+      const mockResponse = { eventId: 'event1', data: { status: 'cancelled' } };
+      const actual = organizerReducer(stateWithEvents, cancelEvent.fulfilled(mockResponse));
       expect(actual.events[0].status).toBe('cancelled');
     });
 
     it('should handle unpublishEvent.fulfilled', () => {
       const events = [{ _id: 'event1', title: 'Event 1', status: 'published' }];
       const stateWithEvents = { ...initialState, events };
-      const mockResponse = { eventId: 'event1', data: { version: 2 } };
-      const actual = organizerSlice.reducer(stateWithEvents, unpublishEvent.fulfilled(mockResponse));
+      const mockResponse = { eventId: 'event1', data: { status: 'draft', version: 2 } };
+      const actual = organizerReducer(stateWithEvents, unpublishEvent.fulfilled(mockResponse));
       expect(actual.events[0].status).toBe('draft');
       expect(actual.events[0].version).toBe(2);
     });
 
     it('should handle cloneEvent.fulfilled', () => {
-      const actual = organizerSlice.reducer(initialState, cloneEvent.fulfilled({ data: { id: 'event2' } }));
+      const actual = organizerReducer(initialState, cloneEvent.fulfilled({ data: { id: 'event2' } }));
       expect(actual.loading.actions).toBe(false);
     });
 
@@ -188,20 +200,20 @@ describe('organizerSlice', () => {
       const events = [{ _id: 'event1', title: 'Event 1', ticketTypes: [] }];
       const stateWithEvents = { ...initialState, events };
       const mockResponse = { eventId: 'event1', ticketTypes: [{ name: 'VIP', price: 100 }] };
-      const actual = organizerSlice.reducer(stateWithEvents, updateTicketTypes.fulfilled(mockResponse));
+      const actual = organizerReducer(stateWithEvents, updateTicketTypes.fulfilled(mockResponse));
       expect(actual.events[0].ticketTypes).toEqual(mockResponse.ticketTypes);
     });
 
     it('should handle getEventDetails.fulfilled', () => {
       const mockEvent = { _id: 'event1', title: 'Event 1' };
-      const actual = organizerSlice.reducer(initialState, getEventDetails.fulfilled(mockEvent));
+      const actual = organizerReducer(initialState, getEventDetails.fulfilled(mockEvent));
       expect(actual.loading.currentEvent).toBe(false);
       expect(actual.currentEvent).toEqual(mockEvent);
     });
 
     it('should handle getOrganizerOverview.fulfilled', () => {
       const mockOverview = { totalEvents: 5, publishedEvents: 3 };
-      const actual = organizerSlice.reducer(initialState, getOrganizerOverview.fulfilled(mockOverview));
+      const actual = organizerReducer(initialState, getOrganizerOverview.fulfilled(mockOverview));
       expect(actual.loading.overview).toBe(false);
       expect(actual.overview).toEqual(mockOverview);
     });
@@ -213,7 +225,7 @@ describe('organizerSlice', () => {
       ];
       const stateWithEvents = { ...initialState, events, currentEvent: events[0] };
       const mockResponse = { eventId: 'event1' };
-      const actual = organizerSlice.reducer(stateWithEvents, deleteEvent.fulfilled(mockResponse));
+      const actual = organizerReducer(stateWithEvents, deleteEvent.fulfilled(mockResponse));
       expect(actual.events).toHaveLength(1);
       expect(actual.events[0]._id).toBe('event2');
       expect(actual.currentEvent).toBeNull();

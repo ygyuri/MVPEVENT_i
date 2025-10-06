@@ -19,6 +19,9 @@ import OrganizerDashboard from './pages/OrganizerDashboard';
 import EventCreate from './pages/EventCreate';
 import EventManagement from './pages/EventManagement';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
+import OrganizerCommissionSetup from './pages/OrganizerCommissionSetup';
+import AffiliateAnalytics from './pages/AffiliateAnalytics';
+import ReferralLinksManager from './pages/ReferralLinksManager';
 import UserPreferences from './pages/UserPreferences';
 import ReminderHistory from './pages/ReminderHistory';
 import PollsPage from './pages/PollsPage';
@@ -64,7 +67,10 @@ function App() {
                 <Route path="/organizer/events/create" element={<EventCreate />} />
                 <Route path="/organizer/events/:eventId/edit" element={<EventCreate />} />
                 <Route path="/organizer/events/:eventId/qr-settings" element={<EventQRSettings />} />
+                <Route path="/organizer/events/:eventId/commission-setup" element={<OrganizerCommissionSetup />} />
                 <Route path="/organizer/analytics" element={<AnalyticsDashboard />} />
+                <Route path="/affiliate-analytics" element={<AffiliateAnalytics />} />
+                <Route path="/affiliate/referral-links" element={<ReferralLinksManager />} />
                 <Route path="/preferences/reminders" element={<UserPreferences />} />
                 <Route path="/reminders/history" element={<ReminderHistory />} />
                 <Route path="/organizer/events/:eventId/updates" element={<OrganizerUpdatesDashboard />} />
@@ -85,4 +91,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

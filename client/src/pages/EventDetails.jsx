@@ -18,6 +18,7 @@ const EventDetails = () => {
   const { isDarkMode } = useTheme()
 
   const { currentEvent, tickets, loading, error } = useSelector((state) => state.events)
+  const { user } = useSelector((state) => state.auth)
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [quantity, setQuantity] = useState(1)
   const [addingToCart, setAddingToCart] = useState(false)
@@ -282,6 +283,15 @@ const EventDetails = () => {
                       >
                         Live Updates
                       </Link>
+                      {(user?.role === 'organizer' || user?._id === currentEvent.organizer?._id || user?.id === currentEvent.organizer?._id) && (
+                        <Link
+                          to={`/organizer/events/${currentEvent.id}/commission-setup`}
+                          className={`text-xs px-2 py-1 rounded-full ${isDarkMode ? 'bg-indigo-900/40 text-indigo-300 hover:bg-indigo-900/60' : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'} transition-colors`}
+                          title="Configure commissions for this event"
+                        >
+                          Commission Setup
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>

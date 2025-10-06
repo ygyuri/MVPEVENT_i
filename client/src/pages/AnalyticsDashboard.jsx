@@ -220,6 +220,23 @@ const AnalyticsDashboard = () => {
             </div>
             
             <div className="flex items-center space-x-4">
+              {/* Affiliate quick links */}
+              <div className="hidden sm:flex items-center space-x-2">
+                <a
+                  href="/affiliate-analytics"
+                  className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                  title="View Affiliate Analytics"
+                >
+                  Affiliate Analytics
+                </a>
+                <a
+                  href="/affiliate/referral-links"
+                  className="inline-flex items-center rounded-md bg-purple-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600"
+                  title="Manage Referral Links"
+                >
+                  Referral Links
+                </a>
+              </div>
               {/* Auto-refresh toggle */}
               <button
                 onClick={() => setAutoRefresh(!autoRefresh)}

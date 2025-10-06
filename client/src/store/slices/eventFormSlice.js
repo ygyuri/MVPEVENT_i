@@ -155,27 +155,43 @@ const eventFormSlice = createSlice({
     
     goToStep: (state, action) => {
       const step = action.payload;
-      if (step >= 1 && step <= state.totalSteps) {
-        state.currentStep = step;
-        
-        // Always save current step to metadata for persistence
-        state.formData.metadata = {
-          ...state.formData.metadata,
-          currentStep: step,
-          lastStepChange: Date.now()
-        };
-      }
+      // Clamp step between 1 and totalSteps
+      const clampedStep = Math.max(1, Math.min(step, state.totalSteps));
+      state.currentStep = clampedStep;
+      
+      // Always save current step to metadata for persistence
+      state.formData.metadata = {
+        ...state.formData.metadata,
+        currentStep: clampedStep,
+        lastStepChange: Date.now()
+      };
     },
     
     // Form data management
     updateFormData: (state, action) => {
-      const { field, value, step } = action.payload;
-      state.formData[field] = value;
-      state.isDirty = true;
+      // Support both single field update and batch update
+      const payload = action.payload;
       
-      // Mark step as modified for validation
-      if (step) {
-        state.validation.stepErrors[step] = null;
+      if (payload && typeof payload === 'object') {
+        // Check if it's a single field update (has 'field' and 'value')
+        if ('field' in payload && 'value' in payload) {
+          const { field, value, step } = payload;
+          state.formData[field] = value;
+          
+          // Mark step as modified for validation
+          if (step) {
+            state.validation.stepErrors[step] = null;
+          }
+        } else {
+          // Batch update: merge all top-level fields
+          Object.keys(payload).forEach(key => {
+            if (key !== 'step') {
+              state.formData[key] = payload[key];
+            }
+          });
+        }
+        
+        state.isDirty = true;
       }
     },
     
@@ -261,6 +277,11 @@ const eventFormSlice = createSlice({
         errors: {},
         stepErrors: {}
       };
+    },
+    
+    // Dirty state management
+    setDirty: (state, action) => {
+      state.isDirty = action.payload;
     },
     
     // Auto-save management
@@ -434,6 +455,7 @@ export const {
   setFormValidation,
   setStepValidation,
   clearValidation,
+  setDirty,
   setAutoSaveEnabled,
   setAutoSaveInterval,
   setLastSaved,

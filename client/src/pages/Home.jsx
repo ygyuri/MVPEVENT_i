@@ -4,6 +4,27 @@ import { motion } from 'framer-motion'
 import { fetchFeaturedEvents, fetchTrendingEvents, fetchSuggestedEvents } from '../store/slices/eventsSlice'
 import EventCard from '../components/EventCard'
 
+const EmptyList = ({ loading, text }) => {
+  if (loading) {
+    return (
+      <div className="min-h-[20vh] grid place-items-center">
+        <div className="flex items-center space-x-2 text-web3-secondary">
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-web3-accent opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-web3-accent" />
+          </span>
+          <span>Loading…</span>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="min-h-[20vh] grid place-items-center">
+      <p className="text-web3-secondary">{text}</p>
+    </div>
+  )
+}
+
 const Home = () => {
   const dispatch = useDispatch()
   const { featuredEvents, trendingEvents, suggestedEvents, loading } = useSelector(state => state.events)
@@ -101,27 +122,6 @@ const Home = () => {
           </div>
         </div>
       </section>
-    </div>
-  )
-}
-
-const EmptyList = ({ loading, text }) => {
-  if (loading) {
-    return (
-      <div className="min-h-[20vh] grid place-items-center">
-        <div className="flex items-center space-x-2 text-web3-secondary">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-web3-accent opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-web3-accent" />
-          </span>
-          <span>Loading…</span>
-        </div>
-      </div>
-    )
-  }
-  return (
-    <div className="min-h-[20vh] grid place-items-center">
-      <p className="text-web3-secondary">{text}</p>
     </div>
   )
 }

@@ -7,6 +7,7 @@ const Event = require('../models/Event');
 const EventStaff = require('../models/EventStaff');
 const ScanLog = require('../models/ScanLog');
 const ticketService = require('../services/ticketService');
+const conversionService = require('../services/conversionService');
 // Rate limiting
 const qrIssueLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -151,6 +152,8 @@ router.post('/scan', scanLimiter, verifyToken, requireRole(['organizer', 'admin'
     }
 
     await ScanLog.create({ ticketId: ticket._id, eventId: event?._id, scannedBy: req.user._id, location, result: 'success', device });
+    // Trigger conversion processing asynchronously for used tickets as well
+    try { conversionService.processConversion({ req, ticket }); } catch (e) {}
     res.json({
       success: true,
       valid: true,

@@ -30,11 +30,79 @@ class DatabaseIndexes {
       // Event collection indexes for analytics
       await this.createEventIndexes();
 
+      // Affiliate module indexes
+      await this.createAffiliateIndexes();
+
       this.indexesCreated = true;
       console.log('✅ Analytics indexes created successfully');
     } catch (error) {
       console.error('❌ Error creating analytics indexes:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Create indexes for Affiliate-related collections
+   */
+  async createAffiliateIndexes() {
+    const MarketingAgency = mongoose.model('MarketingAgency');
+    const AffiliateMarketer = mongoose.model('AffiliateMarketer');
+    const EventCommissionConfig = mongoose.model('EventCommissionConfig');
+    const ReferralLink = mongoose.model('ReferralLink');
+    const ReferralClick = mongoose.model('ReferralClick');
+    const ReferralConversion = mongoose.model('ReferralConversion');
+    const AffiliatePayout = mongoose.model('AffiliatePayout');
+    const AffiliatePerformanceCache = mongoose.model('AffiliatePerformanceCache');
+    const FraudDetectionLog = mongoose.model('FraudDetectionLog');
+
+    const indexOps = [
+      { model: MarketingAgency, index: { agency_email: 1 }, options: { unique: true } },
+      { model: MarketingAgency, index: { agency_type: 1, status: 1 } },
+      { model: MarketingAgency, index: { parent_agency_id: 1 } },
+
+      { model: AffiliateMarketer, index: { email: 1 }, options: { unique: true } },
+      { model: AffiliateMarketer, index: { referral_code: 1 }, options: { unique: true } },
+      { model: AffiliateMarketer, index: { agency_id: 1, status: 1 } },
+      { model: AffiliateMarketer, index: { parent_affiliate_id: 1 } },
+
+      { model: EventCommissionConfig, index: { event_id: 1 }, options: { unique: true } },
+      { model: EventCommissionConfig, index: { organizer_id: 1 } },
+
+      { model: ReferralLink, index: { referral_code: 1 }, options: { unique: true } },
+      { model: ReferralLink, index: { event_id: 1, status: 1 } },
+      { model: ReferralLink, index: { affiliate_id: 1 } },
+      { model: ReferralLink, index: { agency_id: 1 } },
+
+      { model: ReferralClick, index: { link_id: 1 } },
+      { model: ReferralClick, index: { visitor_id: 1 } },
+      { model: ReferralClick, index: { converted: 1, clicked_at: 1 } },
+      { model: ReferralClick, index: { event_id: 1, clicked_at: 1 } },
+
+      { model: ReferralConversion, index: { affiliate_id: 1, converted_at: 1 } },
+      { model: ReferralConversion, index: { agency_id: 1, converted_at: 1 } },
+      { model: ReferralConversion, index: { event_id: 1, converted_at: 1 } },
+      { model: ReferralConversion, index: { conversion_status: 1, affiliate_payout_status: 1 } },
+
+      { model: AffiliatePayout, index: { affiliate_id: 1, payout_status: 1 } },
+      { model: AffiliatePayout, index: { agency_id: 1, payout_status: 1 } },
+      { model: AffiliatePayout, index: { payout_status: 1, scheduled_at: 1 } },
+
+      { model: AffiliatePerformanceCache, index: { affiliate_id: 1, time_period: 1, period_start: 1 } },
+      { model: AffiliatePerformanceCache, index: { agency_id: 1, time_period: 1, period_start: 1 } },
+
+      { model: FraudDetectionLog, index: { affiliate_id: 1, severity: 1 } },
+      { model: FraudDetectionLog, index: { action_taken: 1, detected_at: 1 } }
+    ];
+
+    for (const { model, index, options } of indexOps) {
+      try {
+        await model.collection.createIndex(index, { background: true, ...(options || {}) });
+        console.log(`✅ Created ${model.modelName} index:`, index);
+      } catch (error) {
+        if (error.code !== 85) {
+          console.error(`❌ Error creating ${model.modelName} index:`, error);
+        }
+      }
     }
   }
 

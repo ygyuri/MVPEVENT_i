@@ -73,8 +73,8 @@ export const testAuth = {
   }
 };
 
-// Auto-login for development
-if (import.meta.env.DEV) {
+// Auto-login for development (only in browser environment)
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   // Check if we're on an organizer page
   const isOrganizerPage = window.location.pathname.includes('/organizer');
   

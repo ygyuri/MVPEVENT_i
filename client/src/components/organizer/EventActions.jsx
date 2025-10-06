@@ -92,10 +92,6 @@ const EventActions = ({
           variant: 'secondary',
           className: 'text-yellow-600 hover:text-yellow-700'
         });
-        break;
-        
-      case 'published':
-      case 'draft':
         actions.push({
           key: 'cancel',
           label: 'Cancel Event',

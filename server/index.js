@@ -19,6 +19,16 @@ require('./models/Reminder');
 require('./models/ReminderTemplate');
 require('./models/Poll');
 require('./models/PollVote');
+// Affiliate module models
+require('./models/MarketingAgency');
+require('./models/AffiliateMarketer');
+require('./models/EventCommissionConfig');
+require('./models/ReferralLink');
+require('./models/ReferralClick');
+require('./models/ReferralConversion');
+require('./models/AffiliatePayout');
+require('./models/AffiliatePerformanceCache');
+require('./models/FraudDetectionLog');
 
 // Inspect runtime schema to verify 'tags' type once models are loaded
 try {
@@ -71,6 +81,10 @@ if (process.env.NODE_ENV !== 'production') {
 }
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Click tracking middleware (before routes)
+const { logClickAndSetCookie, clickLimiter } = require('./middleware/referralTracking');
+app.use(clickLimiter);
+app.use(logClickAndSetCookie);
 
 // Make Socket.io available on req once it's initialized (set later)
 app.use((req, res, next) => {
@@ -134,6 +148,8 @@ app.use('/api/admin', adminRoutes);
 // Organizer routes (protected)
 const organizerRoutes = require('./routes/organizer');
 app.use('/api/organizer', organizerRoutes);
+const marketingAgenciesRoutes = require('./routes/marketing-agencies');
+app.use('/api/organizer', marketingAgenciesRoutes);
 
 // Analytics routes (protected)
 const analyticsRoutes = require('./routes/analytics');
@@ -142,6 +158,22 @@ app.use('/api/organizer/analytics', analyticsRoutes);
 // User routes (protected)
 const userRoutes = require('./routes/user');
 app.use('/api/user', userRoutes);
+
+// Affiliate routes
+const affiliatesRoutes = require('./routes/affiliates');
+app.use('/api', affiliatesRoutes);
+// Referral link routes
+const referralLinkRoutes = require('./routes/referral-links');
+app.use('/api', referralLinkRoutes);
+// Affiliate analytics routes
+const affiliatesAnalyticsRoutes = require('./routes/affiliates-analytics');
+app.use('/api', affiliatesAnalyticsRoutes);
+// Organizer affiliate analytics routes
+const organizerAffiliateAnalyticsRoutes = require('./routes/organizer-affiliate-analytics');
+app.use('/api', organizerAffiliateAnalyticsRoutes);
+// Payout routes
+const payoutRoutes = require('./routes/payouts');
+app.use('/api', payoutRoutes);
 
 // Order routes
 app.use('/api/orders', orderRoutes);
@@ -174,6 +206,10 @@ app.use('/api/push', pushRoutes);
 if (process.env.NODE_ENV !== 'production') {
   const debugAuthRoutes = require('./routes/debug-auth');
   app.use('/api/debug', debugAuthRoutes);
+
+  // Affiliate debug routes
+  const affiliateDebugRoutes = require('./routes/affiliate-debug');
+  app.use('/api/debug', affiliateDebugRoutes);
 }
 
 // Test routes
@@ -181,6 +217,9 @@ app.use('/api/test', testRoutes);
 
 // Event routes
 app.use('/api/events', eventRoutes);
+// Commission config routes (under /api)
+const commissionConfigRoutes = require('./routes/commission-config');
+app.use('/api', commissionConfigRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -235,6 +274,10 @@ if (process.env.NODE_ENV !== 'test') {
     const { startReminderScanner } = require('./services/scheduler/reminderScanner');
     startReminderScanner();
     console.log('⏰ Reminder scanner started (hourly)');
+    // Start performance cache refresher (every 15 minutes for today)
+    const { startScheduler } = require('./jobs/refreshPerformanceCache');
+    startScheduler();
+    console.log('📈 Affiliate performance cache refresher started (15 min)');
   } catch (e) {
     console.warn('⚠️ Failed to start reminder scanner:', e?.message);
   }
