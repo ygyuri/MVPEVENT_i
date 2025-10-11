@@ -568,6 +568,152 @@ router.post('/scan', scanLimiter, verifyToken, requireRole(['organizer', 'admin'
   }
 });
 
+/**
+ * POST /api/tickets/verify-by-number
+ * Verify ticket by ticket number (fallback when QR scanning fails)
+ * For organizers to manually verify attendees
+ */
+router.post('/verify-by-number', 
+  verifyToken, 
+  requireRole(['organizer', 'admin']),
+  [
+    body('ticketNumber').isString().trim().notEmpty().withMessage('Ticket number is required'),
+    body('eventId').optional().isMongoId().withMessage('Invalid event ID')
+  ],
+  async (req, res) => {
+    // Validation
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false, 
+        errors: errors.array() 
+      });
+    }
+
+    try {
+      const { ticketNumber, eventId } = req.body;
+      
+      // Find ticket by ticket number
+      const ticket = await Ticket.findOne({ ticketNumber })
+        .populate('eventId', 'title organizer dates location')
+        .populate('orderId', 'orderNumber customer payment')
+        .populate('ownerUserId', 'firstName lastName email');
+
+      if (!ticket) {
+        return res.status(404).json({
+          success: false,
+          valid: false,
+          code: 'TICKET_NOT_FOUND',
+          message: 'No ticket found with this number'
+        });
+      }
+
+      // Verify organizer has permission to check this ticket
+      const event = ticket.eventId;
+      const isOrganizer = event && String(event.organizer) === String(req.user._id);
+      const isAdmin = req.user.role === 'admin';
+      
+      // Check if user is event staff
+      let isEventStaff = false;
+      if (!isOrganizer && !isAdmin && event) {
+        const staff = await EventStaff.findOne({ 
+          eventId: event._id, 
+          userId: req.user._id, 
+          isActive: true 
+        });
+        isEventStaff = !!staff;
+      }
+
+      if (!isOrganizer && !isAdmin && !isEventStaff) {
+        return res.status(403).json({
+          success: false,
+          valid: false,
+          code: 'ACCESS_DENIED',
+          message: 'You do not have permission to verify tickets for this event'
+        });
+      }
+
+      // If eventId provided, verify it matches
+      if (eventId && String(ticket.eventId._id) !== eventId) {
+        return res.status(400).json({
+          success: false,
+          valid: false,
+          code: 'EVENT_MISMATCH',
+          message: 'Ticket does not belong to the specified event'
+        });
+      }
+
+      // Check ticket validity
+      const now = new Date();
+      const isActive = ticket.status === 'active';
+      const isUsed = ticket.status === 'used';
+      const isCancelled = ticket.status === 'cancelled';
+      const isRefunded = ticket.status === 'refunded';
+
+      // Check validity window
+      const validFrom = ticket.metadata?.validFrom;
+      const validUntil = ticket.metadata?.validUntil;
+      const isInValidityWindow = (!validFrom || now >= validFrom) && (!validUntil || now <= validUntil);
+
+      // Prepare response
+      const response = {
+        success: true,
+        valid: isActive && isInValidityWindow,
+        ticket: {
+          ticketNumber: ticket.ticketNumber,
+          ticketType: ticket.ticketType,
+          status: ticket.status,
+          holderName: `${ticket.holder.firstName} ${ticket.holder.lastName}`,
+          holderEmail: ticket.holder.email,
+          holderPhone: ticket.holder.phone,
+          price: ticket.price,
+          usedAt: ticket.usedAt,
+          usedBy: ticket.usedBy,
+          scanHistory: ticket.scanHistory?.length || 0
+        },
+        event: {
+          title: event.title,
+          startDate: event.dates?.startDate,
+          location: event.location?.venueName
+        },
+        order: {
+          orderNumber: ticket.orderId?.orderNumber,
+          paidAt: ticket.orderId?.payment?.paidAt
+        }
+      };
+
+      // Add status-specific information
+      if (isUsed) {
+        response.code = 'ALREADY_USED';
+        response.message = `Ticket already scanned on ${new Date(ticket.usedAt).toLocaleString('en-KE')}`;
+      } else if (isCancelled) {
+        response.code = 'CANCELLED';
+        response.message = 'This ticket has been cancelled';
+      } else if (isRefunded) {
+        response.code = 'REFUNDED';
+        response.message = 'This ticket has been refunded';
+      } else if (!isInValidityWindow) {
+        response.code = 'INVALID_TIME';
+        response.message = validFrom && now < validFrom 
+          ? 'Ticket is not yet valid' 
+          : 'Ticket has expired';
+      } else {
+        response.code = 'VALID';
+        response.message = 'Ticket is valid and ready to be scanned';
+      }
+
+      res.json(response);
+
+    } catch (error) {
+      console.error('❌ Ticket verification failed:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Ticket verification failed' 
+      });
+    }
+  }
+);
+
 module.exports = router;
 
 

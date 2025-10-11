@@ -5,11 +5,13 @@ const QRCode = require('qrcode');
 const payheroService = require('../services/payheroService');
 const emailService = require('../services/emailService');
 const enhancedEmailService = require('../services/enhancedEmailService');
+const mergedTicketReceiptService = require('../services/mergedTicketReceiptService');
 const orderStatusNotifier = require('../services/orderStatusNotifier');
 const payheroResultMapper = require('../services/payheroResultMapper');
 const Order = require('../models/Order');
 const Ticket = require('../models/Ticket');
 const User = require('../models/User');
+const Event = require('../models/Event');
 const ReferralClick = require('../models/ReferralClick');
 const ReferralConversion = require('../models/ReferralConversion');
 const EventCommissionConfig = require('../models/EventCommissionConfig');
@@ -463,24 +465,30 @@ router.post('/callback',
         }
       }
 
-      // ===== STEP 3: Send Enhanced Ticket Email with QR Codes =====
+      // ===== STEP 3: Send Merged Ticket + Receipt Email =====
+      // Combines ticket delivery with payment receipt to reduce email spam
       try {
         const tickets = await Ticket.find({ orderId: order._id })
           .populate('eventId', 'title dates location');
+        const event = await Event.findById(order.eventId);
 
-        await enhancedEmailService.sendEnhancedTicketEmail({
+        await mergedTicketReceiptService.sendTicketAndReceipt({
           order,
           tickets,
           customerEmail: order.customer.email,
-          customerName: `${order.customer.firstName} ${order.customer.lastName}`
+          customerName: `${order.customer.firstName} ${order.customer.lastName}`,
+          event
         });
 
-        console.log('✅ Enhanced ticket email sent successfully to:', order.customer.email);
+        console.log('✅ Merged ticket & receipt email sent successfully to:', order.customer.email);
       } catch (emailError) {
-        console.error('❌ Failed to send enhanced ticket email:', emailError);
-        // Fallback to regular email service
+        console.error('❌ Failed to send merged email, trying fallback...', emailError);
+        // Fallback to separate ticket email (without receipt)
         try {
-          await emailService.sendTicketEmail({
+          const tickets = await Ticket.find({ orderId: order._id })
+            .populate('eventId', 'title dates location');
+          
+          await enhancedEmailService.sendEnhancedTicketEmail({
             order,
             tickets,
             customerEmail: order.customer.email,
@@ -488,7 +496,7 @@ router.post('/callback',
           });
           console.log('✅ Fallback ticket email sent successfully to:', order.customer.email);
         } catch (fallbackError) {
-          console.error('❌ Failed to send fallback ticket email:', fallbackError);
+          console.error('❌ All email attempts failed:', fallbackError);
         }
       }
 
@@ -597,25 +605,11 @@ router.post('/callback',
         }
       }
 
-      // ===== STEP 5: Send Enhanced Payment Receipt =====
-      try {
-        await enhancedEmailService.sendEnhancedReceiptEmail({
-          order,
-          customerEmail: order.customer.email,
-          customerName: `${order.customer.firstName} ${order.customer.lastName}`,
-          event: order.eventId
-        });
-        console.log('✅ Enhanced payment receipt email sent successfully');
-      } catch (emailError) {
-        console.error('❌ Failed to send enhanced payment receipt:', emailError);
-        // Fallback to regular email service
-        try {
-          await emailService.sendPaymentReceipt(order, paymentInfo);
-          console.log('✅ Fallback payment receipt email sent successfully');
-        } catch (fallbackError) {
-          console.error('❌ Failed to send fallback payment receipt:', fallbackError);
-        }
-      }
+      // ===== Receipt email merged with ticket email in Step 3 =====
+      // This reduces email spam from 3 emails to 2 emails:
+      // 1. Welcome email (if new user)
+      // 2. Merged ticket + receipt email (always sent)
+      console.log('✅ Payment receipt included in merged ticket email');
     }
 
     // ========== END ENHANCED PROCESSING ==========
