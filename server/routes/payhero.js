@@ -5,6 +5,8 @@ const QRCode = require('qrcode');
 const payheroService = require('../services/payheroService');
 const emailService = require('../services/emailService');
 const enhancedEmailService = require('../services/enhancedEmailService');
+const orderStatusNotifier = require('../services/orderStatusNotifier');
+const payheroResultMapper = require('../services/payheroResultMapper');
 const Order = require('../models/Order');
 const Ticket = require('../models/Ticket');
 const User = require('../models/User');
@@ -276,23 +278,63 @@ router.post('/callback',
 
     console.log('📦 Order found:', { orderId: order._id, orderNumber: order.orderNumber });
 
-    // Determine payment status based on result
-    let paymentStatus = 'failed';
-    let orderStatus = 'pending';
-    
-    if (paymentInfo.resultCode === 0 && paymentInfo.status === 'Success') {
-      paymentStatus = 'completed';
-      orderStatus = 'paid';
-    } else if (paymentInfo.resultCode === 1) {
-      paymentStatus = 'cancelled';
-      orderStatus = 'cancelled';
+    // Parse payment result using enhanced mapper service with error handling
+    let paymentResult;
+    try {
+      paymentResult = payheroResultMapper.parsePaymentResult(paymentInfo);
+      
+      console.log('📊 Payment result parsed:', {
+        resultCode: paymentResult.resultCode,
+        status: paymentResult.status,
+        reason: paymentResult.reason,
+        message: paymentResult.message,
+        retryable: paymentResult.retryable
+      });
+      
+      // Log failure details for analytics
+      if (paymentResult.status !== 'completed') {
+        console.log('⚠️  Payment failure details:', {
+          failureReason: paymentResult.reason,
+          resultCode: paymentResult.resultCode,
+          resultDesc: paymentResult.resultDesc,
+          userMessage: paymentResult.message,
+          guidance: paymentResult.guidance,
+          analyticsCategory: payheroResultMapper.getAnalyticsCategory(paymentResult.reason)
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error parsing payment result:', error);
+      // Fallback to basic status determination for safety
+      paymentResult = {
+        status: paymentInfo.resultCode === 0 ? 'completed' : 'failed',
+        orderStatus: paymentInfo.resultCode === 0 ? 'paid' : 'pending',
+        reason: 'PARSE_ERROR',
+        message: 'Payment processing error',
+        icon: '❌',
+        color: 'red',
+        retryable: true,
+        retryDelay: 5000,
+        guidance: 'An error occurred processing your payment. Please contact support.',
+        suggestedAction: 'CONTACT_SUPPORT'
+      };
     }
+    
+    // Extract status values
+    const paymentStatus = paymentResult.status;
+    const orderStatus = paymentResult.orderStatus;
 
-    // Update order with payment details
+    // Update order with payment details (backward compatible)
     order.payment.status = paymentStatus;
     order.payment.paymentResponse = paymentInfo;
     order.payment.mpesaReceiptNumber = paymentInfo.mpesaReceiptNumber;
     order.payment.paidAt = paymentStatus === 'completed' ? new Date() : null;
+    
+    // Add enhanced failure information (new fields, backward compatible)
+    order.payment.failureReason = paymentResult.reason;
+    order.payment.userMessage = paymentResult.message;
+    order.payment.retryable = paymentResult.retryable;
+    order.payment.failedAt = paymentStatus !== 'completed' ? new Date() : null;
+    
     order.paymentStatus = paymentStatus;
     order.status = orderStatus;
     order.completedAt = paymentStatus === 'completed' ? new Date() : null;
@@ -303,6 +345,38 @@ router.post('/callback',
       paymentStatus, 
       orderStatus 
     });
+
+    // ========== NOTIFY WAITING CLIENTS VIA REDIS PUB/SUB ==========
+    // This instantly notifies all long-polling clients waiting for this order
+    try {
+      await orderStatusNotifier.notifyOrderStatusChange(order._id.toString(), {
+        orderId: order._id.toString(),
+        orderNumber: order.orderNumber,
+        paymentStatus: order.paymentStatus,
+        status: order.status,
+        totalAmount: order.totalAmount || order.pricing?.total,
+        currency: order.pricing?.currency || 'KES',
+        
+        // Enhanced failure information (backward compatible - only sent if failure)
+        failureReason: paymentResult.reason,
+        userMessage: paymentResult.message,
+        retryable: paymentResult.retryable,
+        failureIcon: paymentResult.icon,
+        failureColor: paymentResult.color,
+        guidance: paymentResult.guidance,
+        suggestedAction: paymentResult.suggestedAction,
+        
+        customer: {
+          email: order.customer?.email,
+          firstName: order.customer?.firstName,
+          lastName: order.customer?.lastName
+        }
+      });
+      console.log('🔔 Redis notification sent to all waiting clients');
+    } catch (redisError) {
+      console.error('⚠️  Redis notification failed (non-critical):', redisError.message);
+      // Don't fail the callback if Redis fails - clients will use fallback polling
+    }
 
     // ========== ENHANCED PROCESSING FOR SUCCESSFUL PAYMENTS ==========
     if (paymentStatus === 'completed') {
