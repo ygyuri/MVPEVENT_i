@@ -8,6 +8,8 @@ import DebugAuth from './components/DebugAuth';
 import Home from './pages/Home';
 import Events from './pages/Events';
 import EventDetails from './pages/EventDetails';
+import DirectCheckout from './pages/DirectCheckout';
+import PaymentStatus from './pages/PaymentStatus';
 import Checkout from './pages/Checkout';
 import AuthTest from './pages/AuthTest';
 import UserProfile from './pages/UserProfile';
@@ -55,6 +57,8 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/events" element={<Events />} />
                 <Route path="/events/:slug" element={<EventDetails />} />
+                <Route path="/events/:slug/checkout" element={<DirectCheckout />} />
+                <Route path="/payment/:orderId" element={<PaymentStatus />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/auth-test" element={<AuthTest />} />
                 <Route path="/profile" element={<UserProfile />} />

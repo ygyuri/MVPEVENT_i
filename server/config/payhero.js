@@ -19,7 +19,7 @@ const payheroConfig = {
   },
   
   // Payment Configuration
-  defaultChannelId: process.env.PAYHERO_CHANNEL_ID || '3424', // Your correct channel ID
+  defaultChannelId: process.env.PAYHERO_CHANNEL_ID || '3767', // Your correct channel ID
   provider: 'm-pesa', // or 'sasapay' for wallet payments
   networkCode: '63902', // MPESA network code
   

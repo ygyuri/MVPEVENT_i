@@ -384,4 +384,60 @@ router.post('/:orderId/refund', verifyToken, requireRole(['organizer', 'admin'])
   }
 });
 
+// Get order status (for payment status page - no auth required for direct checkout)
+router.get('/:orderId/status', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Find order by ID
+    const order = await Order.findById(orderId)
+      .select('orderNumber status paymentStatus payment customer items pricing totalAmount createdAt updatedAt')
+      .lean();
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found'
+      });
+    }
+
+    // Get ticket count
+    const Ticket = require('../models/Ticket');
+    const ticketCount = await Ticket.countDocuments({ orderId: order._id });
+
+    // Return order status with clean data
+    res.json({
+      success: true,
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      totalAmount: order.totalAmount || order.pricing?.total,
+      currency: order.pricing?.currency || 'KES',
+      ticketCount,
+      customer: {
+        email: order.customer?.email,
+        firstName: order.customer?.firstName,
+        lastName: order.customer?.lastName
+      },
+      payment: {
+        method: order.payment?.method || 'payhero',
+        status: order.payment?.status,
+        paymentReference: order.payment?.paymentReference,
+        checkoutRequestId: order.payment?.checkoutRequestId
+      },
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    });
+
+  } catch (error) {
+    console.error('Get order status error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get order status',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 module.exports = router;

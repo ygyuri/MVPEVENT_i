@@ -221,7 +221,7 @@ class OrderService {
           channel_id: channelId,
           provider: 'm-pesa',
           external_reference: order.orderNumber,
-          callback_url: `${process.env.BASE_URL || 'http://localhost:5000'}/api/payhero/webhook`
+          callback_url: process.env.PAYHERO_CALLBACK_URL || 'https://your-domain.com/api/payhero/callback'
         };
 
         const stkRes = await payheroService.makeStkPush(stkPayload);

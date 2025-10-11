@@ -1,9 +1,22 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
+const QRCode = require('qrcode');
 const payheroService = require('../services/payheroService');
 const emailService = require('../services/emailService');
+const enhancedEmailService = require('../services/enhancedEmailService');
 const Order = require('../models/Order');
+const Ticket = require('../models/Ticket');
+const User = require('../models/User');
+const ReferralClick = require('../models/ReferralClick');
+const ReferralConversion = require('../models/ReferralConversion');
+const EventCommissionConfig = require('../models/EventCommissionConfig');
 const { body, validationResult } = require('express-validator');
+const { 
+  logWebhookRequest, 
+  validateCallbackPayload, 
+  ensureIdempotency 
+} = require('../middleware/payheroSecurity');
 
 /**
  * @route GET /api/payhero/wallet-balance
@@ -88,7 +101,7 @@ router.post('/initiate-payment', [
       channelId: channelId,
       provider: provider || 'm-pesa',
       externalReference,
-      callbackUrl: `${process.env.BASE_URL || 'http://localhost:5000'}/api/payhero/callback`
+      callbackUrl: process.env.PAYHERO_CALLBACK_URL || 'https://your-domain.com/api/payhero/callback'
     };
 
     // Initiate payment with PAYHERO
@@ -229,68 +242,327 @@ router.post('/verify-payment', [
 
 /**
  * @route POST /api/payhero/callback
- * @desc Handle PAYHERO payment callback
+ * @desc Handle PAYHERO payment callback (ENHANCED for Direct Checkout)
  * @access Public (called by PAYHERO)
+ * 
+ * Security Middleware Applied:
+ * 1. logWebhookRequest - Audit logging
+ * 2. validateCallbackPayload - Structure validation
+ * 3. ensureIdempotency - Prevent duplicate processing
  */
-router.post('/callback', async (req, res) => {
+router.post('/callback', 
+  logWebhookRequest,
+  validateCallbackPayload,
+  ensureIdempotency,
+  async (req, res) => {
   try {
-    console.log('PAYHERO Callback received:', req.body);
+    console.log('🔔 PAYHERO Callback processing started:', new Date().toISOString());
 
     // Process callback data
     const paymentInfo = await payheroService.processCallback(req.body);
 
     // Find order by external reference
     const order = await Order.findOne({ 
-      paymentReference: paymentInfo.externalReference 
-    });
+      'payment.paymentReference': paymentInfo.externalReference 
+    }).populate('customer.userId');
 
     if (!order) {
-      console.error('Order not found for external reference:', paymentInfo.externalReference);
+      console.error('❌ Order not found for external reference:', paymentInfo.externalReference);
       return res.status(404).json({
         success: false,
         error: 'Order not found'
       });
     }
 
-    // Update order status based on payment result
+    console.log('📦 Order found:', { orderId: order._id, orderNumber: order.orderNumber });
+
+    // Determine payment status based on result
     let paymentStatus = 'failed';
+    let orderStatus = 'pending';
+    
     if (paymentInfo.resultCode === 0 && paymentInfo.status === 'Success') {
       paymentStatus = 'completed';
+      orderStatus = 'paid';
     } else if (paymentInfo.resultCode === 1) {
       paymentStatus = 'cancelled';
+      orderStatus = 'cancelled';
     }
 
-    // Update order
-    await Order.findByIdAndUpdate(order._id, {
-      paymentStatus,
-      paymentResponse: paymentInfo,
-      mpesaReceiptNumber: paymentInfo.mpesaReceiptNumber,
-      completedAt: paymentStatus === 'completed' ? new Date() : null
+    // Update order with payment details
+    order.payment.status = paymentStatus;
+    order.payment.paymentResponse = paymentInfo;
+    order.payment.mpesaReceiptNumber = paymentInfo.mpesaReceiptNumber;
+    order.payment.paidAt = paymentStatus === 'completed' ? new Date() : null;
+    order.paymentStatus = paymentStatus;
+    order.status = orderStatus;
+    order.completedAt = paymentStatus === 'completed' ? new Date() : null;
+
+    await order.save();
+
+    console.log(`✅ Order ${order._id} status updated:`, { 
+      paymentStatus, 
+      orderStatus 
     });
 
-    console.log(`Order ${order._id} payment status updated to: ${paymentStatus}`);
-
-    // Send email receipt if payment successful
+    // ========== ENHANCED PROCESSING FOR SUCCESSFUL PAYMENTS ==========
     if (paymentStatus === 'completed') {
+      
+      // ===== STEP 1: Generate QR Codes for All Tickets =====
       try {
-        await emailService.sendPaymentReceipt(order, paymentInfo);
-        console.log('Payment receipt email sent successfully');
+        const tickets = await Ticket.find({ orderId: order._id });
+        console.log(`🎫 Processing ${tickets.length} tickets for QR generation...`);
+
+        const QR_SECRET = process.env.QR_ENCRYPTION_SECRET || 'default-secret-change-in-production';
+
+        for (const ticket of tickets) {
+          // Generate encrypted QR code payload
+          const qrPayload = {
+            ticketId: ticket._id.toString(),
+            eventId: ticket.eventId.toString(),
+            userId: ticket.ownerUserId.toString(),
+            ticketNumber: ticket.ticketNumber,
+            timestamp: Date.now()
+          };
+
+          // Encrypt the payload using AES-256-CBC
+          const algorithm = 'aes-256-cbc';
+          const key = crypto.scryptSync(QR_SECRET, 'salt', 32);
+          const iv = crypto.randomBytes(16);
+          const cipher = crypto.createCipheriv(algorithm, key, iv);
+          
+          let encrypted = cipher.update(JSON.stringify(qrPayload), 'utf8', 'hex');
+          encrypted += cipher.final('hex');
+          
+          // Combine IV and encrypted data for decryption later
+          const encryptedQRData = iv.toString('hex') + ':' + encrypted;
+
+          // Generate QR code image as base64 data URL
+          const qrCodeDataURL = await QRCode.toDataURL(encryptedQRData, {
+            errorCorrectionLevel: 'H',
+            type: 'image/png',
+            width: 300,
+            margin: 2
+          });
+
+          // Update ticket with QR code data
+          ticket.qrCode = encryptedQRData;
+          ticket.qrCodeUrl = qrCodeDataURL; // Store base64 data URL (no cloud upload)
+          
+          // Set QR metadata for enhanced security
+          ticket.qr = {
+            nonce: crypto.randomBytes(16).toString('hex'),
+            issuedAt: new Date(),
+            expiresAt: ticket.metadata?.validUntil || null,
+            signature: crypto.createHmac('sha256', QR_SECRET)
+              .update(encryptedQRData)
+              .digest('hex')
+          };
+
+          await ticket.save();
+          console.log(`✅ QR code generated for ticket: ${ticket.ticketNumber}`);
+        }
+
+        console.log(`✅ All ${tickets.length} QR codes generated successfully`);
+
+      } catch (qrError) {
+        console.error('❌ QR code generation failed:', qrError);
+        // Don't fail the callback, but log the error
+      }
+
+      // ===== STEP 2: Handle New User Welcome Email =====
+      if (order.isGuestOrder && order.customer.userId) {
+        try {
+          const user = await User.findById(order.customer.userId).select('+tempPassword');
+          
+          if (user && user.accountStatus === 'pending_activation' && user.tempPassword) {
+            // Send welcome email with credentials
+            await emailService.sendAccountCreationEmail({
+              email: user.email,
+              firstName: user.firstName,
+              tempPassword: user.tempPassword,
+              orderNumber: order.orderNumber
+            });
+            console.log('✅ Welcome email sent to new user:', user.email);
+          }
+        } catch (emailError) {
+          console.error('❌ Failed to send welcome email:', emailError);
+        }
+      }
+
+      // ===== STEP 3: Send Enhanced Ticket Email with QR Codes =====
+      try {
+        const tickets = await Ticket.find({ orderId: order._id })
+          .populate('eventId', 'title dates location');
+
+        await enhancedEmailService.sendEnhancedTicketEmail({
+          order,
+          tickets,
+          customerEmail: order.customer.email,
+          customerName: `${order.customer.firstName} ${order.customer.lastName}`
+        });
+
+        console.log('✅ Enhanced ticket email sent successfully to:', order.customer.email);
       } catch (emailError) {
-        console.error('Failed to send payment receipt email:', emailError);
-        // Don't fail the callback if email fails
+        console.error('❌ Failed to send enhanced ticket email:', emailError);
+        // Fallback to regular email service
+        try {
+          await emailService.sendTicketEmail({
+            order,
+            tickets,
+            customerEmail: order.customer.email,
+            customerName: `${order.customer.firstName} ${order.customer.lastName}`
+          });
+          console.log('✅ Fallback ticket email sent successfully to:', order.customer.email);
+        } catch (fallbackError) {
+          console.error('❌ Failed to send fallback ticket email:', fallbackError);
+        }
+      }
+
+      // ===== STEP 4: Process Affiliate Conversion =====
+      if (order.hasAffiliateTracking()) {
+        try {
+          console.log('🤝 Processing affiliate conversion...');
+
+          const tickets = await Ticket.find({ orderId: order._id });
+          
+          // Find the most recent click for this affiliate/event/user
+          const referralClick = await ReferralClick.findOne({
+            affiliate_id: order.affiliateTracking.affiliateId,
+            event_id: tickets[0]?.eventId,
+            $or: [
+              { user_id: order.customer.userId },
+              { ip_address: order.metadata?.ipAddress }
+            ]
+          }).sort({ clicked_at: -1 });
+
+          if (referralClick) {
+            // Get commission configuration
+            const commissionConfig = await EventCommissionConfig.findOne({
+              event_id: tickets[0]?.eventId
+            });
+
+            // Calculate commissions for each ticket
+            for (const ticket of tickets) {
+              const ticketPrice = ticket.price || 0;
+              const platformFee = 0; // Could be calculated based on pricing
+              const organizerRevenue = ticketPrice;
+              
+              // Default commission rates (5% for affiliate, 3% for agency)
+              const affiliateRate = commissionConfig?.affiliate_commission_rate || 0.05;
+              const agencyRate = commissionConfig?.primary_agency_commission_rate || 0.03;
+              
+              const affiliateCommission = ticketPrice * affiliateRate;
+              const agencyCommission = ticketPrice * agencyRate;
+              const organizerNet = organizerRevenue - affiliateCommission - agencyCommission;
+
+              // Create conversion record
+              const conversion = await ReferralConversion.create({
+                click_id: referralClick._id,
+                link_id: referralClick.link_id,
+                event_id: ticket.eventId,
+                ticket_id: ticket._id,
+                affiliate_id: order.affiliateTracking.affiliateId,
+                agency_id: referralClick.agency_id,
+                attribution_model_used: 'last_click',
+                customer_id: order.customer.userId,
+                customer_email: order.customer.email,
+                ticket_price: ticketPrice,
+                platform_fee: platformFee,
+                organizer_revenue: organizerRevenue,
+                primary_agency_commission: agencyCommission,
+                affiliate_commission: affiliateCommission,
+                tier_2_affiliate_commission: 0,
+                organizer_net: organizerNet,
+                commission_config_snapshot: commissionConfig || {},
+                calculation_breakdown: {
+                  ticketPrice,
+                  affiliateRate,
+                  agencyRate,
+                  affiliateCommission,
+                  agencyCommission,
+                  organizerNet
+                },
+                conversion_status: 'confirmed',
+                converted_at: new Date(),
+                confirmed_at: new Date()
+              });
+
+              console.log(`✅ Conversion created:`, {
+                conversionId: conversion._id,
+                ticketId: ticket._id,
+                affiliateCommission
+              });
+
+              // Update click record to mark as converted
+              await ReferralClick.updateOne(
+                { _id: referralClick._id },
+                { 
+                  converted: true,
+                  conversion_id: conversion._id
+                }
+              );
+            }
+
+            // Mark commission as calculated in order
+            const totalCommission = tickets.reduce((sum, ticket) => {
+              return sum + (ticket.price * (commissionConfig?.affiliate_commission_rate || 0.05));
+            }, 0);
+
+            order.markCommissionCalculated(totalCommission);
+            await order.save();
+
+            console.log(`✅ Affiliate conversion processing complete. Total commission: ${totalCommission}`);
+
+          } else {
+            console.log('⚠️ No referral click found for conversion tracking');
+          }
+
+        } catch (conversionError) {
+          console.error('❌ Affiliate conversion processing failed:', conversionError);
+          // Don't fail callback
+        }
+      }
+
+      // ===== STEP 5: Send Enhanced Payment Receipt =====
+      try {
+        await enhancedEmailService.sendEnhancedReceiptEmail({
+          order,
+          customerEmail: order.customer.email,
+          customerName: `${order.customer.firstName} ${order.customer.lastName}`,
+          event: order.eventId
+        });
+        console.log('✅ Enhanced payment receipt email sent successfully');
+      } catch (emailError) {
+        console.error('❌ Failed to send enhanced payment receipt:', emailError);
+        // Fallback to regular email service
+        try {
+          await emailService.sendPaymentReceipt(order, paymentInfo);
+          console.log('✅ Fallback payment receipt email sent successfully');
+        } catch (fallbackError) {
+          console.error('❌ Failed to send fallback payment receipt:', fallbackError);
+        }
       }
     }
 
+    // ========== END ENHANCED PROCESSING ==========
+
     res.json({
       success: true,
-      message: 'Callback processed successfully'
+      message: 'Callback processed successfully',
+      data: {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        paymentStatus,
+        orderStatus
+      }
     });
 
   } catch (error) {
-    console.error('Callback processing error:', error);
+    console.error('❌ Callback processing error:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to process callback'
+      error: 'Failed to process callback',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

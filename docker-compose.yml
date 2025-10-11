@@ -68,6 +68,12 @@ services:
       SMTP_PORT: 587
       SMTP_USER: nova7@ethereal.email
       SMTP_PASS: wHQmBVbbjdWPUX7vG4
+      PAYHERO_API_USERNAME: PqIKQQh87l08YeklB0lN
+      PAYHERO_API_PASSWORD: X4AH1KDf4826Cuh5oECT2lWto2zY5UdIMzErbSi0
+      PAYHERO_ACCOUNT_ID: "3140"
+      PAYHERO_BASIC_AUTH_TOKEN: Basic UHFJS1FRaDg3bDA4WWVrbEIwbE46WDRBSDFLRGY0ODI2Q3VoNW9FQ1QybFd0bzJ6WTVVZElNekVyYlNpMA==
+      PAYHERO_CHANNEL_ID: "3767"
+      PAYHERO_CALLBACK_URL: https://125fb8a73e04.ngrok-free.app/api/payhero/callback
     ports:
       - "5000:5000"
     depends_on:
