@@ -465,39 +465,29 @@ router.post('/callback',
         }
       }
 
-      // ===== STEP 3: Send Merged Ticket + Receipt Email =====
-      // Combines ticket delivery with payment receipt to reduce email spam
+      // ===== STEP 3: Send Ticket Email with Payment Receipt =====
+      // Send single comprehensive email with tickets and receipt
       try {
+        // Fetch tickets with populated event data
         const tickets = await Ticket.find({ orderId: order._id })
           .populate('eventId', 'title dates location');
+        
+        // Fetch full event data
         const event = await Event.findById(order.eventId);
 
-        await mergedTicketReceiptService.sendTicketAndReceipt({
+        // Use existing emailService for reliability (it has working SMTP config)
+        // Send ticket email which now includes payment info
+        await emailService.sendTicketEmail({
           order,
           tickets,
           customerEmail: order.customer.email,
-          customerName: `${order.customer.firstName} ${order.customer.lastName}`,
-          event
+          customerName: `${order.customer.firstName} ${order.customer.lastName}`
         });
 
-        console.log('✅ Merged ticket & receipt email sent successfully to:', order.customer.email);
+        console.log('✅ Ticket email with payment receipt sent successfully to:', order.customer.email);
       } catch (emailError) {
-        console.error('❌ Failed to send merged email, trying fallback...', emailError);
-        // Fallback to separate ticket email (without receipt)
-        try {
-          const tickets = await Ticket.find({ orderId: order._id })
-            .populate('eventId', 'title dates location');
-          
-          await enhancedEmailService.sendEnhancedTicketEmail({
-            order,
-            tickets,
-            customerEmail: order.customer.email,
-            customerName: `${order.customer.firstName} ${order.customer.lastName}`
-          });
-          console.log('✅ Fallback ticket email sent successfully to:', order.customer.email);
-        } catch (fallbackError) {
-          console.error('❌ All email attempts failed:', fallbackError);
-        }
+        console.error('❌ Failed to send ticket email:', emailError);
+        // Log but don't fail callback - payment was successful
       }
 
       // ===== STEP 4: Process Affiliate Conversion =====

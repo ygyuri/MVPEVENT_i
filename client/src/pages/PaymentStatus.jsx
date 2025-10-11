@@ -112,12 +112,15 @@ const PaymentStatus = () => {
       <h1 className={`text-3xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
         Waiting for Payment
       </h1>
-      <p className={`text-lg mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-        Please check your phone and enter your M-PESA PIN
+      <p className={`text-lg mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+        Please check your phone for the M-PESA prompt
       </p>
-      <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-        <Loader2 className="w-4 h-4 animate-spin" />
-        <span>Checking payment status... ({pollingCount})</span>
+      <p className={`text-md mb-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+        Enter your M-PESA PIN to complete the payment
+      </p>
+      <div className="flex items-center justify-center gap-2">
+        <Loader2 className="w-5 h-5 animate-spin text-yellow-600 dark:text-yellow-400" />
+        <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Waiting for confirmation...</span>
       </div>
     </motion.div>
   );
@@ -134,12 +137,15 @@ const PaymentStatus = () => {
       <h1 className={`text-3xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
         Processing Payment
       </h1>
-      <p className={`text-lg mb-6 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-        Your payment is being confirmed...
+      <p className={`text-lg mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+        We received your M-PESA payment
       </p>
-      <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-        <Loader2 className="w-4 h-4 animate-spin" />
-        <span>Verifying payment... ({pollingCount})</span>
+      <p className={`text-md mb-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+        Confirming with M-PESA... This usually takes a few moments
+      </p>
+      <div className="flex flex-col items-center gap-3">
+        <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
+        <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Verifying your payment...</span>
       </div>
     </motion.div>
   );
@@ -507,16 +513,6 @@ const PaymentStatus = () => {
           {orderStatus?.paymentStatus === 'processing' && !error && <StatusProcessing key="processing" />}
           {(orderStatus?.paymentStatus === 'pending' || !orderStatus) && !error && <StatusPending key="pending" />}
         </AnimatePresence>
-
-        {/* Debug info (only in development) */}
-        {process.env.NODE_ENV === 'development' && orderStatus && (
-          <div className="mt-8 p-4 rounded-lg bg-gray-800 border border-gray-700 text-xs">
-            <h3 className="text-white font-semibold mb-2">Debug Info:</h3>
-            <pre className="text-gray-300 overflow-auto">
-              {JSON.stringify(orderStatus, null, 2)}
-            </pre>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -12,15 +12,44 @@ const QRCode = require('qrcode');
 
 class MergedTicketReceiptService {
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER || 'ethereal.user@ethereal.email',
-        pass: process.env.EMAIL_PASS || 'ethereal.pass'
-      }
-    });
+    // Use same email service configuration as main emailService for consistency
+    this.transporter = null;
+    this.initializeTransporter();
+  }
+
+  /**
+   * Initialize email transporter with proper configuration
+   * Uses same setup as emailService for consistency
+   */
+  async initializeTransporter() {
+    try {
+      // Get Ethereal test account (same as emailService)
+      const testAccount = await nodemailer.createTestAccount();
+      
+      this.transporter = nodemailer.createTransport({
+        host: testAccount.smtp.host,
+        port: testAccount.smtp.port,
+        secure: testAccount.smtp.secure,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass
+        }
+      });
+
+      console.log('✅ Merged email service transporter initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize email transporter:', error);
+      // Fallback to environment variables
+      this.transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        secure: false,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        }
+      });
+    }
   }
 
   /**
@@ -29,6 +58,10 @@ class MergedTicketReceiptService {
    */
   async sendTicketAndReceipt({ order, tickets, customerEmail, customerName, event }) {
     try {
+      // Ensure transporter is initialized
+      if (!this.transporter) {
+        await this.initializeTransporter();
+      }
       // Get app URL
       const appUrl = process.env.CLIENT_URL || 'http://localhost:3000';
       

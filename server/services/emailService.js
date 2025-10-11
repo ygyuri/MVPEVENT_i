@@ -1007,14 +1007,14 @@ class EmailService {
           <div class="content">
             <p>Hi ${customerName},</p>
             
-            <p>Great news! Your payment has been confirmed and your tickets are ready. We're excited to see you at the event!</p>
+            <p>Great news! Your payment has been confirmed and your tickets are ready.</p>
             
             <div class="info-box">
-              <p style="margin: 0;"><strong>📋 Order Summary</strong></p>
-              <p style="margin: 5px 0 0 0;">
-                ${tickets.length} ticket${tickets.length > 1 ? 's' : ''} • 
-                Total: ${order.pricing.currency} ${order.pricing.total}
-              </p>
+              <p style="margin: 0;"><strong>💳 Payment Confirmed</strong></p>
+              <p style="margin: 8px 0 0 0;">Order: <strong>${order.orderNumber}</strong></p>
+              ${order.payment?.mpesaReceiptNumber ? `<p style="margin: 5px 0 0 0;">M-PESA Receipt: <strong>${order.payment.mpesaReceiptNumber}</strong></p>` : ''}
+              <p style="margin: 5px 0 0 0;">Amount Paid: <strong>${order.pricing?.currency || 'KES'} ${order.totalAmount || order.pricing?.total}</strong></p>
+              <p style="margin: 5px 0 0 0;">Tickets: <strong>${tickets.length} × ${tickets[0]?.ticketType}</strong></p>
             </div>
             
             <h2 style="color: #667eea; margin-top: 30px;">Your Tickets</h2>
@@ -1022,31 +1022,32 @@ class EmailService {
             ${ticketRows}
             
             <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 30px 0; border-radius: 4px;">
-              <p style="margin: 0; font-weight: bold;">📱 Important Instructions</p>
+              <p style="margin: 0; font-weight: bold;">📱 How to Use Your Tickets</p>
               <ul style="margin: 10px 0; padding-left: 20px;">
+                <li><strong>Option 1:</strong> Show QR code at event entrance</li>
+                <li><strong>Option 2:</strong> If QR fails, provide your Ticket Number to organizer</li>
                 <li>Save this email or screenshot your QR codes</li>
-                <li>You can also access your tickets anytime from your account</li>
-                <li>Present the QR code at the event entrance for scanning</li>
-                <li>Each ticket can only be used once</li>
-                <li>Arrive early to avoid queues</li>
+                <li>Each ticket can only be scanned once</li>
               </ul>
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/my-tickets" class="btn">
-                View All My Tickets
+              <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/wallet" class="btn">
+                View My Tickets
               </a>
             </div>
             
-            <h3>Need Help?</h3>
-            <p>If you have any questions about your tickets or the event, please don't hesitate to contact us. We're here to help!</p>
-            
             <p>Have a fantastic time at the event! 🎊</p>
-            <p>The Event-i Team</p>
+            <p style="margin-top: 16px;">- The Event-i Team</p>
           </div>
           
           <div class="footer">
-            <p>This email contains your event tickets for order #${order.orderNumber}</p>
+            <div style="padding: 16px; background: rgba(58, 125, 255, 0.05); border-radius: 8px; display: inline-block; margin-bottom: 20px;">
+              <p style="margin: 4px 0;"><strong>Need Help?</strong></p>
+              <p style="margin: 4px 0;">📧 <a href="mailto:gideonyuri15@gmail.com" style="color: #3A7DFF; text-decoration: none; font-weight: 600;">gideonyuri15@gmail.com</a></p>
+              <p style="margin: 4px 0;">📱 <a href="tel:+254703328938" style="color: #3A7DFF; text-decoration: none; font-weight: 600;">+254 703 328 938</a></p>
+            </div>
+            <p style="margin-top: 20px;">Order #${order.orderNumber} • Payment receipt included above</p>
             <p>© ${new Date().getFullYear()} Event-i. All rights reserved.</p>
           </div>
         </div>
@@ -1057,7 +1058,7 @@ class EmailService {
       const mailOptions = {
         from: `"Event-i Tickets" <${process.env.SMTP_USER}>`,
         to: customerEmail,
-        subject: `🎫 Your Tickets Are Ready! (Order #${order.orderNumber})`,
+        subject: `🎫 Your Tickets & Receipt - Order #${order.orderNumber}`,
         html
       };
 
