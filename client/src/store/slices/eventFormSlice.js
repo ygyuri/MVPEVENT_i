@@ -43,7 +43,7 @@ const initialState = {
     pricing: {
       isFree: true,
       price: 0,
-      currency: 'USD'
+      currency: 'KES'
     },
     ticketTypes: [],
     

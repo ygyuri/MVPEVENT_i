@@ -97,8 +97,14 @@ const EventManagement = () => {
   
   // Single useEffect for initial load and filter changes
   useEffect(() => {
+    console.log('🔄 [EVENT MANAGEMENT] useEffect triggered', {
+      authLoading,
+      isAuthenticated,
+      user: user?.email,
+      role: user?.role
+    });
     fetchEventsData();
-  }, [fetchEventsData]);
+  }, [fetchEventsData, authLoading, isAuthenticated, user]);
 
   // Refresh data when user returns to dashboard (focus/visibility events)
   useEffect(() => {
@@ -154,14 +160,17 @@ const EventManagement = () => {
 
   // Filtered and sorted events
   const filteredEvents = useMemo(() => {
+    console.log('📊 [EVENT MANAGEMENT] Total events in state:', events.length);
+    console.log('📊 [EVENT MANAGEMENT] Events:', events);
+    
     let filtered = [...events];
     
     // Apply search filter
     if (debouncedSearch) {
       const searchLower = debouncedSearch.toLowerCase();
       filtered = filtered.filter(event => 
-        event.title.toLowerCase().includes(searchLower) ||
-        event.description.toLowerCase().includes(searchLower) ||
+        event.title?.toLowerCase().includes(searchLower) ||
+        event.description?.toLowerCase().includes(searchLower) ||
         event.location?.venueName?.toLowerCase().includes(searchLower)
       );
     }
@@ -169,6 +178,7 @@ const EventManagement = () => {
     // Apply status filter
     if (filters.status !== 'all') {
       filtered = filtered.filter(event => event.status === filters.status);
+      console.log(`🔍 [EVENT MANAGEMENT] Filtered by status '${filters.status}':`, filtered.length);
     }
     
     // Apply date range filter
@@ -192,6 +202,8 @@ const EventManagement = () => {
         }
       });
     }
+    
+    console.log('📊 [EVENT MANAGEMENT] Filtered events:', filtered.length);
     
     return filtered;
   }, [events, debouncedSearch, filters]);

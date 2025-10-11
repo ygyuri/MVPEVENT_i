@@ -392,63 +392,139 @@ router.get('/categories', async (req, res) => {
   }
 });
 
-// Get event by slug (cache)
-router.get('/:slug', optionalAuth, async (req, res) => {
+// ===== IMPORTANT: All routes with /:slug/* MUST be defined before the generic /:slug route =====
+
+// Direct checkout endpoint with affiliate tracking
+router.get('/:slug/checkout', optionalAuth, async (req, res) => {
   try {
     const { slug } = req.params;
-    const cacheKey = isProd ? `event:slug:${slug}` : null;
-    if (cacheKey) {
-      const cached = await cache.get(cacheKey);
-      if (cached) {
-        res.set('Cache-Control', 'public, max-age=120');
-        return res.json({ event: cached });
-      }
-    }
-
+    const { ref } = req.query; // Referral code from query param
+    
+    // Fetch event with ticket types
     const event = await Event.findOne({ slug, status: 'published' })
       .populate('organizer', 'firstName lastName username avatarUrl')
       .populate('category', 'name slug color icon')
-      .populate('tags', 'name')
+      .select('-__v')
       .lean();
 
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
-    const transformedEvent = {
-      id: event._id,
+    // Build response object
+    const response = {
+      event: {
+        id: event._id,
         title: event.title,
         slug: event.slug,
         description: event.description,
-      shortDescription: event.shortDescription,
-      venueName: event.location?.venueName,
-      address: event.location?.address,
-      city: event.location?.city,
-      state: event.location?.state,
-      country: event.location?.country,
-      startDate: event.dates?.startDate,
-      endDate: event.dates?.endDate,
+        shortDescription: event.shortDescription,
+        location: {
+          venueName: event.location?.venueName,
+          address: event.location?.address,
+          city: event.location?.city,
+          state: event.location?.state,
+          country: event.location?.country
+        },
+        dates: {
+          startDate: event.dates?.startDate,
+          endDate: event.dates?.endDate
+        },
         capacity: event.capacity,
-      currentAttendees: event.currentAttendees,
-      price: event.pricing?.price,
-      isFree: event.pricing?.isFree,
-      isFeatured: event.flags?.isFeatured,
-      isTrending: event.flags?.isTrending,
-      coverImageUrl: event.media?.coverImageUrl,
-      galleryUrls: event.media?.galleryUrls || [],
-      category: event.category ? { name: event.category.name, slug: event.category.slug, color: event.category.color, icon: event.category.icon } : null,
-      organizer: event.organizer ? { name: `${event.organizer.firstName} ${event.organizer.lastName}`, username: event.organizer.username, avatarUrl: event.organizer.avatarUrl } : null,
-      tags: event.tags?.map(tag => tag.name) || [],
-      createdAt: event.createdAt
+        currentAttendees: event.currentAttendees,
+        pricing: event.pricing,
+        coverImageUrl: event.media?.coverImageUrl,
+        ticketTypes: event.ticketTypes || [],
+        category: event.category ? {
+          name: event.category.name,
+          slug: event.category.slug,
+          color: event.category.color,
+          icon: event.category.icon
+        } : null,
+        organizer: event.organizer ? {
+          name: `${event.organizer.firstName} ${event.organizer.lastName}`,
+          username: event.organizer.username,
+          avatarUrl: event.organizer.avatarUrl
+        } : null
+      },
+      affiliateTracked: false,
+      referralCode: null
     };
 
-    if (cacheKey) await cache.set(cacheKey, transformedEvent, 120);
-    if (isProd) res.set('Cache-Control', 'public, max-age=120');
-    res.json({ event: transformedEvent });
+    // Handle affiliate tracking if referral code present
+    if (ref) {
+      const ReferralLink = require('../models/ReferralLink');
+      const ReferralClick = require('../models/ReferralClick');
+
+      // Validate referral code
+      const referralLink = await ReferralLink.findOne({
+        referral_code: ref.toUpperCase(),
+        event_id: event._id,
+        deleted_at: null
+      }).lean();
+
+      if (referralLink) {
+        // Check if link is active and not expired
+        const now = new Date();
+        const isActive = referralLink.status === 'active';
+        const isNotExpired = !referralLink.expires_at || referralLink.expires_at > now;
+        const hasUsesLeft = !referralLink.max_uses || referralLink.current_uses < referralLink.max_uses;
+
+        if (isActive && isNotExpired && hasUsesLeft) {
+          // Log the click
+          try {
+            // Generate visitor ID from IP + User Agent
+            const visitorId = require('crypto')
+              .createHash('md5')
+              .update(`${req.ip}-${req.get('user-agent') || 'unknown'}-${Date.now()}`)
+              .digest('hex')
+              .substring(0, 32);
+
+            // Extract device info from user agent (simple parsing)
+            const userAgent = req.get('user-agent') || '';
+            let deviceType = 'desktop';
+            if (/mobile/i.test(userAgent)) deviceType = 'mobile';
+            else if (/tablet|ipad/i.test(userAgent)) deviceType = 'tablet';
+
+            await ReferralClick.create({
+              link_id: referralLink._id,
+              event_id: event._id,
+              affiliate_id: referralLink.affiliate_id,
+              agency_id: referralLink.agency_id,
+              visitor_id: visitorId,
+              user_id: req.user?.id || null,
+              ip_address: req.ip,
+              user_agent: userAgent,
+              referrer_url: req.get('referer') || null,
+              landing_page_url: `${req.protocol}://${req.get('host')}${req.originalUrl}`,
+              device_type: deviceType,
+              clicked_at: new Date()
+            });
+
+            // Increment current_uses count
+            await ReferralLink.updateOne(
+              { _id: referralLink._id },
+              { $inc: { current_uses: 1 } }
+            );
+
+            // Update response to indicate successful tracking
+            response.affiliateTracked = true;
+            response.referralCode = referralLink.referral_code;
+
+          } catch (clickError) {
+            console.error('Error logging referral click:', clickError);
+            // Don't fail the request if click logging fails
+          }
+        }
+      }
+    }
+
+    // Don't cache this endpoint since it has dynamic affiliate tracking
+    res.json(response);
 
   } catch (error) {
-    console.error('Get event error:', error);
-    res.status(500).json({ error: 'Failed to fetch event' });
+    console.error('Get checkout event error:', error);
+    res.status(500).json({ error: 'Failed to fetch event for checkout' });
   }
 });
 
@@ -546,7 +622,65 @@ router.post('/:slug/purchase', async (req, res) => {
   }
 });
 
-module.exports = router; 
+// Get event by slug (cache)
+router.get('/:slug', optionalAuth, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const cacheKey = isProd ? `event:slug:${slug}` : null;
+    if (cacheKey) {
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        res.set('Cache-Control', 'public, max-age=120');
+        return res.json({ event: cached });
+      }
+    }
+
+    const event = await Event.findOne({ slug, status: 'published' })
+      .populate('organizer', 'firstName lastName username avatarUrl')
+      .populate('category', 'name slug color icon')
+      .populate('tags', 'name')
+      .lean();
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const transformedEvent = {
+      id: event._id,
+        title: event.title,
+        slug: event.slug,
+        description: event.description,
+      shortDescription: event.shortDescription,
+      venueName: event.location?.venueName,
+      address: event.location?.address,
+      city: event.location?.city,
+      state: event.location?.state,
+      country: event.location?.country,
+      startDate: event.dates?.startDate,
+      endDate: event.dates?.endDate,
+        capacity: event.capacity,
+      currentAttendees: event.currentAttendees,
+      price: event.pricing?.price,
+      isFree: event.pricing?.isFree,
+      isFeatured: event.flags?.isFeatured,
+      isTrending: event.flags?.isTrending,
+      coverImageUrl: event.media?.coverImageUrl,
+      galleryUrls: event.media?.galleryUrls || [],
+      category: event.category ? { name: event.category.name, slug: event.category.slug, color: event.category.color, icon: event.category.icon } : null,
+      organizer: event.organizer ? { name: `${event.organizer.firstName} ${event.organizer.lastName}`, username: event.organizer.username, avatarUrl: event.organizer.avatarUrl } : null,
+      tags: event.tags?.map(tag => tag.name) || [],
+      createdAt: event.createdAt
+    };
+
+    if (cacheKey) await cache.set(cacheKey, transformedEvent, 120);
+    if (isProd) res.set('Cache-Control', 'public, max-age=120');
+    res.json({ event: transformedEvent });
+
+  } catch (error) {
+    console.error('Get event error:', error);
+    res.status(500).json({ error: 'Failed to fetch event' });
+  }
+});
 
 // Organizer/admin: update per-event QR settings
 router.post('/settings/:eventId/qr', verifyToken, requireRole(['organizer', 'admin']), [
@@ -570,3 +704,5 @@ router.post('/settings/:eventId/qr', verifyToken, requireRole(['organizer', 'adm
     res.status(500).json({ success: false, error: 'Failed to update QR settings' });
   }
 });
+
+module.exports = router;

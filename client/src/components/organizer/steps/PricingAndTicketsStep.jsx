@@ -114,12 +114,12 @@ const PricingAndTicketsStep = () => {
   const handlePricingModeChange = (mode) => {
     setPricingMode(mode);
     
-    if (mode === 'simple') {
+      if (mode === 'simple') {
       // Convert ticket types to simple pricing
       if (ticketTypes.length > 0) {
         const firstTicket = ticketTypes[0];
         validateAndUpdatePricing('price', firstTicket.price || 0);
-        validateAndUpdatePricing('currency', firstTicket.currency || formData.pricing?.currency || 'USD');
+        validateAndUpdatePricing('currency', firstTicket.currency || formData.pricing?.currency || 'KES');
         validateAndUpdateField('capacity', firstTicket.quantity || formData.capacity);
         
         // Remove all ticket types except the first one
@@ -134,7 +134,7 @@ const PricingAndTicketsStep = () => {
           name: 'General Admission',
           price: formData.pricing.price,
           quantity: formData.capacity || 100,
-          currency: formData.pricing.currency || 'USD',
+          currency: formData.pricing.currency || 'KES',
           description: 'Standard event ticket'
         }));
       }
@@ -146,33 +146,37 @@ const PricingAndTicketsStep = () => {
   const totalRevenue = ticketUtils.calculateTotalRevenue(ticketTypes);
   const exceedsCapacity = formData.capacity && totalQuantity > formData.capacity;
 
-  // Quick ticket templates
+  // Quick ticket templates (KES pricing)
   const ticketTemplates = [
     { 
       name: 'General Admission', 
-      price: formData.pricing?.price || 25, 
+      price: formData.pricing?.price || 1500, 
       quantity: 100,
+      currency: formData.pricing?.currency || 'KES',
       icon: '🎫',
       description: 'Standard event access'
     },
     { 
       name: 'VIP', 
-      price: (formData.pricing?.price || 25) * 1.5, 
+      price: (formData.pricing?.price || 1500) * 2, 
       quantity: 20,
+      currency: formData.pricing?.currency || 'KES',
       icon: '👑',
       description: 'Premium access with perks'
     },
     { 
       name: 'Early Bird', 
-      price: (formData.pricing?.price || 25) * 0.8, 
+      price: (formData.pricing?.price || 1500) * 0.8, 
       quantity: 50,
+      currency: formData.pricing?.currency || 'KES',
       icon: '⚡',
       description: 'Limited time discount'
     },
     { 
       name: 'Student', 
-      price: (formData.pricing?.price || 25) * 0.6, 
+      price: (formData.pricing?.price || 1500) * 0.6, 
       quantity: 30,
+      currency: formData.pricing?.currency || 'KES',
       icon: '🎓',
       description: 'Student discount'
     }
@@ -433,7 +437,7 @@ const PricingAndTicketsStep = () => {
                     <div className="relative">
                       <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
                         <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-                          {currencyUtils.getCurrencySymbol(formData.pricing?.currency || 'USD')}
+                          {currencyUtils.getCurrencySymbol(formData.pricing?.currency || 'KES')}
                         </span>
                       </div>
                       <input
@@ -463,7 +467,7 @@ const PricingAndTicketsStep = () => {
                     <div className="relative">
                       <select
                         id="currency"
-                        value={formData.pricing?.currency || 'USD'}
+                        value={formData.pricing?.currency || 'KES'}
                         onChange={(e) => validateAndUpdatePricing('currency', e.target.value)}
                         onBlur={() => setTouched(prev => ({ ...prev, currency: true }))}
                         className="input-modern w-full"
@@ -629,9 +633,9 @@ const PricingAndTicketsStep = () => {
                               )}
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               {/* Ticket Name */}
-                              <div className="md:col-span-2">
+                              <div className="md:col-span-3">
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                   Ticket Name *
                                 </label>
@@ -656,7 +660,7 @@ const PricingAndTicketsStep = () => {
                                 <div className="relative">
                                   <div className="absolute left-4 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
                                     <span className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-                                      {currencyUtils.getCurrencySymbol(ticket.currency || formData.pricing?.currency || 'USD')}
+                                      {currencyUtils.getCurrencySymbol(ticket.currency || formData.pricing?.currency || 'KES')}
                                     </span>
                                   </div>
                                   <input
@@ -673,6 +677,34 @@ const PricingAndTicketsStep = () => {
                                     className="input-modern w-full"
                                     style={{ paddingLeft: '3rem', paddingRight: '1rem' }}
                                   />
+                                </div>
+                              </div>
+
+                              {/* Currency */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                  Currency *
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    value={ticket.currency || formData.pricing?.currency || 'KES'}
+                                    onChange={(e) => handleUpdateTicketType(index, 'currency', e.target.value)}
+                                    onBlur={() => {
+                                      setTouched(prev => ({ ...prev, [`ticketTypes.${index}.currency`]: true }));
+                                      dispatch(setBlurField(`ticketTypes.${index}.currency`));
+                                    }}
+                                    className="input-modern w-full appearance-none"
+                                    style={{ paddingRight: '3rem' }}
+                                  >
+                                    {currencyUtils.supportedCurrencies.map((currency) => (
+                                      <option key={currency.code} value={currency.code}>
+                                        {currency.code} - {currency.symbol}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                                    <Globe className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                                  </div>
                                 </div>
                               </div>
 
@@ -701,7 +733,7 @@ const PricingAndTicketsStep = () => {
                               </div>
 
                               {/* Description */}
-                              <div className="md:col-span-2">
+                              <div className="md:col-span-3">
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                   Description
                                   <span className="text-gray-500 dark:text-gray-400 ml-1">(Optional)</span>

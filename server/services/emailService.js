@@ -531,6 +531,394 @@ class EmailService {
 
     return this.transporter.sendMail(mailOptions);
   }
+
+  /**
+   * Send account creation email with temporary credentials
+   * For auto-created accounts during direct checkout
+   */
+  async sendAccountCreationEmail({ email, firstName, tempPassword, orderNumber }) {
+    try {
+      const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to Event-i</title>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 0; 
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: white; 
+          }
+          .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 40px 30px; 
+            text-align: center; 
+          }
+          .header h1 { 
+            margin: 0; 
+            font-size: 32px; 
+          }
+          .content { 
+            padding: 40px 30px; 
+          }
+          .credentials-box { 
+            background: #f8f9fa; 
+            border-left: 4px solid #667eea; 
+            padding: 20px; 
+            margin: 25px 0; 
+            border-radius: 4px;
+          }
+          .credentials-box h3 {
+            margin-top: 0;
+            color: #667eea;
+          }
+          .credential-item { 
+            margin: 15px 0; 
+            padding: 12px; 
+            background: white; 
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+          }
+          .credential-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .credential-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-top: 5px;
+          }
+          .btn { 
+            display: inline-block; 
+            padding: 14px 32px; 
+            background: #667eea; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 6px; 
+            font-weight: bold;
+            margin: 20px 0;
+          }
+          .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+          .steps {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+          }
+          .steps ol {
+            margin: 10px 0;
+            padding-left: 20px;
+          }
+          .steps li {
+            margin: 10px 0;
+          }
+          .footer { 
+            text-align: center; 
+            padding: 30px; 
+            color: #666; 
+            font-size: 14px; 
+            background: #f8f9fa;
+          }
+          .emoji {
+            font-size: 48px;
+            margin: 10px 0;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="emoji">🎉</div>
+            <h1>Welcome to Event-i!</h1>
+            <p>Your account has been created</p>
+          </div>
+          
+          <div class="content">
+            <p>Hi ${firstName},</p>
+            
+            <p>Great news! Your ticket purchase for order <strong>#${orderNumber}</strong> was successful, and we've automatically created an Event-i account for you.</p>
+            
+            <div class="credentials-box">
+              <h3>🔐 Your Login Credentials</h3>
+              <p>Use these credentials to access your tickets and manage your account:</p>
+              
+              <div class="credential-item">
+                <div class="credential-label">Email / Username</div>
+                <div class="credential-value">${email}</div>
+              </div>
+              
+              <div class="credential-item">
+                <div class="credential-label">Temporary Password</div>
+                <div class="credential-value">${tempPassword}</div>
+              </div>
+            </div>
+            
+            <div class="warning-box">
+              <strong>⚠️ Important Security Notice</strong>
+              <p style="margin: 10px 0 0 0;">This is a temporary password. You'll be prompted to change it when you first log in. Please keep these credentials secure and don't share them with anyone.</p>
+            </div>
+            
+            <div style="text-align: center;">
+              <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/login" class="btn">Login to Your Account</a>
+            </div>
+            
+            <div class="steps">
+              <h3>🚀 Next Steps</h3>
+              <ol>
+                <li><strong>Login:</strong> Click the button above to access your account</li>
+                <li><strong>Change Password:</strong> You'll be prompted to set a new, secure password</li>
+                <li><strong>View Tickets:</strong> Access your tickets with QR codes in the "My Tickets" section</li>
+                <li><strong>Complete Profile:</strong> Add more details to personalize your experience</li>
+              </ol>
+            </div>
+            
+            <h3>📱 Access Your Tickets</h3>
+            <p>Once logged in, you can:</p>
+            <ul>
+              <li>View and download your event tickets</li>
+              <li>Access QR codes for event entry</li>
+              <li>Receive event updates and reminders</li>
+              <li>Manage your profile and preferences</li>
+            </ul>
+            
+            <p><strong>Need Help?</strong></p>
+            <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
+            
+            <p>Welcome aboard! 🎊</p>
+            <p>The Event-i Team</p>
+          </div>
+          
+          <div class="footer">
+            <p>This email was sent because an account was created for ${email} on Event-i.</p>
+            <p>If you didn't make this purchase, please contact us immediately.</p>
+            <p>© ${new Date().getFullYear()} Event-i. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+      `;
+
+      const mailOptions = {
+        from: `"Event-i" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: `🎉 Welcome to Event-i - Your Account Credentials (Order #${orderNumber})`,
+        html
+      };
+
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log('✅ Account creation email sent:', result.messageId);
+      return result;
+    } catch (error) {
+      console.error('❌ Error sending account creation email:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send ticket email with QR codes after successful payment
+   */
+  async sendTicketEmail({ order, tickets, customerEmail, customerName }) {
+    try {
+      // Generate ticket HTML rows
+      const ticketRows = tickets.map((ticket, index) => {
+        const event = ticket.eventId;
+        const eventDate = event?.dates?.startDate 
+          ? new Date(event.dates.startDate).toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          : 'Date TBD';
+
+        return `
+          <div style="background: white; border: 2px solid #667eea; border-radius: 12px; padding: 25px; margin: 20px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+              <div>
+                <h3 style="margin: 0 0 10px 0; color: #667eea; font-size: 20px;">
+                  Ticket #${index + 1} - ${ticket.ticketNumber}
+                </h3>
+                <p style="margin: 0; font-size: 16px; font-weight: bold; color: #333;">
+                  ${event?.title || 'Event'}
+                </p>
+                <p style="margin: 5px 0; color: #666;">
+                  🎫 ${ticket.ticketType}
+                </p>
+              </div>
+              <div style="background: #4CAF50; color: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+                ${ticket.status.toUpperCase()}
+              </div>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+              <p style="margin: 5px 0; color: #666;"><strong>📅 Date:</strong> ${eventDate}</p>
+              <p style="margin: 5px 0; color: #666;"><strong>📍 Venue:</strong> ${event?.location?.venueName || 'TBD'}</p>
+              <p style="margin: 5px 0; color: #666;"><strong>🎫 Holder:</strong> ${ticket.holder.firstName} ${ticket.holder.lastName}</p>
+            </div>
+            
+            <div style="text-align: center; background: #f0f0f0; padding: 20px; border-radius: 8px;">
+              <p style="margin: 0 0 15px 0; font-weight: bold; color: #333;">Your Entry QR Code</p>
+              ${ticket.qrCodeUrl 
+                ? `<img src="${ticket.qrCodeUrl}" alt="QR Code" style="max-width: 250px; border: 3px solid #667eea; border-radius: 8px;" />`
+                : '<p style="color: #666;">QR Code will be available soon</p>'
+              }
+              <p style="margin: 15px 0 0 0; font-size: 12px; color: #666;">
+                Present this QR code at the event entrance
+              </p>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Your Event Tickets</title>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            margin: 0; 
+            padding: 0; 
+          }
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: white; 
+          }
+          .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 40px 30px; 
+            text-align: center; 
+          }
+          .content { 
+            padding: 40px 30px; 
+          }
+          .footer { 
+            text-align: center; 
+            padding: 30px; 
+            color: #666; 
+            font-size: 14px; 
+            background: #f8f9fa;
+          }
+          .btn { 
+            display: inline-block; 
+            padding: 14px 32px; 
+            background: #667eea; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 6px; 
+            font-weight: bold;
+            margin: 20px 0;
+          }
+          .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div style="font-size: 48px; margin: 10px 0;">🎉</div>
+            <h1 style="margin: 0;">Your Tickets Are Ready!</h1>
+            <p style="margin: 10px 0;">Order #${order.orderNumber}</p>
+          </div>
+          
+          <div class="content">
+            <p>Hi ${customerName},</p>
+            
+            <p>Great news! Your payment has been confirmed and your tickets are ready. We're excited to see you at the event!</p>
+            
+            <div class="info-box">
+              <p style="margin: 0;"><strong>📋 Order Summary</strong></p>
+              <p style="margin: 5px 0 0 0;">
+                ${tickets.length} ticket${tickets.length > 1 ? 's' : ''} • 
+                Total: ${order.pricing.currency} ${order.pricing.total}
+              </p>
+            </div>
+            
+            <h2 style="color: #667eea; margin-top: 30px;">Your Tickets</h2>
+            
+            ${ticketRows}
+            
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 30px 0; border-radius: 4px;">
+              <p style="margin: 0; font-weight: bold;">📱 Important Instructions</p>
+              <ul style="margin: 10px 0; padding-left: 20px;">
+                <li>Save this email or screenshot your QR codes</li>
+                <li>You can also access your tickets anytime from your account</li>
+                <li>Present the QR code at the event entrance for scanning</li>
+                <li>Each ticket can only be used once</li>
+                <li>Arrive early to avoid queues</li>
+              </ul>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/my-tickets" class="btn">
+                View All My Tickets
+              </a>
+            </div>
+            
+            <h3>Need Help?</h3>
+            <p>If you have any questions about your tickets or the event, please don't hesitate to contact us. We're here to help!</p>
+            
+            <p>Have a fantastic time at the event! 🎊</p>
+            <p>The Event-i Team</p>
+          </div>
+          
+          <div class="footer">
+            <p>This email contains your event tickets for order #${order.orderNumber}</p>
+            <p>© ${new Date().getFullYear()} Event-i. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+      `;
+
+      const mailOptions = {
+        from: `"Event-i Tickets" <${process.env.SMTP_USER}>`,
+        to: customerEmail,
+        subject: `🎫 Your Tickets Are Ready! (Order #${order.orderNumber})`,
+        html
+      };
+
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log('✅ Ticket email sent:', result.messageId);
+      return result;
+    } catch (error) {
+      console.error('❌ Error sending ticket email:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new EmailService();

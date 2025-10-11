@@ -13,6 +13,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: false // Optional for Web3 users
   },
+  tempPassword: {
+    type: String,
+    default: null,
+    select: false // Don't include in queries by default for security
+  },
+  passwordResetRequired: {
+    type: Boolean,
+    default: false // Set to true for auto-created accounts
+  },
   walletAddress: {
     type: String,
     validate: {
@@ -62,6 +71,11 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  accountStatus: {
+    type: String,
+    enum: ['pending_activation', 'active', 'suspended'],
+    default: 'active'
+  },
   profile: {
     phone: String,
     city: String,
@@ -79,6 +93,8 @@ const userSchema = new mongoose.Schema({
 // Additional indexes for performance
 userSchema.index({ walletAddress: 1 });
 userSchema.index({ role: 1, isActive: 1 });
+userSchema.index({ accountStatus: 1 }); // For filtering by account status
+userSchema.index({ email: 1, accountStatus: 1 }); // For login and account status checks
 
 // Virtual for full name
 userSchema.virtual('fullName').get(function() {
@@ -101,11 +117,33 @@ userSchema.methods.hasPassword = function() {
   return !!this.passwordHash;
 };
 
+// Temporary password methods for auto-created accounts
+userSchema.methods.setTempPassword = async function(plainPassword) {
+  if (!plainPassword) return;
+  // Store plain text temp password (will be sent via email)
+  this.tempPassword = plainPassword;
+  // Also set as actual password hash
+  await this.setPassword(plainPassword);
+  // Mark that password reset is required
+  this.passwordResetRequired = true;
+  // Set account status to pending activation
+  this.accountStatus = 'pending_activation';
+};
+
+userSchema.methods.clearTempPassword = function() {
+  this.tempPassword = null;
+  this.passwordResetRequired = false;
+  if (this.accountStatus === 'pending_activation') {
+    this.accountStatus = 'active';
+  }
+};
+
 // JSON serialization
 userSchema.set('toJSON', {
   virtuals: true,
   transform: function(doc, ret) {
     delete ret.passwordHash;
+    delete ret.tempPassword; // Never expose temp passwords in JSON
     return ret;
   }
 });

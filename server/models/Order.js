@@ -52,6 +52,13 @@ const orderSchema = new mongoose.Schema({
     default: false
   },
   
+  // Purchase source tracking
+  purchaseSource: {
+    type: String,
+    enum: ['direct_checkout', 'cart', 'admin'],
+    default: 'cart' // Backward compatibility with existing orders
+  },
+  
   // Order items (tickets)
   items: [{
     eventId: {
@@ -83,6 +90,32 @@ const orderSchema = new mongoose.Schema({
       min: 0
     }
   }],
+  
+  // Affiliate tracking (for referral commissions)
+  affiliateTracking: {
+    referralCode: {
+      type: String,
+      default: null,
+      trim: true,
+      uppercase: true
+    },
+    affiliateId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'AffiliateMarketer',
+      default: null
+    },
+    // Track if commission has been calculated
+    commissionCalculated: {
+      type: Boolean,
+      default: false
+    },
+    // Store commission amount for quick access
+    commissionAmount: {
+      type: Number,
+      default: 0,
+      min: 0
+    }
+  },
   
   // Pricing breakdown
   pricing: {
@@ -210,6 +243,10 @@ orderSchema.index({ status: 1 });
 orderSchema.index({ 'payment.status': 1 });
 orderSchema.index({ createdAt: 1 });
 orderSchema.index({ 'payment.mpesaTransactionId': 1 });
+orderSchema.index({ purchaseSource: 1 }); // For filtering by purchase type
+orderSchema.index({ 'affiliateTracking.referralCode': 1 }); // For referral lookups
+orderSchema.index({ 'affiliateTracking.affiliateId': 1, createdAt: -1 }); // For affiliate sales reports
+orderSchema.index({ 'affiliateTracking.affiliateId': 1, status: 1 }); // For commission calculations
 
 // Pre-save middleware to generate order number
 orderSchema.pre('save', function(next) {
@@ -220,6 +257,44 @@ orderSchema.pre('save', function(next) {
   }
   next();
 });
+
+// Helper methods for affiliate tracking
+orderSchema.methods.setAffiliateTracking = function(referralCode, affiliateId) {
+  if (!this.affiliateTracking) {
+    this.affiliateTracking = {};
+  }
+  this.affiliateTracking.referralCode = referralCode;
+  this.affiliateTracking.affiliateId = affiliateId;
+  this.affiliateTracking.commissionCalculated = false;
+  this.affiliateTracking.commissionAmount = 0;
+  return this;
+};
+
+orderSchema.methods.hasAffiliateTracking = function() {
+  return !!(this.affiliateTracking && 
+    (this.affiliateTracking.referralCode || this.affiliateTracking.affiliateId));
+};
+
+orderSchema.methods.markCommissionCalculated = function(amount) {
+  if (!this.affiliateTracking) {
+    this.affiliateTracking = {};
+  }
+  this.affiliateTracking.commissionCalculated = true;
+  this.affiliateTracking.commissionAmount = amount || 0;
+  return this;
+};
+
+// Helper method to check if order is from direct checkout
+orderSchema.methods.isDirectCheckout = function() {
+  return this.purchaseSource === 'direct_checkout';
+};
+
+// Helper method to check if order is eligible for commission
+orderSchema.methods.isEligibleForCommission = function() {
+  return this.hasAffiliateTracking() && 
+    (this.status === 'paid' || this.status === 'completed') &&
+    !this.affiliateTracking.commissionCalculated;
+};
 
 // Virtual for customer full name
 orderSchema.virtual('customer.fullName').get(function() {

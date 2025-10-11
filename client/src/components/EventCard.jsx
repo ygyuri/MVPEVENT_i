@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Heart, MapPin, Calendar, Users, Star, Zap, Wallet } from 'lucide-react'
+import { Heart, MapPin, Calendar, Star, Zap, Wallet } from 'lucide-react'
 import { cn } from '../utils/cn'
 import { useNavigate } from 'react-router-dom'
 import CategoryBadge from './CategoryBadge'
@@ -129,10 +129,6 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
             <MapPin className="w-4 h-4 mr-2 text-web3-accent" />
             <span>{event.venueName}, {event.city}, {event.state}</span>
           </div>
-          <div className="flex items-center text-sm text-web3-secondary">
-            <Users className="w-4 h-4 mr-2 text-web3-accent" />
-            <span>{event.currentAttendees || 0} attending</span>
-          </div>
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t border-web3-secondary-border">
@@ -152,11 +148,11 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
           <button
             onClick={(e) => {
               e.stopPropagation()
-              openDetails()
+              navigate(`/events/${event.slug}/checkout`)
             }}
             className="btn-web3-primary px-6 py-2 rounded-xl font-medium transition-all duration-200 transform hover:scale-105"
           >
-            View Details
+            Buy Tickets
           </button>
         </div>
       </div>
