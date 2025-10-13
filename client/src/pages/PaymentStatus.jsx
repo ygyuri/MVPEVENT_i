@@ -324,13 +324,13 @@ const PaymentStatus = () => {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <button
+        {/* <button
           onClick={() => navigate('/wallet')}
           className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
         >
           <Receipt className="w-5 h-5" />
           View My Tickets
-        </button>
+        </button> */}
         <button
           onClick={() => navigate('/events')}
           className={`px-6 py-3 rounded-lg font-semibold transition-all ${

@@ -10,10 +10,10 @@ const AuthModal = ({ isOpen, onClose }) => {
     email: '',
     password: '',
     confirmPassword: '',
-    username: '',
+    username: '', // Auto-generated from firstName + lastName
     firstName: '',
     lastName: '',
-    walletAddress: '',
+    walletAddress: '', // Hidden from UI
     role: 'customer'
   })
   const [showPassword, setShowPassword] = useState(false)
@@ -36,6 +36,14 @@ const AuthModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null
 
+  // Auto-generate username from firstName and lastName
+  const generateUsername = (firstName, lastName) => {
+    if (!firstName || !lastName) return ''
+    const base = `${firstName}${lastName}`.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const randomSuffix = Math.floor(Math.random() * 1000)
+    return `${base}${randomSuffix}`
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLocalError('')
@@ -46,7 +54,7 @@ const AuthModal = ({ isOpen, onClose }) => {
         const result = await dispatch(login({ email: formData.email, password: formData.password })).unwrap()
         console.log('✅ [AUTH MODAL] Login successful:', result.user);
         
-        setSuccessMessage('Welcome back! You have successfully signed in.')
+        setSuccessMessage('Signed in successfully.')
         
         // Close modal and navigate based on user role
         setTimeout(() => {
@@ -62,22 +70,31 @@ const AuthModal = ({ isOpen, onClose }) => {
           }
         }, 1500)
       } else {
-        if (!formData.firstName || !formData.lastName || !formData.username) {
-          setLocalError('Please fill in all required fields.');
+        // Validation
+        if (!formData.firstName || !formData.lastName) {
+          setLocalError('Please enter your first and last name.')
+          return
+        }
+        if (!formData.email) {
+          setLocalError('Please enter your email address.')
           return
         }
         if (formData.password.length < 8) {
-          setLocalError('Password must be at least 8 characters long.')
+          setLocalError('Password must be at least 8 characters.')
           return
         }
         if (formData.password !== formData.confirmPassword) {
           setLocalError('Passwords do not match.')
           return
         }
+        
+        // Auto-generate username
+        const generatedUsername = generateUsername(formData.firstName, formData.lastName)
+        
         const result = await dispatch(register({
           email: formData.email,
           password: formData.password,
-          username: formData.username,
+          username: generatedUsername,
           firstName: formData.firstName,
           lastName: formData.lastName,
           walletAddress: formData.walletAddress || undefined,
@@ -86,7 +103,7 @@ const AuthModal = ({ isOpen, onClose }) => {
         
         console.log('✅ [AUTH MODAL] Registration successful:', result.user);
         
-        setSuccessMessage(`🎉 Welcome to Event-i, ${formData.firstName}! Your account has been created successfully. You can now explore events and join the community!`)
+        setSuccessMessage(`Account created successfully. Redirecting...`)
         setIsNewUser(true)
         
         setTimeout(() => {
@@ -120,7 +137,14 @@ const AuthModal = ({ isOpen, onClose }) => {
     setIsNewUser(false)
     dispatch(clearError())
     setFormData({
-      email: '', password: '', confirmPassword: '', username: '', firstName: '', lastName: '', walletAddress: '', role: 'customer'
+      email: '', 
+      password: '', 
+      confirmPassword: '', 
+      username: '', 
+      firstName: '', 
+      lastName: '', 
+      walletAddress: '', 
+      role: 'customer'
     })
   }
 
@@ -198,23 +222,6 @@ const AuthModal = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* New User Welcome Message */}
-          {isNewUser && (
-            <div className={`mb-6 p-4 ${isDarkMode ? 'bg-blue-900/20 border-blue-800 text-blue-200' : 'bg-blue-50 border-blue-200 text-blue-800'} border rounded-xl`}>
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <svg className={`h-5 w-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium">
-                    🎯 <strong>Next Steps:</strong> Explore featured events, browse categories, and discover events that match your interests!
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {!isLogin && (
@@ -242,45 +249,6 @@ const AuthModal = ({ isOpen, onClose }) => {
                       required 
                       className={`w-full px-4 py-3 rounded-xl ${isDarkMode ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'} border focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200`} 
                       placeholder="Doe" 
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Username</label>
-                  <input 
-                    type="text" 
-                    name="username" 
-                    value={formData.username} 
-                    onChange={handleInputChange} 
-                    required 
-                    className="input-web3 w-full px-4 py-3 rounded-xl text-web3-primary placeholder-web3-cyan focus:outline-none focus:ring-2 focus:ring-primary-blue/20 transition-all duration-200" 
-                    placeholder="johndoe" 
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Role</label>
-                    <select 
-                      name="role" 
-                      value={formData.role} 
-                      onChange={handleInputChange} 
-                      className="input-web3 w-full px-4 py-3 rounded-xl text-web3-primary focus:outline-none focus:ring-2 focus:ring-primary-blue/20 transition-all duration-200"
-                    >
-                      <option value="customer">Customer</option>
-                      <option value="organizer">Organizer</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Wallet Address (Optional)</label>
-                    <input 
-                      type="text" 
-                      name="walletAddress" 
-                      value={formData.walletAddress} 
-                      onChange={handleInputChange} 
-                      className={`w-full px-4 py-3 rounded-xl ${isDarkMode ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'} border focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200`} 
-                      placeholder="0x..." 
                     />
                   </div>
                 </div>
