@@ -145,7 +145,6 @@ export const fetchExchangeRates = createAsyncThunk(
       if (currencyRequestCache.has(requestKey)) {
         const lastRequest = currencyRequestCache.get(requestKey);
         if (now - lastRequest < 30000) { // 30 seconds cache for currency
-          console.log('🚫 [CURRENCY API] Deduplicating request:', requestKey);
           return new Promise((resolve) => {
             // Return cached promise or wait for ongoing request
             setTimeout(() => {
@@ -157,22 +156,12 @@ export const fetchExchangeRates = createAsyncThunk(
       
       // Store request timestamp
       currencyRequestCache.set(requestKey, now);
-      
-      console.log('🔄 [CURRENCY API] Request:', {
-        url: requestKey,
-        timestamp: new Date().toISOString()
-      });
 
       const response = await fetch(CURRENCY_API_URL)
       const data = await response.json()
       
       // Store result in cache
       currencyRequestCache.set(requestKey + '_result', data.rates);
-      
-      console.log('✅ [CURRENCY API] Response:', {
-        status: response.status,
-        timestamp: new Date().toISOString()
-      });
 
       return data.rates
     } catch (error) {

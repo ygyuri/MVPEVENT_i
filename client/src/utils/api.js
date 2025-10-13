@@ -21,16 +21,6 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-// Debug logging for mobile access (only in browser environment)
-if (typeof window !== 'undefined') {
-  console.log('🌐 API Configuration:', {
-    hostname: window.location.hostname,
-    port: window.location.port,
-    apiUrl: API_BASE_URL,
-    isDev: import.meta.env.DEV
-  });
-}
-
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
