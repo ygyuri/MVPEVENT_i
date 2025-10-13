@@ -445,12 +445,17 @@ router.post('/callback',
         // Don't fail the callback, but log the error
       }
 
-      // ===== STEP 2: Handle New User Welcome Email =====
+      // ===== STEP 2: Handle New User Welcome Email (Idempotent) =====
       if (order.isGuestOrder && order.customer.userId) {
         try {
           const user = await User.findById(order.customer.userId).select('+tempPassword');
           
-          if (user && user.accountStatus === 'pending_activation' && user.tempPassword) {
+          // Idempotency check: Only send welcome email once
+          if (user && 
+              user.accountStatus === 'pending_activation' && 
+              user.tempPassword &&
+              !user.welcomeEmailSent) {
+            
             // Send welcome email with credentials
             await emailService.sendAccountCreationEmail({
               email: user.email,
@@ -458,7 +463,14 @@ router.post('/callback',
               tempPassword: user.tempPassword,
               orderNumber: order.orderNumber
             });
+            
+            // Mark welcome email as sent (idempotency flag)
+            user.welcomeEmailSent = true;
+            await user.save();
+            
             console.log('✅ Welcome email sent to new user:', user.email);
+          } else if (user?.welcomeEmailSent) {
+            console.log('ℹ️  Welcome email already sent to:', user.email);
           }
         } catch (emailError) {
           console.error('❌ Failed to send welcome email:', emailError);

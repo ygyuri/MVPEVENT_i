@@ -100,55 +100,170 @@ const PaymentStatus = () => {
   }, [orderId]);
 
   // Status display components
-  const StatusPending = () => (
-    <motion.div
-      initial={{ scale: 0 }}
-      animate={{ scale: 1 }}
-      className="text-center"
-    >
-      <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-yellow-100 dark:bg-yellow-900/20 mb-6">
-        <Clock className="w-12 h-12 text-yellow-600 dark:text-yellow-400 animate-pulse" />
-      </div>
-      <h1 className={`text-3xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-        Waiting for Payment
-      </h1>
-      <p className={`text-lg mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-        Please check your phone for the M-PESA prompt
-      </p>
-      <p className={`text-md mb-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-        Enter your M-PESA PIN to complete the payment
-      </p>
-      <div className="flex items-center justify-center gap-2">
-        <Loader2 className="w-5 h-5 animate-spin text-yellow-600 dark:text-yellow-400" />
-        <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Waiting for confirmation...</span>
-      </div>
-    </motion.div>
-  );
+  const StatusPending = () => {
+    // Payment journey steps
+    const steps = [
+      { icon: '📱', title: 'Check Your Phone', subtitle: 'M-PESA prompt sent', status: 'complete' },
+      { icon: '🔐', title: 'Enter Your PIN', subtitle: 'Complete the payment', status: 'current' },
+      { icon: '✅', title: 'Confirmation', subtitle: 'Receive your tickets', status: 'pending' }
+    ];
 
-  const StatusProcessing = () => (
-    <motion.div
-      initial={{ scale: 0 }}
-      animate={{ scale: 1 }}
-      className="text-center"
-    >
-      <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-blue-100 dark:bg-blue-900/20 mb-6">
-        <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin" />
-      </div>
-      <h1 className={`text-3xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-        Processing Payment
-      </h1>
-      <p className={`text-lg mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-        We received your M-PESA payment
-      </p>
-      <p className={`text-md mb-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-        Confirming with M-PESA... This usually takes a few moments
-      </p>
-      <div className="flex flex-col items-center gap-3">
-        <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
-        <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Verifying your payment...</span>
-      </div>
-    </motion.div>
-  );
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center max-w-2xl mx-auto"
+      >
+        {/* Main status */}
+        <div className="mb-8">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 mb-6 animate-pulse">
+            <Clock className="w-12 h-12 text-white" />
+          </div>
+          <h1 className={`text-3xl font-bold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            Waiting for Payment
+          </h1>
+          <p className={`text-lg mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            Check your phone for the M-PESA prompt
+          </p>
+          <p className={`text-md ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            Enter your PIN to complete the payment
+          </p>
+        </div>
+
+        {/* Progress Steps */}
+        <div className={`p-6 rounded-xl mb-6 ${
+          isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-gray-50 border border-gray-200'
+        }`}>
+          <h3 className={`text-sm font-semibold mb-4 text-left ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            Payment Process
+          </h3>
+          <div className="space-y-4">
+            {steps.map((step, index) => (
+              <div key={index} className="flex items-center gap-4">
+                <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
+                  step.status === 'complete' ? 'bg-green-100 dark:bg-green-900/20' :
+                  step.status === 'current' ? 'bg-yellow-100 dark:bg-yellow-900/20 animate-pulse' :
+                  'bg-gray-100 dark:bg-gray-800'
+                }`}>
+                  <span className="text-2xl">{step.icon}</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <div className={`font-semibold ${
+                    step.status === 'current' ? 'text-yellow-600 dark:text-yellow-400' :
+                    step.status === 'complete' ? 'text-green-600 dark:text-green-400' :
+                    isDarkMode ? 'text-gray-500' : 'text-gray-400'
+                  }`}>
+                    {step.title}
+                  </div>
+                  <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {step.subtitle}
+                  </div>
+                </div>
+                {step.status === 'current' && (
+                  <Loader2 className="w-5 h-5 animate-spin text-yellow-600 dark:text-yellow-400" />
+                )}
+                {step.status === 'complete' && (
+                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Helpful tip */}
+        <div className={`p-4 rounded-lg ${
+          isDarkMode ? 'bg-blue-900/20 border border-blue-500/30' : 'bg-blue-50 border border-blue-200'
+        }`}>
+          <p className={`text-sm ${isDarkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+            💡 <strong>Tip:</strong> The M-PESA prompt may take a few seconds to appear on your phone. Please wait and don't close this page.
+          </p>
+        </div>
+      </motion.div>
+    );
+  };
+
+  const StatusProcessing = () => {
+    // Payment confirmation steps
+    const steps = [
+      { icon: '📱', title: 'M-PESA Prompt Sent', subtitle: 'Delivered to your phone', status: 'complete' },
+      { icon: '🔐', title: 'PIN Entered', subtitle: 'Payment initiated', status: 'complete' },
+      { icon: '🔄', title: 'Confirming Payment', subtitle: 'Verifying with M-PESA', status: 'current' },
+      { icon: '✅', title: 'Tickets Ready', subtitle: 'Almost there...', status: 'pending' }
+    ];
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center max-w-2xl mx-auto"
+      >
+        {/* Main status */}
+        <div className="mb-8">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 mb-6">
+            <Loader2 className="w-12 h-12 text-white animate-spin" />
+          </div>
+          <h1 className={`text-3xl font-bold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+            Confirming Payment
+          </h1>
+          <p className={`text-lg mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            We received your M-PESA transaction
+          </p>
+          <p className={`text-md ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            Verifying with M-PESA... This usually takes 20-40 seconds
+          </p>
+        </div>
+
+        {/* Progress Steps */}
+        <div className={`p-6 rounded-xl mb-6 ${
+          isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-gray-50 border border-gray-200'
+        }`}>
+          <h3 className={`text-sm font-semibold mb-4 text-left ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            Verification Progress
+          </h3>
+          <div className="space-y-4">
+            {steps.map((step, index) => (
+              <div key={index} className="flex items-center gap-4">
+                <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
+                  step.status === 'complete' ? 'bg-green-100 dark:bg-green-900/20' :
+                  step.status === 'current' ? 'bg-blue-100 dark:bg-blue-900/20 animate-pulse' :
+                  'bg-gray-100 dark:bg-gray-800'
+                }`}>
+                  <span className="text-2xl">{step.icon}</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <div className={`font-semibold ${
+                    step.status === 'current' ? 'text-blue-600 dark:text-blue-400' :
+                    step.status === 'complete' ? 'text-green-600 dark:text-green-400' :
+                    isDarkMode ? 'text-gray-500' : 'text-gray-400'
+                  }`}>
+                    {step.title}
+                  </div>
+                  <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {step.subtitle}
+                  </div>
+                </div>
+                {step.status === 'current' && (
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400" />
+                )}
+                {step.status === 'complete' && (
+                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Reassurance */}
+        <div className={`p-4 rounded-lg ${
+          isDarkMode ? 'bg-green-900/20 border border-green-500/30' : 'bg-green-50 border border-green-200'
+        }`}>
+          <p className={`text-sm ${isDarkMode ? 'text-green-300' : 'text-green-700'}`}>
+            ✅ <strong>Payment initiated!</strong> We're just waiting for final confirmation from M-PESA.
+          </p>
+        </div>
+      </motion.div>
+    );
+  };
 
   const StatusSuccess = () => (
     <motion.div
