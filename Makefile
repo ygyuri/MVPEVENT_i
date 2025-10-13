@@ -16,18 +16,28 @@ help: ## Show this help message
 	@echo "  make status     # Check container status"
 	@echo "  make logs       # View container logs"
 
+# Create .env file from example if it doesn't exist
+setup-env: ## Create .env file from example
+	@if [ ! -f .env ]; then \
+		echo "📝 Creating .env file from env.example..."; \
+		cp env.example .env; \
+		echo "✅ .env file created. Please edit it with your configuration."; \
+	else \
+		echo "✅ .env file already exists"; \
+	fi
+
 # Development environment
-dev: domain-setup ## Start development environment with domain setup
+dev: setup-env domain-setup ## Start development environment with domain setup
 	@echo "🐳 Starting Event-i Development Environment..."
 	@./start-docker.sh
 
 # Production environment
-prod: domain-setup ## Start production environment with domain setup
+prod: setup-env domain-setup ## Start production environment with domain setup
 	@echo "🐳 Starting Event-i Production Environment..."
 	@./start-event-i-local.sh start
 
 # Start containers
-up: domain-setup ## Start all containers
+up: setup-env domain-setup ## Start all containers
 	@echo "🚀 Starting Event-i containers..."
 	@docker-compose up -d --build
 

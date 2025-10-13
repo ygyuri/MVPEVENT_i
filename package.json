@@ -14,6 +14,7 @@
     "docker:stop": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "docker:status": "docker-compose ps",
+    "env:setup": "cp env.example .env && echo '✅ .env file created from env.example'",
     "domain:setup": "./setup-local-domain.sh add",
     "domain:remove": "./setup-local-domain.sh remove",
     "domain:status": "./setup-local-domain.sh status",

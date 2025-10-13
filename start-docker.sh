@@ -2,6 +2,15 @@
 
 echo "🐳 Starting Docker Services for Event_i..."
 
+# Create .env file from example if it doesn't exist
+if [ ! -f .env ]; then
+    echo "📝 Creating .env file from env.example..."
+    cp env.example .env
+    echo "✅ .env file created. Please edit it with your configuration."
+else
+    echo "✅ .env file already exists"
+fi
+
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
     echo "❌ Docker is not running. Please start Docker Desktop first."

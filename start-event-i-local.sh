@@ -38,6 +38,15 @@ check_domain_configured() {
 start_event_i() {
     print_status "Starting Event-i production stack..."
     
+    # Create .env file from example if it doesn't exist
+    if [ ! -f .env ]; then
+        print_status "Creating .env file from env.example..."
+        cp env.example .env
+        print_success ".env file created. Please edit it with your configuration."
+    else
+        print_status ".env file already exists"
+    fi
+    
     # Start Docker containers
     docker-compose -f docker-compose.prod.yml up -d --build
     
