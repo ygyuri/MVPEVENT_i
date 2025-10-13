@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectCartItemCount } from '../store/slices/checkoutSlice';
-import { ShoppingCart, Menu, X, User, LogOut, Bell, Settings, BarChart3, Calendar } from 'lucide-react';
+import { Menu, X, User, LogOut, Bell, Settings, BarChart3, Calendar } from 'lucide-react';
 import { ThemeToggle, useTheme } from '../contexts/ThemeContext';
 import CurrencySelector from './CurrencySelector';
 import { logout } from '../store/slices/authSlice';
@@ -12,7 +11,6 @@ const Navbar = ({ onOpenAuthModal }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   
   const dispatch = useDispatch();
-  const cartItemCount = useSelector(selectCartItemCount);
   const { user, isAuthenticated } = useSelector(state => state.auth);
   const { isDarkMode } = useTheme();
 
@@ -81,26 +79,13 @@ const Navbar = ({ onOpenAuthModal }) => {
             </Link> */}
           </div>
 
-          {/* Right side - Cart, Theme Toggle, Currency Selector, User Menu */}
+          {/* Right side - Theme Toggle, Currency Selector, User Menu */}
           <div className="flex items-center space-x-4">
             {/* Theme Toggle */}
             <ThemeToggle size="default" />
             
             {/* Currency Selector */}
             <CurrencySelector className="hidden md:block" />
-            
-            {/* Cart */}
-            <Link 
-              to="/checkout" 
-              className="relative p-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200"
-            >
-              <ShoppingCart className="w-6 h-6" />
-              {cartItemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {cartItemCount}
-                </span>
-              )}
-            </Link>
 
             {/* Authentication Section */}
             {isAuthenticated ? (
@@ -270,13 +255,6 @@ const Navbar = ({ onOpenAuthModal }) => {
                   Scanner
                 </Link>
               )}
-              <Link 
-                to="/checkout" 
-                className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Cart ({cartItemCount})
-              </Link>
               {/* Mobile Reminder Links */}
               {isAuthenticated && (
                 <>

@@ -9,7 +9,6 @@ import Home from './pages/Home';
 import Events from './pages/Events';
 import DirectCheckout from './pages/DirectCheckout';
 import PaymentStatus from './pages/PaymentStatus';
-import Checkout from './pages/Checkout';
 import AuthTest from './pages/AuthTest';
 import UserProfile from './pages/UserProfile';
 import TicketWallet from './pages/TicketWallet';
@@ -57,7 +56,6 @@ function App() {
                 <Route path="/events" element={<Events />} />
                 <Route path="/events/:slug/checkout" element={<DirectCheckout />} />
                 <Route path="/payment/:orderId" element={<PaymentStatus />} />
-                <Route path="/checkout" element={<Checkout />} />
                 <Route path="/auth-test" element={<AuthTest />} />
                 <Route path="/profile" element={<UserProfile />} />
                 <Route path="/wallet" element={<TicketWallet />} />
