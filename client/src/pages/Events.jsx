@@ -21,12 +21,6 @@ const Events = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { events, categories, loading, error, meta } = useSelector(state => state.events)
-  
-  // Debug: Log events data
-  useEffect(() => {
-    console.log('Events page - events data:', events)
-    console.log('Events page - events count:', events?.length)
-  }, [events])
 
   const [searchParams, setSearchParams] = useState({
     page: 1,
@@ -47,14 +41,12 @@ const Events = () => {
 
   // Navigation handler for event cards - go directly to checkout
   const handleEventView = useCallback((slug) => {
-    console.log('EventCard clicked, navigating to checkout:', slug)
     navigate(`/events/${slug}/checkout`)
   }, [navigate])
 
   // Favorite handler (placeholder for future implementation)
   const handleEventFavorite = useCallback((eventId) => {
     // TODO: Implement favorite functionality
-    console.log('Favorite event:', eventId)
   }, [])
 
   useEffect(() => {

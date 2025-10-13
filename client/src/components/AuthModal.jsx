@@ -54,7 +54,6 @@ const AuthModal = ({ isOpen, onClose }) => {
     try {
       if (isLogin) {
         const result = await dispatch(login({ email: formData.email, password: formData.password })).unwrap()
-        console.log('✅ [AUTH MODAL] Login successful:', result.user);
         
         setSuccessMessage('Signed in successfully.')
         
@@ -64,10 +63,8 @@ const AuthModal = ({ isOpen, onClose }) => {
           
           // Navigate based on user role
           if (result.user.role === 'organizer') {
-            console.log('🔄 [AUTH MODAL] Redirecting organizer to dashboard');
             navigate('/organizer/dashboard');
           } else {
-            console.log('🔄 [AUTH MODAL] Redirecting customer to home');
             navigate('/');
           }
         }, 1500)
@@ -103,8 +100,6 @@ const AuthModal = ({ isOpen, onClose }) => {
           role: formData.role
         })).unwrap()
         
-        console.log('✅ [AUTH MODAL] Registration successful:', result.user);
-        
         setSuccessMessage(`Account created successfully. Redirecting...`)
         setIsNewUser(true)
         
@@ -113,10 +108,8 @@ const AuthModal = ({ isOpen, onClose }) => {
           
           // Navigate based on user role
           if (result.user.role === 'organizer') {
-            console.log('🔄 [AUTH MODAL] Redirecting new organizer to dashboard');
             navigate('/organizer/dashboard');
           } else {
-            console.log('🔄 [AUTH MODAL] Redirecting new customer to home');
             navigate('/');
           }
         }, 3000)

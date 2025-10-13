@@ -175,25 +175,15 @@ const checkoutSlice = createSlice({
   name: 'checkout',
   initialState,
   reducers: {
-    // Cart actions
+    // Cart actions (deprecated - kept for backward compatibility)
     addToCart: (state, action) => {
-      console.log('🛒 addToCart called with payload:', action.payload);
       const { eventId, eventTitle, ticketType, price, quantity = 1 } = action.payload;
-      
-      console.log('🛒 Extracted values:', {
-        eventId,
-        eventTitle,
-        ticketType,
-        price,
-        quantity
-      });
       
       const existingItem = state.cart.find(
         item => item.eventId === eventId && item.ticketType === ticketType
       );
       
       if (existingItem) {
-        console.log('🛒 Updating existing item:', existingItem);
         existingItem.quantity += quantity;
         existingItem.subtotal = existingItem.quantity * existingItem.unitPrice;
       } else {
@@ -205,7 +195,6 @@ const checkoutSlice = createSlice({
           quantity,
           subtotal: price * quantity,
         };
-        console.log('🛒 Adding new item to cart:', newItem);
         state.cart.push(newItem);
       }
       
@@ -214,13 +203,6 @@ const checkoutSlice = createSlice({
       
       // Save to localStorage
       saveToLocalStorage(state);
-      
-      // Debug logging
-      console.log('🛒 Cart updated:', {
-        cart: state.cart,
-        cartTotal: state.cartTotal,
-        action: action.payload
-      });
     },
     
     removeFromCart: (state, action) => {
@@ -332,23 +314,11 @@ const checkoutSlice = createSlice({
     
     // Validate and fix cart items
     validateCartItems: (state) => {
-      console.log('🔍 validateCartItems called with cart:', state.cart);
       const originalCartLength = state.cart.length;
       
       state.cart = state.cart.filter(item => {
-        console.log('🔍 Validating cart item:', item);
-        
         // Remove items without eventId or with invalid data
         if (!item.eventId || !item.eventTitle || !item.ticketType || !item.unitPrice) {
-          console.warn('❌ Removing invalid cart item:', {
-            item,
-            issues: {
-              eventId: !item.eventId,
-              eventTitle: !item.eventTitle,
-              ticketType: !item.ticketType,
-              unitPrice: !item.unitPrice
-            }
-          });
           return false;
         }
         
@@ -357,23 +327,14 @@ const checkoutSlice = createSlice({
           item.subtotal = item.unitPrice * item.quantity;
         }
         
-        console.log('✅ Cart item is valid:', item);
         return true;
       });
       
       // Recalculate totals
       state.cartTotal = state.cart.reduce((sum, item) => sum + (item.subtotal || 0), 0);
       
-      console.log('🔍 Cart validation result:', {
-        originalLength: originalCartLength,
-        newLength: state.cart.length,
-        cart: state.cart,
-        cartTotal: state.cartTotal
-      });
-      
       // Only save if cart changed
       if (state.cart.length !== originalCartLength) {
-        console.log('💾 Saving updated cart to localStorage');
         saveToLocalStorage(state);
       }
     },

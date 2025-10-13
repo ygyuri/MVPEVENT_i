@@ -4,7 +4,6 @@ import { useDispatch } from 'react-redux';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
-import DebugAuth from './components/DebugAuth';
 import Home from './pages/Home';
 import Events from './pages/Events';
 import DirectCheckout from './pages/DirectCheckout';
@@ -83,7 +82,6 @@ function App() {
               isOpen={isAuthModalOpen} 
               onClose={() => setIsAuthModalOpen(false)} 
             />
-            <DebugAuth />
           </div>
         </ThemeProvider>
       </ToastProvider>
