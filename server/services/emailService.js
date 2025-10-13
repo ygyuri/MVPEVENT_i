@@ -538,8 +538,8 @@ class EmailService {
    */
   async sendAccountCreationEmail({ email, firstName, tempPassword, orderNumber }) {
     try {
-      // Get app URL with fallback
-      const appUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+      // Get app URL from environment (matches production config)
+      const appUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || process.env.BASE_URL || 'http://localhost:3001';
       const loginUrl = `${appUrl}/login`;
       
       const html = `
@@ -572,22 +572,22 @@ class EmailService {
           .email-wrapper { 
             width: 100%; 
             background-color: #F2F4F7; 
-            padding: 40px 0;
+            padding: 20px 0;
           }
           .container { 
-            max-width: 600px; 
+            max-width: 560px; 
             margin: 0 auto; 
             background: #FFFFFF; 
-            border-radius: 12px;
+            border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
           }
           
           /* Header with brand colors */
           .header { 
             background: linear-gradient(135deg, #3A7DFF 0%, #8A4FFF 100%); 
             color: #FFFFFF; 
-            padding: 48px 32px; 
+            padding: 28px 24px; 
             text-align: center; 
           }
           .header-icon {
@@ -596,70 +596,67 @@ class EmailService {
             margin-bottom: 16px;
           }
           .header h1 { 
-            margin: 0 0 8px 0; 
-            font-size: 32px; 
+            margin: 0 0 6px 0; 
+            font-size: 24px; 
             font-weight: 700;
             letter-spacing: -0.5px;
           }
           .header p {
             margin: 0;
-            font-size: 18px;
-            opacity: 0.95;
+            font-size: 14px;
+            opacity: 0.9;
             font-weight: 400;
           }
           
           /* Content area */
           .content { 
-            padding: 40px 32px; 
+            padding: 24px 20px; 
           }
           .greeting {
-            font-size: 20px;
+            font-size: 16px;
             font-weight: 600;
             color: #1A1A1A;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
           }
           .intro-text {
-            font-size: 16px;
+            font-size: 14px;
             color: #4B4B4B;
-            margin-bottom: 32px;
-            line-height: 1.7;
+            margin-bottom: 20px;
+            line-height: 1.6;
           }
           
           /* Credentials box - Updated with brand colors */
           .credentials-box { 
             background: linear-gradient(135deg, rgba(58, 125, 255, 0.05) 0%, rgba(138, 79, 255, 0.05) 100%);
             border: 2px solid #3A7DFF;
-            border-radius: 12px;
-            padding: 24px; 
-            margin: 32px 0; 
+            border-radius: 8px;
+            padding: 16px; 
+            margin: 20px 0; 
           }
           .credentials-box h3 {
-            margin: 0 0 20px 0;
+            margin: 0 0 12px 0;
             color: #3A7DFF;
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
           }
           .credential-item { 
-            margin: 16px 0; 
-            padding: 16px; 
+            margin: 10px 0; 
+            padding: 12px; 
             background: #FFFFFF; 
-            border-radius: 8px;
+            border-radius: 6px;
             border: 1px solid #E5E7EB;
           }
           .credential-label {
-            font-size: 11px;
+            font-size: 10px;
             color: #6B7280;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 0.5px;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
           }
           .credential-value {
-            font-size: 18px;
-            font-weight: 700;
+            font-size: 14px;
+            font-weight: 600;
             color: #1A1A1A;
             font-family: 'Courier New', Courier, monospace;
             word-break: break-all;
@@ -668,18 +665,18 @@ class EmailService {
           /* CTA Button - Brand colors */
           .btn-container {
             text-align: center;
-            margin: 32px 0;
+            margin: 20px 0;
           }
           .btn { 
             display: inline-block; 
-            padding: 16px 40px; 
+            padding: 12px 28px; 
             background: linear-gradient(135deg, #3A7DFF 0%, #8A4FFF 100%);
             color: #FFFFFF; 
             text-decoration: none; 
-            border-radius: 8px; 
-            font-weight: 700;
-            font-size: 16px;
-            box-shadow: 0 4px 12px rgba(58, 125, 255, 0.3);
+            border-radius: 6px; 
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(58, 125, 255, 0.3);
             transition: all 0.3s ease;
           }
           .btn:hover {
@@ -690,77 +687,74 @@ class EmailService {
           /* Quick tips box */
           .tips-box {
             background: #F8FAFC;
-            border-left: 4px solid #16A34A;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 32px 0;
+            border-left: 3px solid #16A34A;
+            border-radius: 6px;
+            padding: 14px;
+            margin: 20px 0;
           }
           .tips-box h3 {
-            margin: 0 0 12px 0;
+            margin: 0 0 8px 0;
             color: #16A34A;
-            font-size: 16px;
+            font-size: 13px;
             font-weight: 700;
           }
           .tips-box ul {
             margin: 0;
-            padding-left: 20px;
+            padding-left: 18px;
           }
           .tips-box li {
-            margin: 8px 0;
+            margin: 6px 0;
             color: #4B4B4B;
-            font-size: 15px;
+            font-size: 13px;
           }
           
           /* Security notice - Subtle */
           .security-notice {
             background: rgba(245, 158, 11, 0.1);
             border: 1px solid rgba(245, 158, 11, 0.3);
-            border-radius: 8px;
-            padding: 16px;
-            margin: 24px 0;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 16px 0;
           }
           .security-notice-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 700;
+            font-weight: 600;
             color: #92400E;
-            font-size: 14px;
-            margin-bottom: 8px;
+            font-size: 12px;
+            margin-bottom: 6px;
           }
           .security-notice p {
             margin: 0;
-            font-size: 14px;
+            font-size: 12px;
             color: #78350F;
           }
           
           /* Footer - Brand colors */
           .footer { 
             background: linear-gradient(135deg, #F8FAFC 0%, #F2F4F7 100%);
-            padding: 32px; 
+            padding: 20px; 
             text-align: center;
           }
           .footer-content {
-            border-top: 2px solid #E5E7EB;
-            padding-top: 24px;
+            border-top: 1px solid #E5E7EB;
+            padding-top: 16px;
           }
           .footer p {
-            margin: 8px 0;
+            margin: 6px 0;
             color: #6B7280; 
-            font-size: 13px; 
-            line-height: 1.6;
+            font-size: 12px; 
+            line-height: 1.5;
           }
           .footer-contact {
-            margin-top: 20px;
-            padding: 16px;
+            margin-top: 12px;
+            padding: 12px;
             background: rgba(58, 125, 255, 0.05);
-            border-radius: 8px;
+            border-radius: 6px;
             display: inline-block;
           }
           .footer-contact p {
-            margin: 4px 0;
+            margin: 3px 0;
             color: #4B4B4B;
-            font-size: 13px;
+            font-size: 12px;
           }
           .footer-contact a {
             color: #3A7DFF;
@@ -768,18 +762,18 @@ class EmailService {
             font-weight: 600;
           }
           .footer-brand {
-            margin-top: 20px;
+            margin-top: 12px;
             font-weight: 600;
             color: #3A7DFF;
-            font-size: 16px;
+            font-size: 14px;
           }
           
           /* Responsive */
           @media only screen and (max-width: 600px) {
-            .content { padding: 24px 20px; }
-            .header { padding: 32px 20px; }
-            .header h1 { font-size: 28px; }
-            .btn { padding: 14px 32px; font-size: 15px; }
+            .content { padding: 20px 16px; }
+            .header { padding: 24px 16px; }
+            .header h1 { font-size: 20px; }
+            .btn { padding: 10px 20px; font-size: 13px; }
           }
         </style>
       </head>
@@ -899,32 +893,32 @@ class EmailService {
           : 'Date TBD';
 
         return `
-          <div style="background: white; border: 2px solid #667eea; border-radius: 8px; padding: 24px; margin: 20px 0;">
-            <div style="margin-bottom: 20px;">
-              <h3 style="margin: 0 0 8px 0; color: #333; font-size: 18px;">
+          <div style="background: white; border: 1px solid #667eea; border-radius: 6px; padding: 16px; margin: 12px 0;">
+            <div style="margin-bottom: 12px;">
+              <h3 style="margin: 0 0 4px 0; color: #333; font-size: 14px;">
                 ${ticket.ticketNumber}
               </h3>
-              <p style="margin: 0; font-size: 16px; font-weight: 600; color: #667eea;">
+              <p style="margin: 0; font-size: 14px; font-weight: 600; color: #667eea;">
                 ${event?.title || 'Event'}
               </p>
-              <p style="margin: 5px 0; color: #666; font-size: 14px;">
+              <p style="margin: 3px 0; color: #666; font-size: 12px;">
                 ${ticket.ticketType}
               </p>
             </div>
             
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-              <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Date:</strong> ${eventDate}</p>
-              <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Venue:</strong> ${event?.location?.venueName || 'TBD'}</p>
-              <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>Attendee:</strong> ${ticket.holder.firstName} ${ticket.holder.lastName}</p>
+            <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 12px;">
+              <p style="margin: 3px 0; color: #666; font-size: 12px;"><strong>Date:</strong> ${eventDate}</p>
+              <p style="margin: 3px 0; color: #666; font-size: 12px;"><strong>Venue:</strong> ${event?.location?.venueName || 'TBD'}</p>
+              <p style="margin: 3px 0; color: #666; font-size: 12px;"><strong>Attendee:</strong> ${ticket.holder.firstName} ${ticket.holder.lastName}</p>
             </div>
             
-            <div style="text-align: center; background: #fafafa; padding: 20px; border-radius: 6px;">
-              <p style="margin: 0 0 12px 0; font-weight: 600; color: #333; font-size: 14px;">Entry QR Code</p>
+            <div style="text-align: center; background: #fafafa; padding: 12px; border-radius: 4px;">
+              <p style="margin: 0 0 8px 0; font-weight: 600; color: #333; font-size: 12px;">Entry QR Code</p>
               ${ticket.qrCodeUrl 
-                ? `<img src="${ticket.qrCodeUrl}" alt="QR Code" style="max-width: 220px; border: 2px solid #667eea; border-radius: 6px;" />`
-                : '<p style="color: #666; font-size: 14px;">QR Code pending</p>'
+                ? `<img src="${ticket.qrCodeUrl}" alt="QR Code" style="max-width: 160px; border: 1px solid #667eea; border-radius: 4px;" />`
+                : '<p style="color: #666; font-size: 12px;">QR Code pending</p>'
               }
-              <p style="margin: 12px 0 0 0; font-size: 12px; color: #888;">
+              <p style="margin: 8px 0 0 0; font-size: 11px; color: #888;">
                 Show this code at the entrance
               </p>
             </div>
@@ -955,34 +949,35 @@ class EmailService {
           .header { 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
             color: white; 
-            padding: 40px 30px; 
+            padding: 24px 20px; 
             text-align: center; 
           }
           .content { 
-            padding: 40px 30px; 
+            padding: 24px 20px; 
           }
           .footer { 
             text-align: center; 
-            padding: 30px; 
+            padding: 20px; 
             color: #666; 
-            font-size: 14px; 
+            font-size: 12px; 
             background: #f8f9fa;
           }
           .btn { 
             display: inline-block; 
-            padding: 14px 32px; 
+            padding: 10px 24px; 
             background: #667eea; 
             color: white; 
             text-decoration: none; 
             border-radius: 6px; 
-            font-weight: bold;
-            margin: 20px 0;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 16px 0;
           }
           .info-box {
             background: #e3f2fd;
-            border-left: 4px solid #2196f3;
-            padding: 15px;
-            margin: 20px 0;
+            border-left: 3px solid #2196f3;
+            padding: 12px;
+            margin: 16px 0;
             border-radius: 4px;
           }
         </style>
@@ -990,54 +985,53 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <h1 style="margin: 0;">Event Tickets</h1>
-            <p style="margin: 10px 0;">Order #${order.orderNumber}</p>
+            <h1 style="margin: 0; font-size: 22px;">Event Tickets</h1>
+            <p style="margin: 6px 0; font-size: 13px;">Order #${order.orderNumber}</p>
           </div>
           
           <div class="content">
-            <p>Hi ${customerName},</p>
+            <p style="font-size: 14px; margin: 0 0 12px 0;">Hi ${customerName},</p>
             
-            <p>Your tickets are attached below. Present the QR code at the event entrance.</p>
+            <p style="font-size: 14px; margin: 0 0 16px 0;">Your tickets are attached below. Present the QR code at the event entrance.</p>
             
-            <div class="info-box">
-              <p style="margin: 0;"><strong>Order Details</strong></p>
-              <p style="margin: 8px 0 0 0;">Order #${order.orderNumber}</p>
-              ${order.payment?.mpesaReceiptNumber ? `<p style="margin: 5px 0 0 0;">M-PESA Receipt: ${order.payment.mpesaReceiptNumber}</p>` : ''}
-              <p style="margin: 5px 0 0 0;">Amount: ${order.pricing?.currency || 'KES'} ${order.totalAmount || order.pricing?.total}</p>
-              <p style="margin: 5px 0 0 0;">Tickets: ${tickets.length} × ${tickets[0]?.ticketType}</p>
+            <div class="info-box" style="font-size: 12px;">
+              <p style="margin: 0; font-weight: 600;">Order #${order.orderNumber}</p>
+              ${order.payment?.mpesaReceiptNumber ? `<p style="margin: 4px 0 0 0;">M-PESA Receipt: ${order.payment.mpesaReceiptNumber}</p>` : ''}
+              <p style="margin: 4px 0 0 0;">Amount: ${order.pricing?.currency || 'KES'} ${order.totalAmount || order.pricing?.total}</p>
+              <p style="margin: 4px 0 0 0;">Tickets: ${tickets.length} × ${tickets[0]?.ticketType}</p>
             </div>
             
-            <h2 style="color: #667eea; margin-top: 30px;">Tickets</h2>
+            <h2 style="color: #667eea; margin: 20px 0 12px 0; font-size: 16px;">Tickets</h2>
             
             ${ticketRows}
             
-            <div style="background: #f8f9fa; border-left: 3px solid #667eea; padding: 15px; margin: 30px 0; border-radius: 4px;">
-              <p style="margin: 0 0 10px 0; font-weight: bold;">Entry Instructions</p>
-              <ul style="margin: 0; padding-left: 20px;">
-                <li>Present your QR code at the entrance</li>
-                <li>Have your ticket number ready as backup</li>
-                <li>Each ticket allows one entry</li>
+            <div style="background: #f8f9fa; border-left: 3px solid #667eea; padding: 12px; margin: 20px 0; border-radius: 4px;">
+              <p style="margin: 0 0 8px 0; font-weight: 600; font-size: 12px;">Entry Instructions</p>
+              <ul style="margin: 0; padding-left: 18px; font-size: 12px;">
+                <li style="margin: 4px 0;">Present your QR code at the entrance</li>
+                <li style="margin: 4px 0;">Have your ticket number ready as backup</li>
+                <li style="margin: 4px 0;">Each ticket allows one entry</li>
               </ul>
             </div>
             
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/wallet" class="btn">
+            <div style="text-align: center; margin: 20px 0;">
+              <a href="${process.env.FRONTEND_URL || process.env.CLIENT_URL || process.env.BASE_URL || 'http://localhost:3001'}/wallet" class="btn">
                 View Tickets Online
               </a>
             </div>
             
-            <p>Questions? Contact us at the details below.</p>
-            <p style="margin-top: 16px;">Event-i</p>
+            <p style="font-size: 13px; margin: 12px 0 0 0;">Questions? Contact us at the details below.</p>
+            <p style="margin-top: 8px; font-size: 13px;">Event-i</p>
           </div>
           
           <div class="footer">
-            <div style="padding: 16px; background: rgba(58, 125, 255, 0.05); border-radius: 8px; display: inline-block; margin-bottom: 20px;">
-              <p style="margin: 4px 0;"><strong>Support</strong></p>
-              <p style="margin: 4px 0;"><a href="mailto:gideonyuri15@gmail.com" style="color: #3A7DFF; text-decoration: none;">gideonyuri15@gmail.com</a></p>
-              <p style="margin: 4px 0;"><a href="tel:+254703328938" style="color: #3A7DFF; text-decoration: none;">+254 703 328 938</a></p>
+            <div style="padding: 10px; background: rgba(58, 125, 255, 0.05); border-radius: 6px; display: inline-block; margin-bottom: 12px;">
+              <p style="margin: 3px 0; font-weight: 600; font-size: 11px;">Support</p>
+              <p style="margin: 3px 0; font-size: 11px;"><a href="mailto:gideonyuri15@gmail.com" style="color: #3A7DFF; text-decoration: none;">gideonyuri15@gmail.com</a></p>
+              <p style="margin: 3px 0; font-size: 11px;"><a href="tel:+254703328938" style="color: #3A7DFF; text-decoration: none;">+254 703 328 938</a></p>
             </div>
-            <p style="margin-top: 20px;">Order #${order.orderNumber}</p>
-            <p>© ${new Date().getFullYear()} Event-i</p>
+            <p style="margin-top: 12px; font-size: 11px;">Order #${order.orderNumber}</p>
+            <p style="font-size: 11px;">© ${new Date().getFullYear()} Event-i</p>
           </div>
         </div>
       </body>
