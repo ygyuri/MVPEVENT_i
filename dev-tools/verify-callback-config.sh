@@ -44,7 +44,7 @@ echo ""
 echo -e "${YELLOW}STEP 2: Checking docker-compose.yml${NC}"
 echo ""
 
-COMPOSE_CALLBACK=$(grep "PAYHERO_CALLBACK_URL:" docker-compose.yml | awk '{print $2}')
+COMPOSE_CALLBACK=$(grep "PAYHERO_CALLBACK_URL:" ../docker-compose.yml | awk '{print $2}')
 
 if [ "$COMPOSE_CALLBACK" = "$EXPECTED_CALLBACK" ]; then
   echo -e "${GREEN}✅ docker-compose.yml is CORRECT${NC}"
@@ -166,7 +166,7 @@ else
   echo "   docker compose up -d --force-recreate server"
   echo ""
   echo "3. Verify again:"
-  echo "   ./verify-callback-config.sh"
+  echo "   ./dev-tools/verify-callback-config.sh"
   echo ""
 fi
 
