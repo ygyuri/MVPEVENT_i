@@ -45,10 +45,10 @@ const Events = () => {
     return total > 0 ? `${total} events found` : 'Discover experiences around you'
   }, [meta?.total])
 
-  // Navigation handler for event cards
+  // Navigation handler for event cards - go directly to checkout
   const handleEventView = useCallback((slug) => {
-    console.log('EventCard clicked, navigating to:', slug)
-    navigate(`/events/${slug}`)
+    console.log('EventCard clicked, navigating to checkout:', slug)
+    navigate(`/events/${slug}/checkout`)
   }, [navigate])
 
   // Favorite handler (placeholder for future implementation)

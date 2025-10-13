@@ -32,7 +32,7 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
   const openDetails = () => {
     console.log('EventCard openDetails called, event.slug:', event.slug, 'onView:', !!onView)
     if (onView) onView(event.slug)
-    else navigate(`/events/${event.slug}`)
+    else navigate(`/events/${event.slug}/checkout`)
   }
 
   return (
