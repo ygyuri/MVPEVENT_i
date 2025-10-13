@@ -67,7 +67,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                 Organizer
               </Link>
             )}
-            <Link 
+            {/* <Link 
               to="/auth-test" 
               className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
             >
@@ -78,7 +78,7 @@ const Navbar = ({ onOpenAuthModal }) => {
               className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
             >
               Polls Test
-            </Link>
+            </Link> */}
           </div>
 
           {/* Right side - Cart, Theme Toggle, Currency Selector, User Menu */}

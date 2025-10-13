@@ -18,6 +18,9 @@ const DirectCheckout = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  
+  // Ref to prevent double submission (race condition protection)
+  const isSubmittingRef = useRef(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -249,6 +252,13 @@ const DirectCheckout = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // CRITICAL: Prevent double submission (race condition + React Strict Mode)
+    if (isSubmittingRef.current) {
+      console.log('⚠️ Duplicate submission blocked');
+      return;
+    }
+    isSubmittingRef.current = true;
+    
     // Validate all fields
     const errors = {};
     const fields = ['ticketType', 'quantity', 'firstName', 'lastName', 'email', 'phone'];
@@ -280,6 +290,8 @@ const DirectCheckout = () => {
       }
       
       setError('Please fill in all required fields correctly');
+      // Reset ref to allow retry after fixing validation errors
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -322,6 +334,8 @@ const DirectCheckout = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
+      // Reset ref to allow retry if submission failed
+      isSubmittingRef.current = false;
     }
   };
 

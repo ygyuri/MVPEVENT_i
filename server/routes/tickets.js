@@ -382,9 +382,9 @@ router.post('/direct-purchase',
         });
       }
 
-      // ========== STEP 8: Send Email (Async, Don't Wait) ==========
-      if (isNewUser && tempPassword) {
-        // Send credentials email asynchronously
+      // ========== STEP 8: Send Email (Async, Don't Wait) - WITH IDEMPOTENCY ==========
+      if (isNewUser && tempPassword && !user.welcomeEmailSent) {
+        // Send credentials email asynchronously (idempotent)
         setImmediate(async () => {
           try {
             await emailService.sendAccountCreationEmail({
@@ -393,11 +393,18 @@ router.post('/direct-purchase',
               tempPassword,
               orderNumber: order.orderNumber
             });
+            
+            // Mark welcome email as sent (idempotency flag)
+            user.welcomeEmailSent = true;
+            await user.save();
+            
             console.log('✅ Credentials email sent to:', user.email);
           } catch (emailError) {
             console.error('❌ Failed to send credentials email:', emailError);
           }
         });
+      } else if (isNewUser && user.welcomeEmailSent) {
+        console.log('ℹ️  Welcome email already sent to:', user.email);
       }
 
       // ========== STEP 9: Return Success Response ==========
