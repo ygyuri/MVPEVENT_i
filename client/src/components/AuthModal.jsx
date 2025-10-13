@@ -128,7 +128,17 @@ const AuthModal = ({ isOpen, onClose }) => {
     dispatch(clearError())
     setLocalError('')
     setSuccessMessage('')
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const newFormData = { ...formData, [e.target.name]: e.target.value }
+    
+    // Auto-generate username when firstName or lastName changes
+    if (e.target.name === 'firstName' || e.target.name === 'lastName') {
+      newFormData.username = generateUsername(
+        e.target.name === 'firstName' ? e.target.value : formData.firstName,
+        e.target.name === 'lastName' ? e.target.value : formData.lastName
+      )
+    }
+    
+    setFormData(newFormData)
   }
 
   const resetForm = () => {
@@ -251,6 +261,36 @@ const AuthModal = ({ isOpen, onClose }) => {
                       placeholder="Doe" 
                     />
                   </div>
+                </div>
+
+                {/* Auto-generated Username Preview */}
+                <div>
+                  <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>
+                    Username <span className={`text-xs font-normal ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>(auto-generated)</span>
+                  </label>
+                  <div className={`w-full px-4 py-3 rounded-xl ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-300' : 'bg-gray-100 border-gray-300 text-gray-600'} border cursor-not-allowed`}>
+                    {formData.username || 'Enter your name above'}
+                  </div>
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Generated from your first and last name
+                  </p>
+                </div>
+
+                {/* Role Selector */}
+                <div>
+                  <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>I am a...</label>
+                  <select 
+                    name="role" 
+                    value={formData.role} 
+                    onChange={handleInputChange} 
+                    className={`w-full px-4 py-3 rounded-xl ${isDarkMode ? 'bg-gray-800 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} border focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200`}
+                  >
+                    <option value="customer">Customer - Buying tickets to attend events</option>
+                    <option value="organizer">Organizer - Creating and managing events</option>
+                  </select>
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {formData.role === 'customer' ? 'You can browse and buy event tickets' : 'You can create events and sell tickets'}
+                  </p>
                 </div>
               </>
             )}
