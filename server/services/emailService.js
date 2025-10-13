@@ -798,8 +798,8 @@ class EmailService {
               <div class="greeting">Hi ${firstName},</div>
               
               <p class="intro-text">
-                Great news! Your ticket purchase was successful. We've created your Event-i account 
-                so you can access your tickets anytime, anywhere.
+                Thanks for your purchase. We've set up your Event-i account so you can access your tickets 
+                and manage your event details.
               </p>
               
               <!-- Login Credentials -->
@@ -824,9 +824,9 @@ class EmailService {
               <div class="security-notice">
                 <div class="security-notice-header">
                   <span>🔒</span>
-                  <span>Security Notice</span>
+                  <span>Security Reminder</span>
                 </div>
-                <p>Please change this temporary password after your first login for security.</p>
+                <p>Change this password after logging in to keep your account secure.</p>
               </div>
               
               <!-- CTA Button -->
@@ -836,11 +836,11 @@ class EmailService {
               
               <!-- Quick Tips -->
               <div class="tips-box">
-                <h3>✨ What You Can Do</h3>
+                <h3>Your Account Includes:</h3>
                 <ul>
-                  <li>View your tickets with QR codes</li>
-                  <li>Get event reminders and updates</li>
-                  <li>Manage your event preferences</li>
+                  <li>Access to your tickets with QR codes</li>
+                  <li>Event reminders and updates</li>
+                  <li>Easy ticket management</li>
                 </ul>
               </div>
             </div>
@@ -870,7 +870,7 @@ class EmailService {
       const mailOptions = {
         from: `"Event-i" <${process.env.SMTP_USER}>`,
         to: email,
-        subject: `🎉 Welcome to Event-i - Your Account Credentials (Order #${orderNumber})`,
+        subject: `Your Event-i Account - Order #${orderNumber}`,
         html
       };
 
@@ -999,15 +999,15 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <div style="font-size: 48px; margin: 10px 0;">🎉</div>
-            <h1 style="margin: 0;">Your Tickets Are Ready!</h1>
+            <div style="font-size: 48px; margin: 10px 0;">🎫</div>
+            <h1 style="margin: 0;">Your Tickets</h1>
             <p style="margin: 10px 0;">Order #${order.orderNumber}</p>
           </div>
           
           <div class="content">
             <p>Hi ${customerName},</p>
             
-            <p>Great news! Your payment has been confirmed and your tickets are ready.</p>
+            <p>Your payment has been confirmed. You'll find your tickets below.</p>
             
             <div class="info-box">
               <p style="margin: 0;"><strong>💳 Payment Confirmed</strong></p>
@@ -1022,12 +1022,12 @@ class EmailService {
             ${ticketRows}
             
             <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 30px 0; border-radius: 4px;">
-              <p style="margin: 0; font-weight: bold;">📱 How to Use Your Tickets</p>
+              <p style="margin: 0; font-weight: bold;">📱 At the Event</p>
               <ul style="margin: 10px 0; padding-left: 20px;">
-                <li><strong>Option 1:</strong> Show QR code at event entrance</li>
-                <li><strong>Option 2:</strong> If QR fails, provide your Ticket Number to organizer</li>
-                <li>Save this email or screenshot your QR codes</li>
-                <li>Each ticket can only be scanned once</li>
+                <li>Show your QR code at the entrance</li>
+                <li>If the code doesn't scan, provide your ticket number</li>
+                <li>Save this email or take a screenshot</li>
+                <li>Each ticket is valid for one entry only</li>
               </ul>
             </div>
             
@@ -1037,8 +1037,8 @@ class EmailService {
               </a>
             </div>
             
-            <p>Have a fantastic time at the event! 🎊</p>
-            <p style="margin-top: 16px;">- The Event-i Team</p>
+            <p>See you there.</p>
+            <p style="margin-top: 16px;">The Event-i Team</p>
           </div>
           
           <div class="footer">
