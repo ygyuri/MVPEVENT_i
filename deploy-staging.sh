@@ -82,11 +82,11 @@ deploy_staging() {
     
     # Stop existing staging containers
     print_status "Stopping existing staging containers..."
-    docker-compose -f docker-compose.staging.yml down 2>/dev/null || true
+    docker compose -f docker-compose.staging.yml down 2>/dev/null || true
     
     # Build and start staging containers
     print_status "Building and starting staging containers..."
-    docker-compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
+    docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
     
     # Wait for services to be healthy
     print_status "Waiting for services to be healthy..."
@@ -94,7 +94,7 @@ deploy_staging() {
     
     # Check container status
     print_status "Checking container status..."
-    docker-compose -f docker-compose.staging.yml ps
+    docker compose -f docker-compose.staging.yml ps
     
     print_success "Staging deployment completed!"
 }

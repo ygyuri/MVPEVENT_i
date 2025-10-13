@@ -87,11 +87,11 @@ deploy_uat() {
     
     # Stop existing UAT containers
     print_status "Stopping existing UAT containers..."
-    docker-compose -f docker-compose.uat.yml down 2>/dev/null || true
+    docker compose -f docker-compose.uat.yml down 2>/dev/null || true
     
     # Build and start UAT containers
     print_status "Building and starting UAT containers..."
-    docker-compose -f docker-compose.uat.yml --env-file .env.uat up -d --build
+    docker compose -f docker-compose.uat.yml --env-file .env.uat up -d --build
     
     # Wait for services to be healthy
     print_status "Waiting for services to be healthy..."
@@ -99,7 +99,7 @@ deploy_uat() {
     
     # Check container status
     print_status "Checking container status..."
-    docker-compose -f docker-compose.uat.yml ps
+    docker compose -f docker-compose.uat.yml ps
     
     print_success "UAT deployment completed!"
 }

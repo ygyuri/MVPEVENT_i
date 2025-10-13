@@ -48,14 +48,14 @@ start_event_i() {
     fi
     
     # Start Docker containers
-    docker-compose -f docker-compose.prod.yml up -d --build
+    docker compose -f docker compose.prod.yml up -d --build
     
     # Wait for services to be healthy
     print_status "Waiting for services to be healthy..."
     sleep 10
     
     # Check service status
-    docker-compose -f docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Status}}"
+    docker compose -f docker compose.prod.yml ps --format "table {{.Name}}\t{{.Status}}"
     
     print_success "Event-i production stack started!"
 }
@@ -149,22 +149,22 @@ case "${1:-start}" in
         ;;
     "stop")
         print_status "Stopping Event-i containers..."
-        docker-compose -f docker-compose.prod.yml down
+        docker compose -f docker compose.prod.yml down
         print_success "Event-i stopped!"
         ;;
     "restart")
         print_status "Restarting Event-i containers..."
-        docker-compose -f docker-compose.prod.yml restart
+        docker compose -f docker compose.prod.yml restart
         print_success "Event-i restarted!"
         show_access_urls
         ;;
     "status")
         print_status "Event-i container status:"
-        docker-compose -f docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+        docker compose -f docker compose.prod.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
         ;;
     "logs")
         print_status "Event-i container logs:"
-        docker-compose -f docker-compose.prod.yml logs --tail=20
+        docker compose -f docker compose.prod.yml logs --tail=20
         ;;
     "test")
         test_connections

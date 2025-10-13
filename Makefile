@@ -79,12 +79,12 @@ dev: setup-env-dev domain-setup ## Start development environment with domain set
 # Staging environment
 staging: setup-env-staging ## Start staging environment
 	@echo "🐳 Starting Event-i Staging Environment..."
-	@docker-compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
+	@docker compose -f docker compose.staging.yml --env-file .env.staging up -d --build
 
 # UAT environment
 uat: setup-env-uat ## Start UAT environment
 	@echo "🐳 Starting Event-i UAT Environment..."
-	@docker-compose -f docker-compose.uat.yml --env-file .env.uat up -d --build
+	@docker compose -f docker compose.uat.yml --env-file .env.uat up -d --build
 
 # Production environment
 prod: setup-env-prod domain-setup ## Start production environment with domain setup
@@ -94,92 +94,92 @@ prod: setup-env-prod domain-setup ## Start production environment with domain se
 # Start containers
 up: setup-env domain-setup ## Start all containers
 	@echo "🚀 Starting Event-i containers..."
-	@docker-compose up -d --build
+	@docker compose up -d --build
 
 # Stop containers
 down: ## Stop all containers
 	@echo "🛑 Stopping Event-i containers..."
-	@docker-compose down
+	@docker compose down
 
 down-staging: ## Stop staging containers
 	@echo "🛑 Stopping Event-i Staging containers..."
-	@docker-compose -f docker-compose.staging.yml down
+	@docker compose -f docker compose.staging.yml down
 
 down-uat: ## Stop UAT containers
 	@echo "🛑 Stopping Event-i UAT containers..."
-	@docker-compose -f docker-compose.uat.yml down
+	@docker compose -f docker compose.uat.yml down
 
 down-prod: ## Stop production containers
 	@echo "🛑 Stopping Event-i Production containers..."
-	@docker-compose -f docker-compose.prod.yml down
+	@docker compose -f docker compose.prod.yml down
 
 # Build containers
 build: ## Build all containers
 	@echo "🏗️ Building Event-i containers..."
-	@docker-compose build
+	@docker compose build
 
 build-staging: ## Build staging containers
 	@echo "🏗️ Building Event-i Staging containers..."
-	@docker-compose -f docker-compose.staging.yml build
+	@docker compose -f docker compose.staging.yml build
 
 build-uat: ## Build UAT containers
 	@echo "🏗️ Building Event-i UAT containers..."
-	@docker-compose -f docker-compose.uat.yml build
+	@docker compose -f docker compose.uat.yml build
 
 build-prod: ## Build production containers
 	@echo "🏗️ Building Event-i Production containers..."
-	@docker-compose -f docker-compose.prod.yml build
+	@docker compose -f docker compose.prod.yml build
 
 # View logs
 logs: ## View container logs
 	@echo "📝 Event-i container logs:"
-	@docker-compose logs -f
+	@docker compose logs -f
 
 logs-staging: ## View staging container logs
 	@echo "📝 Event-i Staging container logs:"
-	@docker-compose -f docker-compose.staging.yml logs -f
+	@docker compose -f docker compose.staging.yml logs -f
 
 logs-uat: ## View UAT container logs
 	@echo "📝 Event-i UAT container logs:"
-	@docker-compose -f docker-compose.uat.yml logs -f
+	@docker compose -f docker compose.uat.yml logs -f
 
 logs-prod: ## View production container logs
 	@echo "📝 Event-i Production container logs:"
-	@docker-compose -f docker-compose.prod.yml logs -f
+	@docker compose -f docker compose.prod.yml logs -f
 
 # Check status
 status: ## Check container status
 	@echo "📊 Event-i container status:"
-	@docker-compose ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+	@docker compose ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
 
 status-staging: ## Check staging container status
 	@echo "📊 Event-i Staging container status:"
-	@docker-compose -f docker-compose.staging.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+	@docker compose -f docker compose.staging.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
 
 status-uat: ## Check UAT container status
 	@echo "📊 Event-i UAT container status:"
-	@docker-compose -f docker-compose.uat.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+	@docker compose -f docker compose.uat.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
 
 status-prod: ## Check production container status
 	@echo "📊 Event-i Production container status:"
-	@docker-compose -f docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+	@docker compose -f docker compose.prod.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
 
 # Clean up
 clean: ## Clean up containers and volumes
 	@echo "🧹 Cleaning up Event-i containers..."
-	@docker-compose down -v --rmi all
+	@docker compose down -v --rmi all
 
 clean-staging: ## Clean up staging containers and volumes
 	@echo "🧹 Cleaning up Event-i Staging containers..."
-	@docker-compose -f docker-compose.staging.yml down -v --rmi all
+	@docker compose -f docker compose.staging.yml down -v --rmi all
 
 clean-uat: ## Clean up UAT containers and volumes
 	@echo "🧹 Cleaning up Event-i UAT containers..."
-	@docker-compose -f docker-compose.uat.yml down -v --rmi all
+	@docker compose -f docker compose.uat.yml down -v --rmi all
 
 clean-prod: ## Clean up production containers and volumes
 	@echo "🧹 Cleaning up Event-i Production containers..."
-	@docker-compose -f docker-compose.prod.yml down -v --rmi all
+	@docker compose -f docker compose.prod.yml down -v --rmi all
 
 # Domain management
 domain-setup: ## Add event-i.local to hosts file
@@ -207,26 +207,26 @@ restart: down up ## Restart all containers
 # Production specific
 prod-up: domain-setup ## Start production containers
 	@echo "🚀 Starting Event-i production containers..."
-	@docker-compose -f docker-compose.prod.yml up -d --build
+	@docker compose -f docker compose.prod.yml up -d --build
 
 prod-down: ## Stop production containers
 	@echo "🛑 Stopping Event-i production containers..."
-	@docker-compose -f docker-compose.prod.yml down
+	@docker compose -f docker compose.prod.yml down
 
 prod-logs: ## View production container logs
 	@echo "📝 Event-i production container logs:"
-	@docker-compose -f docker-compose.prod.yml logs -f
+	@docker compose -f docker compose.prod.yml logs -f
 
 prod-status: ## Check production container status
 	@echo "📊 Event-i production container status:"
-	@docker-compose -f docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+	@docker compose -f docker compose.prod.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
 
 # Database operations
 db-reset: ## Reset database (WARNING: This will delete all data)
 	@echo "⚠️  Resetting database (all data will be lost)..."
 	@read -p "Are you sure? (y/N): " confirm && [ "$$confirm" = "y" ] || exit 1
-	@docker-compose down -v
-	@docker-compose up -d mongodb redis
+	@docker compose down -v
+	@docker compose up -d mongodb redis
 	@sleep 5
 	@echo "✅ Database reset complete"
 

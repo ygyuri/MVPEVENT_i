@@ -33,8 +33,8 @@ print_error() {
 check_requirements() {
     print_status "Checking deployment requirements..."
     
-    if [ ! -f "docker-compose.prod.yml" ]; then
-        print_error "docker-compose.prod.yml not found"
+    if [ ! -f "docker compose.prod.yml" ]; then
+        print_error "docker compose.prod.yml not found"
         exit 1
     fi
     
@@ -114,13 +114,13 @@ backup_production() {
     
     # Backup MongoDB data
     print_status "Backing up MongoDB data..."
-    docker-compose -f docker-compose.prod.yml exec -T mongodb mongodump --out /tmp/backup
-    docker cp "$(docker-compose -f docker-compose.prod.yml ps -q mongodb):/tmp/backup" "$BACKUP_DIR/mongodb"
+    docker compose -f docker compose.prod.yml exec -T mongodb mongodump --out /tmp/backup
+    docker cp "$(docker compose -f docker compose.prod.yml ps -q mongodb):/tmp/backup" "$BACKUP_DIR/mongodb"
     
     # Backup Redis data
     print_status "Backing up Redis data..."
-    docker-compose -f docker-compose.prod.yml exec -T redis redis-cli BGSAVE
-    docker cp "$(docker-compose -f docker-compose.prod.yml ps -q redis):/data/dump.rdb" "$BACKUP_DIR/redis/"
+    docker compose -f docker compose.prod.yml exec -T redis redis-cli BGSAVE
+    docker cp "$(docker compose -f docker compose.prod.yml ps -q redis):/data/dump.rdb" "$BACKUP_DIR/redis/"
     
     print_success "Production backup created in $BACKUP_DIR"
 }
@@ -131,11 +131,11 @@ deploy_production() {
     
     # Stop existing production containers
     print_status "Stopping existing production containers..."
-    docker-compose -f docker-compose.prod.yml down 2>/dev/null || true
+    docker compose -f docker compose.prod.yml down 2>/dev/null || true
     
     # Build and start production containers
     print_status "Building and starting production containers..."
-    docker-compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+    docker compose -f docker compose.prod.yml --env-file .env.production up -d --build
     
     # Wait for services to be healthy
     print_status "Waiting for services to be healthy..."
@@ -143,7 +143,7 @@ deploy_production() {
     
     # Check container status
     print_status "Checking container status..."
-    docker-compose -f docker-compose.prod.yml ps
+    docker compose -f docker compose.prod.yml ps
     
     print_success "Production deployment completed!"
 }
@@ -197,7 +197,7 @@ show_deployment_info() {
     echo "🔍 Monitoring Commands:"
     echo "   curl -k https://event-i.com/health"
     echo "   curl -k https://event-i.com/api/health"
-    echo "   docker-compose -f docker-compose.prod.yml logs -f"
+    echo "   docker compose -f docker compose.prod.yml logs -f"
     echo ""
     echo "🚨 Important Notes:"
     echo "   - Monitor logs regularly: make logs-prod"
