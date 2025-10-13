@@ -150,6 +150,18 @@ The production environment is configured for the custom domain:
 
 ```bash
 FRONTEND_URL=https://event-i.local
+SUDO_PASSWORD=achieng
+```
+
+#### SUDO_PASSWORD Configuration
+The `SUDO_PASSWORD` environment variable controls the sudo password used by the domain setup script:
+
+```bash
+# Set custom password
+export SUDO_PASSWORD="your-password"
+
+# Or use inline
+SUDO_PASSWORD="your-password" ./setup-local-domain.sh add
 ```
 
 ## Troubleshooting

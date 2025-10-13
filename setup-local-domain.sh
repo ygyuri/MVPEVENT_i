@@ -10,6 +10,7 @@ DOMAIN="event-i.local"
 HOSTS_FILE="/etc/hosts"
 BACKUP_FILE="/etc/hosts.backup.$(date +%Y%m%d_%H%M%S)"
 TEMP_FILE="/tmp/hosts.tmp"
+SUDO_PASSWORD="${SUDO_PASSWORD:-achieng}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -52,11 +53,11 @@ add_domain() {
     
     # Create backup
     print_status "Creating backup of hosts file..."
-    echo "achieng" | sudo -S cp "$HOSTS_FILE" "$BACKUP_FILE"
+    echo "$SUDO_PASSWORD" | sudo -S cp "$HOSTS_FILE" "$BACKUP_FILE"
     print_success "Backup created: $BACKUP_FILE"
     
     # Add domain entry
-    echo "achieng" | sudo -S sh -c "echo '127.0.0.1	${DOMAIN}' >> '$HOSTS_FILE'"
+    echo "$SUDO_PASSWORD" | sudo -S sh -c "echo '127.0.0.1	${DOMAIN}' >> '$HOSTS_FILE'"
     print_success "${DOMAIN} added to hosts file"
 }
 
@@ -72,12 +73,12 @@ remove_domain() {
     
     # Create backup
     print_status "Creating backup of hosts file..."
-    echo "achieng" | sudo -S cp "$HOSTS_FILE" "$BACKUP_FILE"
+    echo "$SUDO_PASSWORD" | sudo -S cp "$HOSTS_FILE" "$BACKUP_FILE"
     print_success "Backup created: $BACKUP_FILE"
     
     # Remove domain entry
-    echo "achieng" | sudo -S sed -i.tmp "/^127\.0\.0\.1[[:space:]]*${DOMAIN}$/d" "$HOSTS_FILE"
-    echo "achieng" | sudo -S rm -f "${HOSTS_FILE}.tmp"
+    echo "$SUDO_PASSWORD" | sudo -S sed -i.tmp "/^127\.0\.0\.1[[:space:]]*${DOMAIN}$/d" "$HOSTS_FILE"
+    echo "$SUDO_PASSWORD" | sudo -S rm -f "${HOSTS_FILE}.tmp"
     print_success "${DOMAIN} removed from hosts file"
 }
 
@@ -142,10 +143,14 @@ show_help() {
     echo "  $0 test     # Test if Event-i is accessible"
     echo "  $0 remove   # Remove domain from hosts file"
     echo ""
+    echo "Environment Variables:"
+    echo "  SUDO_PASSWORD - Sudo password (defaults to 'achieng')"
+    echo ""
     echo "Notes:"
     echo "  - This script creates backups of your hosts file"
     echo "  - Only affects event-i.local, leaves other entries intact"
     echo "  - Requires sudo privileges to modify /etc/hosts"
+    echo "  - Set SUDO_PASSWORD environment variable to customize password"
 }
 
 # Main script logic
