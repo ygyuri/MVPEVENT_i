@@ -1,7 +1,7 @@
 # Event-i Makefile
 # Provides convenient commands for Docker operations with automatic domain setup
 
-.PHONY: help dev prod up down build logs status clean domain-setup domain-remove domain-status test
+.PHONY: help dev staging uat prod up down build logs status clean domain-setup domain-remove domain-status test setup-env setup-env-dev setup-env-staging setup-env-uat setup-env-prod
 
 # Default target
 help: ## Show this help message
@@ -12,9 +12,17 @@ help: ## Show this help message
 	@echo ""
 	@echo "Examples:"
 	@echo "  make dev        # Start development environment"
+	@echo "  make staging    # Start staging environment"
+	@echo "  make uat        # Start UAT environment"
 	@echo "  make prod       # Start production environment"
 	@echo "  make status     # Check container status"
 	@echo "  make logs       # View container logs"
+	@echo ""
+	@echo "Environment Management:"
+	@echo "  make setup-env-dev     # Create .env.development"
+	@echo "  make setup-env-staging # Create .env.staging"
+	@echo "  make setup-env-uat     # Create .env.uat"
+	@echo "  make setup-env-prod    # Create .env.production"
 
 # Create .env file from example if it doesn't exist
 setup-env: ## Create .env file from example
@@ -26,13 +34,60 @@ setup-env: ## Create .env file from example
 		echo "✅ .env file already exists"; \
 	fi
 
+# Environment-specific .env setup
+setup-env-dev: ## Create .env.development from example
+	@if [ ! -f .env.development ]; then \
+		echo "📝 Creating .env.development from env.development.example..."; \
+		cp env.development.example .env.development; \
+		echo "✅ .env.development created. Please edit it with your configuration."; \
+	else \
+		echo "✅ .env.development already exists"; \
+	fi
+
+setup-env-staging: ## Create .env.staging from example
+	@if [ ! -f .env.staging ]; then \
+		echo "📝 Creating .env.staging from env.staging.example..."; \
+		cp env.staging.example .env.staging; \
+		echo "✅ .env.staging created. Please edit it with your configuration."; \
+	else \
+		echo "✅ .env.staging already exists"; \
+	fi
+
+setup-env-uat: ## Create .env.uat from example
+	@if [ ! -f .env.uat ]; then \
+		echo "📝 Creating .env.uat from env.uat.example..."; \
+		cp env.uat.example .env.uat; \
+		echo "✅ .env.uat created. Please edit it with your configuration."; \
+	else \
+		echo "✅ .env.uat already exists"; \
+	fi
+
+setup-env-prod: ## Create .env.production from example
+	@if [ ! -f .env.production ]; then \
+		echo "📝 Creating .env.production from env.production.example..."; \
+		cp env.production.example .env.production; \
+		echo "✅ .env.production created. Please edit it with your configuration."; \
+	else \
+		echo "✅ .env.production already exists"; \
+	fi
+
 # Development environment
-dev: setup-env domain-setup ## Start development environment with domain setup
+dev: setup-env-dev domain-setup ## Start development environment with domain setup
 	@echo "🐳 Starting Event-i Development Environment..."
 	@./start-docker.sh
 
+# Staging environment
+staging: setup-env-staging ## Start staging environment
+	@echo "🐳 Starting Event-i Staging Environment..."
+	@docker-compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
+
+# UAT environment
+uat: setup-env-uat ## Start UAT environment
+	@echo "🐳 Starting Event-i UAT Environment..."
+	@docker-compose -f docker-compose.uat.yml --env-file .env.uat up -d --build
+
 # Production environment
-prod: setup-env domain-setup ## Start production environment with domain setup
+prod: setup-env-prod domain-setup ## Start production environment with domain setup
 	@echo "🐳 Starting Event-i Production Environment..."
 	@./start-event-i-local.sh start
 
@@ -46,25 +101,85 @@ down: ## Stop all containers
 	@echo "🛑 Stopping Event-i containers..."
 	@docker-compose down
 
+down-staging: ## Stop staging containers
+	@echo "🛑 Stopping Event-i Staging containers..."
+	@docker-compose -f docker-compose.staging.yml down
+
+down-uat: ## Stop UAT containers
+	@echo "🛑 Stopping Event-i UAT containers..."
+	@docker-compose -f docker-compose.uat.yml down
+
+down-prod: ## Stop production containers
+	@echo "🛑 Stopping Event-i Production containers..."
+	@docker-compose -f docker-compose.prod.yml down
+
 # Build containers
 build: ## Build all containers
 	@echo "🏗️ Building Event-i containers..."
 	@docker-compose build
+
+build-staging: ## Build staging containers
+	@echo "🏗️ Building Event-i Staging containers..."
+	@docker-compose -f docker-compose.staging.yml build
+
+build-uat: ## Build UAT containers
+	@echo "🏗️ Building Event-i UAT containers..."
+	@docker-compose -f docker-compose.uat.yml build
+
+build-prod: ## Build production containers
+	@echo "🏗️ Building Event-i Production containers..."
+	@docker-compose -f docker-compose.prod.yml build
 
 # View logs
 logs: ## View container logs
 	@echo "📝 Event-i container logs:"
 	@docker-compose logs -f
 
+logs-staging: ## View staging container logs
+	@echo "📝 Event-i Staging container logs:"
+	@docker-compose -f docker-compose.staging.yml logs -f
+
+logs-uat: ## View UAT container logs
+	@echo "📝 Event-i UAT container logs:"
+	@docker-compose -f docker-compose.uat.yml logs -f
+
+logs-prod: ## View production container logs
+	@echo "📝 Event-i Production container logs:"
+	@docker-compose -f docker-compose.prod.yml logs -f
+
 # Check status
 status: ## Check container status
 	@echo "📊 Event-i container status:"
 	@docker-compose ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
 
+status-staging: ## Check staging container status
+	@echo "📊 Event-i Staging container status:"
+	@docker-compose -f docker-compose.staging.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+
+status-uat: ## Check UAT container status
+	@echo "📊 Event-i UAT container status:"
+	@docker-compose -f docker-compose.uat.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+
+status-prod: ## Check production container status
+	@echo "📊 Event-i Production container status:"
+	@docker-compose -f docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+
 # Clean up
 clean: ## Clean up containers and volumes
 	@echo "🧹 Cleaning up Event-i containers..."
 	@docker-compose down -v --rmi all
+
+clean-staging: ## Clean up staging containers and volumes
+	@echo "🧹 Cleaning up Event-i Staging containers..."
+	@docker-compose -f docker-compose.staging.yml down -v --rmi all
+
+clean-uat: ## Clean up UAT containers and volumes
+	@echo "🧹 Cleaning up Event-i UAT containers..."
+	@docker-compose -f docker-compose.uat.yml down -v --rmi all
+
+clean-prod: ## Clean up production containers and volumes
+	@echo "🧹 Cleaning up Event-i Production containers..."
+	@docker-compose -f docker-compose.prod.yml down -v --rmi all
 
 # Domain management
 domain-setup: ## Add event-i.local to hosts file
