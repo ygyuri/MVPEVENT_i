@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, CreditCard, CheckCircle } from 'lucide-react';
 import CartComponent from '../components/Cart';
 import CustomerInfoForm from '../components/CustomerInfoForm';
 import MpesaPayment from '../components/MpesaPayment';
 import { scheduleReminders } from '../utils/remindersAPI';
-import OrderConfirmation from '../components/OrderConfirmation';
 import CurrencySelector from '../components/CurrencySelector';
 import { PriceDisplay } from '../components/CurrencyConverter';
 import PaymentProviderSelector from '../components/PaymentProviderSelector';
@@ -16,6 +16,7 @@ import { validateCartItems } from '../store/slices/checkoutSlice';
 
 const Checkout = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { checkoutStep } = useSelector((state) => state.checkout);
   const { isDarkMode } = useTheme();
   const [enableReminders, setEnableReminders] = useState(true);
@@ -29,6 +30,13 @@ const Checkout = () => {
   useEffect(() => {
     dispatch(validateCartItems());
   }, [dispatch]);
+
+  // Navigate to PaymentStatus when checkout step is 'confirmation'
+  useEffect(() => {
+    if (checkoutStep === 'confirmation' && orderData?._id) {
+      navigate(`/payment/${orderData._id}`);
+    }
+  }, [checkoutStep, orderData?._id, navigate]);
 
   const steps = [
     { id: 'cart', label: 'Cart', icon: ShoppingCart, description: 'Review your selections' },
@@ -196,11 +204,6 @@ const Checkout = () => {
             </div>
           )}
           
-          {checkoutStep === 'confirmation' && (
-            <div className="max-w-2xl mx-auto">
-              <OrderConfirmation />
-            </div>
-          )}
           {/* Inline Reminder Setup */}
           <div className="max-w-2xl mx-auto mt-6">
             <div className={`rounded-xl border ${isDarkMode ? 'border-gray-700 bg-gray-900/60' : 'border-gray-200 bg-white/70'} p-4`}>
