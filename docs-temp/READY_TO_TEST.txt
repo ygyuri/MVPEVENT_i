@@ -1,0 +1,161 @@
+╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║         🚀 PAYMENT FLOW - READY FOR TESTING 🚀               ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+✅ CONFIGURATION STATUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Ngrok:            https://125fb8a73e04.ngrok-free.app
+✓ Callback URL:     https://125fb8a73e04.ngrok-free.app/api/payhero/callback
+✓ Channel ID:       3767
+✓ Server:           Running
+✓ MongoDB:          Connected
+✓ Email Service:    Working
+✓ Security:         Enhanced middleware active
+
+
+⚠️  CRITICAL STEP (You've Done This ✅)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PayHero Dashboard Updated:
+✓ Callback URL: https://125fb8a73e04.ngrok-free.app/api/payhero/callback
+
+
+🎯 START TEST (3 Commands)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Terminal:  ./run-payment-test.sh
+Browser 1: http://localhost:4040 (ngrok dashboard)
+Browser 2: http://localhost:3000/events/test-this-end-to-end/checkout
+
+
+📋 FILL FORM WITH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Email:    test.payment.$(date +%s)@example.com  (unique!)
+Phone:    703328938  (9 digits, no leading 0)
+Country:  +254 (Kenya)
+Ticket:   Early Bird (KES 300)
+Quantity: 1
+
+
+📊 WHAT YOU'LL SEE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. CHECKOUT PAGE
+   ├─ Event header with cover image
+   ├─ Ticket type dropdown (4 options)
+   ├─ Quantity selector (+/-)
+   ├─ Customer info fields
+   ├─ Country code dropdown
+   ├─ Dynamic price summary
+   └─ [Proceed to Payment] button
+
+2. PAYMENT STATUS (Waiting)
+   ├─ ⏰ Yellow clock icon (pulsing)
+   ├─ "Waiting for Payment"
+   ├─ "Please check your phone..."
+   └─ Polling counter (updates every 5s)
+
+3. PHONE (M-PESA)
+   ├─ 📱 STK Push notification
+   ├─ "Enter PIN to pay KES 300"
+   └─ [Enter 4-digit PIN]
+
+4. PAYMENT STATUS (Processing)
+   ├─ 🔄 Blue spinner (rotating)
+   ├─ "Processing Payment..."
+   ├─ "Your payment is being confirmed..."
+   └─ Polling counter continues
+
+5. WEBHOOK ARRIVES (10-30s after PIN)
+   ├─ Terminal: "🔔 PAYHERO Callback received"
+   ├─ Terminal: "✅ Order status updated: paid"
+   ├─ Terminal: "📱 QR code generated"
+   └─ Terminal: "📧 Emails sent"
+
+6. PAYMENT STATUS (Success)
+   ├─ ✅ Green checkmark (bounce animation)
+   ├─ "Payment Successful! 🎉"
+   ├─ Order summary box:
+   │  ├─ Order Number: ORD-...
+   │  ├─ Tickets: 1
+   │  └─ Amount Paid: KES 300
+   ├─ Email confirmation message
+   └─ [View My Tickets] [Browse Events]
+
+7. WALLET PAGE
+   ├─ Ticket card with event details
+   ├─ QR code image (unique, encrypted)
+   ├─ Status: ✅ Active
+   └─ [Show QR Code] [Download]
+
+8. EMAILS (3 Total)
+   ├─ ✉️ Welcome (temp password: Temp_tes_ABC123)
+   ├─ ✉️ Ticket (with QR code image)
+   └─ ✉️ Receipt (M-PESA: SGL12345678)
+
+
+💾 DATA SAVED IN DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+USER (if new email):
+{
+  email: "test.user@example.com",
+  tempPassword: "[hashed]",
+  accountStatus: "pending_activation",
+  phone: "+254703328938"
+}
+
+ORDER:
+{
+  orderNumber: "ORD-...",
+  status: "completed",
+  paymentStatus: "paid",
+  totalAmount: 300,
+  payment: {
+    status: "completed",
+    mpesaReceiptNumber: "SGL12345678",
+    paidAt: "2025-10-09T15:22:45.000Z"
+  }
+}
+
+TICKET (per ticket):
+{
+  ticketNumber: "TKT-...",
+  status: "active",
+  qrCode: "a1b2c3d4e5f6..." (encrypted hex),
+  qrCodeUrl: "data:image/png;base64,iVBOR..." (base64 image),
+  qr: {
+    nonce: "unique_32_bytes",
+    signature: "hmac_sha256",
+    issuedAt: "2025-10-09T15:22:45.000Z"
+  }
+}
+
+
+🎯 SUCCESS INDICATORS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Phone:     ✅ M-PESA SMS "SGL123... Confirmed. KES 300"
+Terminal:  ✅ "PAYHERO Callback received"
+Terminal:  ✅ "Order status updated: paid"
+Terminal:  ✅ "QR code generated"
+Terminal:  ✅ "email sent" (×3)
+Browser:   ✅ "Payment Successful! 🎉"
+Ngrok:     ✅ POST /api/payhero/callback → 200 OK
+Database:  ✅ order.paymentStatus = "paid"
+Database:  ✅ ticket.qrCode exists
+Emails:    ✅ 3 emails in Ethereal inbox
+
+
+🚀 START NOW!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Terminal:  ./run-payment-test.sh
+Browser:   http://localhost:3000/events/test-this-end-to-end/checkout
+
+Then watch the magic happen! ✨
+
