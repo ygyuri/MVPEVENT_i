@@ -21,6 +21,8 @@ const AuthModal = ({ isOpen, onClose }) => {
   const [localError, setLocalError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [isNewUser, setIsNewUser] = useState(false)
+  const [passwordTouched, setPasswordTouched] = useState(false)
+  const [confirmTouched, setConfirmTouched] = useState(false)
 
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -70,7 +72,7 @@ const AuthModal = ({ isOpen, onClose }) => {
           }
         }, 1500)
       } else {
-        // Validation
+        // Simple validation (real-time validation already handled)
         if (!formData.firstName || !formData.lastName) {
           setLocalError('Please enter your first and last name.')
           return
@@ -145,6 +147,8 @@ const AuthModal = ({ isOpen, onClose }) => {
     setLocalError('')
     setSuccessMessage('')
     setIsNewUser(false)
+    setPasswordTouched(false)
+    setConfirmTouched(false)
     dispatch(clearError())
     setFormData({
       email: '', 
@@ -157,6 +161,11 @@ const AuthModal = ({ isOpen, onClose }) => {
       role: 'customer'
     })
   }
+  
+  // Real-time password validation
+  const passwordsMatch = formData.password && formData.confirmPassword && formData.password === formData.confirmPassword
+  const passwordsDontMatch = confirmTouched && formData.confirmPassword && formData.password !== formData.confirmPassword
+  const passwordTooShort = passwordTouched && formData.password && formData.password.length < 8
 
   const toggleMode = () => {
     setIsLogin(!isLogin)
@@ -315,10 +324,17 @@ const AuthModal = ({ isOpen, onClose }) => {
                   type={showPassword ? 'text' : 'password'} 
                   name="password" 
                   value={formData.password} 
-                  onChange={handleInputChange} 
+                  onChange={handleInputChange}
+                  onBlur={() => setPasswordTouched(true)}
                   required 
-                  className="input-web3 w-full px-4 py-3 pr-12 rounded-xl text-web3-primary placeholder-web3-cyan focus:outline-none focus:ring-2 focus:ring-primary-blue/20 transition-all duration-200" 
-                  placeholder="••••••••" 
+                  className={`w-full px-4 py-3 pr-12 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 ${
+                    passwordTooShort && !isLogin
+                      ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' 
+                      : isDarkMode 
+                        ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:ring-blue-500/20 focus:border-blue-500' 
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
+                  placeholder="At least 8 characters" 
                 />
                 <button 
                   type="button" 
@@ -328,6 +344,14 @@ const AuthModal = ({ isOpen, onClose }) => {
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
+              {passwordTooShort && !isLogin && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Password must be at least 8 characters
+                </p>
+              )}
             </div>
 
             {!isLogin && (
@@ -338,10 +362,19 @@ const AuthModal = ({ isOpen, onClose }) => {
                     type={showConfirm ? 'text' : 'password'} 
                     name="confirmPassword" 
                     value={formData.confirmPassword} 
-                    onChange={handleInputChange} 
+                    onChange={handleInputChange}
+                    onBlur={() => setConfirmTouched(true)}
                     required 
-                    className="input-web3 w-full px-4 py-3 pr-12 rounded-xl text-web3-primary placeholder-web3-cyan focus:outline-none focus:ring-2 focus:ring-primary-blue/20 transition-all duration-200" 
-                    placeholder="••••••••" 
+                    className={`w-full px-4 py-3 pr-12 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 ${
+                      passwordsMatch
+                        ? 'border-green-500 focus:ring-green-500/20 focus:border-green-500'
+                        : passwordsDontMatch
+                          ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500'
+                          : isDarkMode 
+                            ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:ring-blue-500/20 focus:border-blue-500' 
+                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
+                    placeholder="Re-enter your password" 
                   />
                   <button 
                     type="button" 
@@ -350,13 +383,36 @@ const AuthModal = ({ isOpen, onClose }) => {
                   >
                     {showConfirm ? 'Hide' : 'Show'}
                   </button>
+                  {passwordsMatch && (
+                    <div className="absolute right-12 top-1/2 -translate-y-1/2 text-green-500">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
+                {passwordsDontMatch && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Passwords do not match
+                  </p>
+                )}
+                {passwordsMatch && (
+                  <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Passwords match
+                  </p>
+                )}
               </div>
             )}
 
             <button 
               type="submit" 
-              disabled={loading} 
+              disabled={loading || (!isLogin && (passwordTooShort || passwordsDontMatch))} 
               className="w-full py-3 sm:py-4 px-6 rounded-xl font-semibold text-white text-base sm:text-lg bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all duration-200"
             >
               {loading ? (
