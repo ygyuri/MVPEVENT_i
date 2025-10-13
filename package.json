@@ -8,7 +8,16 @@
     "dev:server": "cd server && npm run dev",
     "install:all": "npm install && cd client && npm install && cd ../server && npm install",
     "build": "cd client && npm run build",
-    "start": "cd server && npm start"
+    "start": "cd server && npm start",
+    "docker:dev": "./start-docker.sh",
+    "docker:prod": "./start-event-i-local.sh start",
+    "docker:stop": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:status": "docker-compose ps",
+    "domain:setup": "./setup-local-domain.sh add",
+    "domain:remove": "./setup-local-domain.sh remove",
+    "domain:status": "./setup-local-domain.sh status",
+    "domain:test": "./setup-local-domain.sh test"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
