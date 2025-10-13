@@ -606,17 +606,7 @@ const PaymentStatus = () => {
     );
   };
 
-  // Loading state
-  if (loading && !orderStatus) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center ${
-        isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
-      }`}>
-        <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
-      </div>
-    );
-  }
-
+  // Always show status UI (StatusPending has its own loading states)
   return (
     <div className={`min-h-screen py-12 px-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <div className="max-w-2xl mx-auto">
