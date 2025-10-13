@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MongoDB Database
   mongodb:
@@ -10,7 +8,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: password123
       MONGO_INITDB_DATABASE: event_i
     ports:
-      - "27017:27017"
+      - "${MONGODB_PORT:-27017}:27017"
     volumes:
       - mongodb_data:/data/db
       - ./server/scripts/seed.js:/docker-entrypoint-initdb.d/seed.js:ro
@@ -23,7 +21,7 @@ services:
     image: redis:7-alpine
     container_name: event_i_redis
     ports:
-      - "6380:6379"
+      - "${REDIS_PORT:-6380}:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -40,7 +38,7 @@ services:
       ME_CONFIG_BASICAUTH_USERNAME: admin
       ME_CONFIG_BASICAUTH_PASSWORD: password123
     ports:
-      - "8082:8081"
+      - "${MONGO_EXPRESS_PORT:-8082}:8081"
     depends_on:
       - mongodb
     networks:
@@ -58,8 +56,8 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       JWT_REFRESH_SECRET: your-super-secret-refresh-key-change-in-production
-      PORT: 5000
-      FRONTEND_URL: http://localhost:3000
+      PORT: ${SERVER_PORT:-5001}
+      FRONTEND_URL: http://localhost:${CLIENT_PORT:-3001}
       TICKET_QR_SECRET: replace-with-strong-random-secret
       # base64 32-byte key for AES-256-GCM; generate with: openssl rand -base64 32
       TICKET_QR_ENC_KEY: "h138xvXG9wlW6y0gEBrih129REjACUTFN1hpFG0GkzI="
@@ -75,7 +73,7 @@ services:
       PAYHERO_CHANNEL_ID: "3767"
       PAYHERO_CALLBACK_URL: https://308676cfef35.ngrok-free.app/api/payhero/callback
     ports:
-      - "5000:5000"
+      - "${SERVER_PORT:-5001}:${SERVER_PORT:-5001}"
     depends_on:
       - mongodb
       - redis
@@ -94,9 +92,9 @@ services:
       dockerfile: Dockerfile
     container_name: event_i_client
     environment:
-      VITE_API_URL: http://localhost:5000
+      VITE_API_URL: http://localhost:${SERVER_PORT:-5001}
     ports:
-      - "3000:3000"
+      - "${CLIENT_PORT:-3001}:3000"
     depends_on:
       - server
     volumes:
