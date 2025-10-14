@@ -24,10 +24,10 @@ echo "🌐 Setting up local domain..."
 if [ -f "./setup-local-domain.sh" ]; then
     # Check if domain is already configured
     if ! ./setup-local-domain.sh status | grep -q "is configured"; then
-        echo "📝 Adding event-i.local to hosts file..."
+        echo "📝 Adding event-i.co.ke to hosts file..."
         ./setup-local-domain.sh add
     else
-        echo "✅ event-i.local already configured"
+        echo "✅ event-i.co.ke already configured"
     fi
 else
     echo "⚠️  setup-local-domain.sh not found, skipping domain setup"
@@ -60,10 +60,10 @@ echo "  Mongo Express: http://localhost:${MONGO_EXPRESS_PORT:-8082}"
 # Show custom domain URLs if configured
 if grep -q "^127\.0\.0\.1[[:space:]]*event-i\.local$" /etc/hosts 2>/dev/null; then
     echo ""
-    echo "🎯 Custom Domain (event-i.local):"
-    echo "  Frontend: https://event-i.local/"
-    echo "  Backend:  https://event-i.local/api/health"
-    echo "  Health:   https://event-i.local/health"
+    echo "🎯 Custom Domain (event-i.co.ke):"
+    echo "  Frontend: https://event-i.co.ke/"
+    echo "  Backend:  https://event-i.co.ke/api/health"
+    echo "  Health:   https://event-i.co.ke/health"
 fi
 
 echo ""

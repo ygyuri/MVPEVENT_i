@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Event-i Local Domain Setup Script
-# This script manages the event-i.local domain entry in /etc/hosts
+# This script manages the event-i.co.ke domain entry in /etc/hosts
 # without affecting other localhost entries
 
 set -e
 
-DOMAIN="event-i.local"
+DOMAIN="event-i.co.ke"
 HOSTS_FILE="/etc/hosts"
 BACKUP_FILE="/etc/hosts.backup.$(date +%Y%m%d_%H%M%S)"
 TEMP_FILE="/tmp/hosts.tmp"

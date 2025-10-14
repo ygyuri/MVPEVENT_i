@@ -1,13 +1,13 @@
 # Event-i Local Domain Setup
 
-This guide explains how to use the custom domain `event-i.local` for local development and testing.
+This guide explains how to use the custom domain `event-i.co.ke` for local development and testing.
 
 ## Quick Start
 
 ### 1. Add Domain to Hosts File
 
 ```bash
-# Add event-i.local to hosts file
+# Add event-i.co.ke to hosts file
 ./setup-local-domain.sh add
 
 # Check status
@@ -34,12 +34,12 @@ This guide explains how to use the custom domain `event-i.local` for local devel
 
 ### `setup-local-domain.sh`
 
-Manages the `event-i.local` domain entry in `/etc/hosts`.
+Manages the `event-i.co.ke` domain entry in `/etc/hosts`.
 
 **Commands:**
 
-- `add` - Add event-i.local to hosts file
-- `remove` - Remove event-i.local from hosts file
+- `add` - Add event-i.co.ke to hosts file
+- `remove` - Remove event-i.co.ke from hosts file
 - `status` - Show current status
 - `test` - Test domain resolution and connection
 - `help` - Show help message
@@ -86,9 +86,9 @@ Manages Event-i Docker containers with local domain support.
 
 ### Custom Domain (After Setup)
 
-- **Frontend:** https://event-i.local/
-- **API:** https://event-i.local/api/health
-- **Health:** https://event-i.local/health
+- **Frontend:** https://event-i.co.ke/
+- **API:** https://event-i.co.ke/api/health
+- **Health:** https://event-i.co.ke/health
 
 ## Manual Setup (Alternative)
 
@@ -101,7 +101,7 @@ If you prefer to set up the domain manually:
 sudo nano /etc/hosts
 
 # Add this line:
-127.0.0.1 event-i.local
+127.0.0.1 event-i.co.ke
 
 # Save and exit (Ctrl+X, Y, Enter)
 ```
@@ -110,10 +110,10 @@ sudo nano /etc/hosts
 
 ```bash
 # Test DNS resolution
-ping event-i.local
+ping event-i.co.ke
 
 # Test HTTPS connection
-curl -k https://event-i.local/api/health
+curl -k https://event-i.co.ke/api/health
 ```
 
 ## Configuration Details
@@ -125,23 +125,23 @@ The nginx configuration supports both domains:
 ```nginx
 server {
     listen 80;
-    server_name event-i.local localhost;
+    server_name event-i.co.ke localhost;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name event-i.local localhost;
+    server_name event-i.co.ke localhost;
     # ... rest of config
 }
 ```
 
 ### SSL Certificates
 
-Self-signed certificates are generated for `event-i.local`:
+Self-signed certificates are generated for `event-i.co.ke`:
 
 - **Location:** `nginx/ssl/cert.pem` and `nginx/ssl/key.pem`
-- **Subject:** `CN=event-i.local`
+- **Subject:** `CN=event-i.co.ke`
 - **Valid for:** 365 days
 
 ### Environment Variables
@@ -149,7 +149,7 @@ Self-signed certificates are generated for `event-i.local`:
 The production environment is configured for the custom domain:
 
 ```bash
-FRONTEND_URL=https://event-i.local
+FRONTEND_URL=https://event-i.co.ke
 SUDO_PASSWORD=achieng
 ```
 
@@ -170,10 +170,10 @@ SUDO_PASSWORD="your-password" ./setup-local-domain.sh add
 
 ```bash
 # Check if domain is in hosts file
-cat /etc/hosts | grep event-i.local
+cat /etc/hosts | grep event-i.co.ke
 
 # Test DNS resolution
-ping event-i.local
+ping event-i.co.ke
 
 # Check nginx configuration
 docker-compose -f docker-compose.prod.yml exec nginx nginx -t
@@ -208,7 +208,7 @@ cd nginx && ./generate-ssl.sh
 
 - The SSL certificates are self-signed for development/testing
 - Browsers will show security warnings
-- Click "Advanced" → "Proceed to event-i.local (unsafe)"
+- Click "Advanced" → "Proceed to event-i.co.ke (unsafe)"
 
 ### Production Deployment
 
@@ -219,7 +219,7 @@ For production, use Let's Encrypt certificates:
 sudo apt install certbot
 
 # Generate certificates
-sudo certbot certonly --standalone -d event-i.local
+sudo certbot certonly --standalone -d event-i.co.ke
 
 # Update nginx configuration to use Let's Encrypt certificates
 ```
@@ -228,7 +228,7 @@ sudo certbot certonly --standalone -d event-i.local
 
 ### Development Experience
 
-- **Clean URLs:** `https://event-i.local/` instead of `https://localhost:3001/`
+- **Clean URLs:** `https://event-i.co.ke/` instead of `https://localhost:3001/`
 - **Realistic Testing:** Closer to production environment
 - **Easy to Remember:** Custom domain is more memorable
 
@@ -236,7 +236,7 @@ sudo certbot certonly --standalone -d event-i.local
 
 - **Email Links:** Test email links with custom domain
 - **Mobile Testing:** Access from mobile devices on same network
-- **Subdomain Support:** Ready for future subdomains (api.event-i.local)
+- **Subdomain Support:** Ready for future subdomains (api.event-i.co.ke)
 
 ### Production Readiness
 
@@ -262,7 +262,7 @@ ifconfig | grep 'inet ' | grep -v 127.0.0.1
 For mobile devices, you can add the domain to their hosts file:
 
 ```
-192.168.100.14 event-i.local
+192.168.100.14 event-i.co.ke
 ```
 
 ## File Structure
