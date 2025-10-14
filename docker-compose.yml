@@ -71,7 +71,7 @@ services:
       PAYHERO_ACCOUNT_ID: "3140"
       PAYHERO_BASIC_AUTH_TOKEN: Basic UHFJS1FRaDg3bDA4WWVrbEIwbE46WDRBSDFLRGY0ODI2Q3VoNW9FQ1QybFd0bzJ6WTVVZElNekVyYlNpMA==
       PAYHERO_CHANNEL_ID: "3767"
-      PAYHERO_CALLBACK_URL: https://308676cfef35.ngrok-free.app/api/payhero/callback
+      PAYHERO_CALLBACK_URL: https://84759a18136d.ngrok-free.app/api/payhero/callback
     ports:
       - "${SERVER_PORT:-5001}:${SERVER_PORT:-5001}"
     depends_on:
