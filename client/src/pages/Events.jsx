@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { fetchEvents, fetchCategories } from '../store/slices/eventsSlice'
 import EventCard from '../components/EventCard'
 import EventSearch from '../components/EventSearch'
+import Pagination from '../components/Pagination'
 import { useInView } from 'react-intersection-observer'
 
 const shallowEqual = (a, b) => {
@@ -176,7 +177,18 @@ const Events = () => {
             </div>
           ) : null}
 
-          {meta?.hasMore && (
+          {/* Intelligent Pagination */}
+          {events.length > 0 && meta?.totalPages > 1 && (
+            <Pagination
+              currentPage={meta.page || 1}
+              totalPages={meta.totalPages || 1}
+              onPageChange={(page) => loadEvents({ page })}
+              loading={loading}
+            />
+          )}
+          
+          {/* Keep infinite scroll as fallback for mobile */}
+          {meta?.hasMore && !meta?.totalPages && (
             <div ref={ref} className="mt-10 flex items-center justify-center">
               <div className="flex items-center space-x-2 text-gray-600">
                 <span className="relative flex h-3 w-3">

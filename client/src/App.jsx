@@ -27,7 +27,6 @@ import PollsPage from './pages/PollsPage';
 import PollsTest from './pages/PollsTest';
 import { OrganizerUpdatesDashboard, AttendeeUpdatesView } from './pages/EventUpdates';
 import { getCurrentUser } from './store/slices/authSlice';
-import './utils/testAuth'; // Load test authentication helper
 import ErrorBoundary from './components/shared/ErrorBoundary';
 import { ToastProvider } from './components/shared/Toast';
 
@@ -67,13 +66,16 @@ function App() {
                 <Route path="/organizer/events/:eventId/edit" element={<EventCreate />} />
                 <Route path="/organizer/events/:eventId/qr-settings" element={<EventQRSettings />} />
                 <Route path="/organizer/events/:eventId/commission-setup" element={<OrganizerCommissionSetup />} />
-                <Route path="/organizer/analytics" element={<AnalyticsDashboard />} />
-                <Route path="/affiliate-analytics" element={<AffiliateAnalytics />} />
-                <Route path="/affiliate/referral-links" element={<ReferralLinksManager />} />
+                {/* Analytics feature - temporarily hidden for production */}
+                {/* <Route path="/organizer/analytics" element={<AnalyticsDashboard />} /> */}
+                {/* Affiliate features - temporarily hidden for production */}
+                {/* <Route path="/affiliate-analytics" element={<AffiliateAnalytics />} /> */}
+                {/* <Route path="/affiliate/referral-links" element={<ReferralLinksManager />} /> */}
                 <Route path="/preferences/reminders" element={<UserPreferences />} />
                 <Route path="/reminders/history" element={<ReminderHistory />} />
-                <Route path="/organizer/events/:eventId/updates" element={<OrganizerUpdatesDashboard />} />
-                <Route path="/events/:eventId/updates" element={<AttendeeUpdatesView />} />
+                {/* Updates features - temporarily hidden for production */}
+                {/* <Route path="/organizer/events/:eventId/updates" element={<OrganizerUpdatesDashboard />} /> */}
+                {/* <Route path="/events/:eventId/updates" element={<AttendeeUpdatesView />} /> */}
                 <Route path="/events/:eventId/polls" element={<PollsPage />} />
                 <Route path="/polls-test" element={<PollsTest />} />
               </Routes>

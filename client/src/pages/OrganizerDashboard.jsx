@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Link } from 'react-router-dom';
-import { Plus, Calendar, Users, TrendingUp, Eye, MessageSquare, Clock, Bell } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Plus, Calendar, Users, TrendingUp, Eye, MessageSquare, Clock, Bell, CheckCircle } from 'lucide-react';
 import EnhancedButton from '../components/EnhancedButton';
 import EventStatusBadge from '../components/organizer/EventStatusBadge';
 import UpdateComposer from '../components/organizer/UpdateComposer';
@@ -12,8 +12,13 @@ import { useSocket } from '../hooks/useSocket';
 
 const OrganizerDashboard = () => {
   const dispatch = useDispatch();
+  const location = useLocation();
   const { user, isAuthenticated, loading: authLoading } = useSelector(state => state.auth);
   const { overview, events, loading } = useSelector(state => state.organizer);
+  
+  // Check if user just published an event
+  const [showPublishSuccess, setShowPublishSuccess] = useState(false);
+  const [publishedEventTitle, setPublishedEventTitle] = useState('');
   
   // Update composer state
   const [showUpdateComposer, setShowUpdateComposer] = useState(false);
@@ -23,39 +28,37 @@ const OrganizerDashboard = () => {
   const [recentUpdates, setRecentUpdates] = useState([]);
   const [allEventUpdates, setAllEventUpdates] = useState({});
 
+  // Handle post-publish celebration
+  useEffect(() => {
+    if (location.state?.justPublished) {
+      setShowPublishSuccess(true);
+      setPublishedEventTitle(location.state.eventTitle || 'Your event');
+      // Clear the state so it doesn't show again on refresh
+      window.history.replaceState({}, document.title);
+      // Auto-hide after 10 seconds
+      setTimeout(() => setShowPublishSuccess(false), 10000);
+    }
+  }, [location]);
+
   useEffect(() => {
     // Only load data if user is authenticated and user data is loaded
     if (!isAuthenticated || !user || authLoading) {
-      console.log('🚫 [ORGANIZER DASHBOARD] Waiting for authentication:', { 
-        isAuthenticated, 
-        hasUser: !!user, 
-        authLoading 
-      });
       return;
     }
 
     // Check if user is an organizer
     if (user.role !== 'organizer') {
-      console.log('🚫 [ORGANIZER DASHBOARD] User is not an organizer:', user.role);
       return;
     }
-
-    console.log('🔄 [ORGANIZER DASHBOARD] Loading overview and events for organizer:', user.email);
     
     // Check if overview is already loaded
     if (!overview || Object.keys(overview).length === 0) {
-      console.log('🔄 [ORGANIZER DASHBOARD] Fetching overview');
       dispatch(getOrganizerOverview());
-    } else {
-      console.log('🚫 [ORGANIZER DASHBOARD] Overview already loaded, skipping fetch');
     }
     
     // Check if events are already loaded
     if (!events || events.length === 0) {
-      console.log('🔄 [ORGANIZER DASHBOARD] Fetching events');
       dispatch(fetchMyEvents({ page: 1, pageSize: 6 }));
-    } else {
-      console.log('🚫 [ORGANIZER DASHBOARD] Events already loaded, skipping fetch');
     }
   }, [dispatch, isAuthenticated, user, authLoading, overview, events]);
 
@@ -100,8 +103,6 @@ const OrganizerDashboard = () => {
   };
 
   const handleUpdateCreated = (update) => {
-    console.log('Update created:', update);
-    
     // Add the new update to recent updates
     const newUpdate = {
       ...update,
@@ -160,6 +161,42 @@ const OrganizerDashboard = () => {
 
   return (
     <div className="container-modern">
+      {/* Success Banner - Show after publishing an event */}
+      {showPublishSuccess && (
+        <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <div className="w-12 h-12 bg-green-500 dark:bg-green-600 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-7 h-7 text-white" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-green-900 dark:text-green-100 mb-2">
+                🎉 Event Published Successfully!
+              </h3>
+              <p className="text-green-800 dark:text-green-200 mb-3">
+                <strong>{publishedEventTitle}</strong> is now live and ready for attendees to discover and purchase tickets!
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  to="/organizer/events"
+                  className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200 font-medium text-sm"
+                >
+                  <Eye className="w-4 h-4 mr-2" />
+                  View All Events
+                </Link>
+                <button
+                  onClick={() => setShowPublishSuccess(false)}
+                  className="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors duration-200 font-medium border border-gray-300 dark:border-gray-600 text-sm"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -273,26 +310,28 @@ const OrganizerDashboard = () => {
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <button
+                      {/* Post Update feature - temporarily hidden for production */}
+                      {/* <button
                         onClick={() => handlePostUpdate(event._id)}
                         className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
                         disabled={event.status === 'cancelled'}
                       >
                         <MessageSquare className="w-4 h-4" />
                         Post Update
-                      </button>
+                      </button> */}
                       <Link
                         to={`/organizer/events/${event._id}/edit`}
                         className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
                       >
                         Edit
                       </Link>
-                      <Link
+                      {/* Live Updates feature - temporarily hidden for production */}
+                      {/* <Link
                         to={`/organizer/events/${event._id}/updates`}
                         className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm font-medium"
                       >
                         Live Updates
-                      </Link>
+                      </Link> */}
                     </div>
                   </div>
                 ))}
@@ -366,8 +405,8 @@ const OrganizerDashboard = () => {
             </div>
           </div>
 
-          {/* Recent Updates Card */}
-          <div className="bg-web3-card rounded-xl p-6">
+          {/* Recent Updates Card - temporarily hidden for production */}
+          {/* <div className="bg-web3-card rounded-xl p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Recent Updates
@@ -422,7 +461,7 @@ const OrganizerDashboard = () => {
                 </p>
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Tips Card */}
           <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
@@ -436,8 +475,8 @@ const OrganizerDashboard = () => {
         </div>
       </div>
 
-      {/* Update Composer Modal */}
-      {showUpdateComposer && selectedEventId && (
+      {/* Update Composer Modal - temporarily hidden for production */}
+      {/* {showUpdateComposer && selectedEventId && (
         <UpdateComposer
           eventId={selectedEventId}
           isOpen={showUpdateComposer}
@@ -445,7 +484,7 @@ const OrganizerDashboard = () => {
           onUpdateCreated={handleUpdateCreated}
           eventStatus={events.find(e => e._id === selectedEventId)?.status || 'published'}
         />
-      )}
+      )} */}
     </div>
   );
 };

@@ -88,11 +88,17 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
       </button>
 
       {/* Event Image */}
-      <div className="relative h-48 overflow-hidden">
+      <div className="relative h-48 overflow-hidden bg-gradient-to-br from-blue-500/10 to-purple-500/10">
         <img
           src={event.coverImageUrl || `https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop`}
           alt={event.title}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+          onError={(e) => {
+            // Fallback to placeholder if image fails to load
+            e.target.src = `https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop`;
+            e.target.onerror = null; // Prevent infinite loop
+          }}
+          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         
@@ -130,28 +136,47 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-web3-secondary-border">
-          <div className="flex items-center space-x-2">
-            <PriceDisplay 
-              amount={event.price} 
-              originalCurrency="KES"
-              className="text-2xl font-bold"
-            />
-            {event.isFree && (
-              <span className="text-xs bg-success-bg text-success-primary px-2 py-1 rounded-full">
-                Free
-              </span>
+        <div className="flex items-end justify-between pt-4 border-t border-web3-secondary-border/50">
+          {/* Pricing Section - More Subtle */}
+          <div className="flex flex-col gap-1">
+            {event.isFree ? (
+              <span className="text-xl font-bold text-success-primary">Free Event</span>
+            ) : event.ticketTypes && event.ticketTypes.length > 0 ? (
+              <>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xs text-web3-secondary/70 uppercase tracking-wide">From</span>
+                  <PriceDisplay 
+                    amount={Math.min(...event.ticketTypes.map(t => t.price || 0))} 
+                    originalCurrency="KES"
+                    className="text-xl font-bold"
+                  />
+                </div>
+                {event.ticketTypes.length > 1 && (
+                  <span className="text-xs text-web3-secondary/60">
+                    {event.ticketTypes.length} options
+                  </span>
+                )}
+              </>
+            ) : (
+              <PriceDisplay 
+                amount={event.price || 0} 
+                originalCurrency="KES"
+                className="text-xl font-bold"
+              />
             )}
           </div>
 
+          {/* Smaller, Subtle Button */}
           <button
             onClick={(e) => {
               e.stopPropagation()
               navigate(`/events/${event.slug}/checkout`)
             }}
-            className="btn-web3-primary px-6 py-2 rounded-xl font-medium transition-all duration-200 transform hover:scale-105"
+            className="px-4 py-1.5 text-sm font-medium text-web3-accent hover:text-white 
+                       border border-web3-accent hover:bg-web3-accent 
+                       rounded-lg transition-all duration-200"
           >
-            Buy Tickets
+            View
           </button>
         </div>
       </div>
