@@ -1,0 +1,153 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: server
+  namespace: event-i
+  labels:
+    app: server
+spec:
+  ports:
+  - port: 5001
+    targetPort: 5001
+    name: http
+  selector:
+    app: server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+  namespace: event-i
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      labels:
+        app: server
+    spec:
+      containers:
+      - name: server
+        image: gcr.io/PROJECT_ID/event-i-server:latest
+        ports:
+        - containerPort: 5001
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "5001"
+        - name: MONGODB_URI
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: mongodb-uri
+        - name: REDIS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: redis-url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-secret
+        - name: JWT_REFRESH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-refresh-secret
+        - name: FRONTEND_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: frontend-url
+        - name: PAYHERO_API_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: payhero-username
+        - name: PAYHERO_API_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: payhero-password
+        - name: PAYHERO_ACCOUNT_ID
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: payhero-account-id
+        - name: PAYHERO_BASIC_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: payhero-basic-auth-token
+        - name: PAYHERO_CHANNEL_ID
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: payhero-channel-id
+        - name: PAYHERO_CALLBACK_URL
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: payhero-callback-url
+        - name: SMTP_HOST
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: smtp-host
+        - name: SMTP_PORT
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: smtp-port
+        - name: SMTP_USER
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: smtp-user
+        - name: SMTP_PASS
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: smtp-pass
+        - name: TICKET_QR_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: ticket-qr-secret
+        - name: TICKET_QR_ENC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: ticket-qr-enc-key
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 5001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 5001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+        volumeMounts:
+        - name: uploads
+          mountPath: /app/uploads
+      volumes:
+      - name: uploads
+        persistentVolumeClaim:
+          claimName: uploads-pvc

@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- namespace.yaml
+- mongodb-statefulset.yaml
+- redis-deployment.yaml
+- server-deployment.yaml
+- client-deployment.yaml
+- configmap.yaml
+- nginx-ingress.yaml
+- persistent-volumes.yaml
+- hpa.yaml

@@ -1,0 +1,26 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: event-i-tls
+  namespace: event-i
+spec:
+  secretName: event-i-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - event-i.co.ke
+  - www.event-i.co.ke
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: event-i-tls-staging
+  namespace: event-i
+spec:
+  secretName: event-i-tls-staging
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+  dnsNames:
+  - staging.event-i.co.ke

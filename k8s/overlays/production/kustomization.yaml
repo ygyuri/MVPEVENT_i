@@ -1,0 +1,54 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: event-i
+
+resources:
+- ../../base
+
+patchesStrategicMerge:
+- |-
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: server
+  spec:
+    replicas: 3
+    template:
+      spec:
+        containers:
+        - name: server
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+- |-
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: client
+  spec:
+    replicas: 3
+    template:
+      spec:
+        containers:
+        - name: client
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "400m"
+
+configMapGenerator:
+- name: app-config
+  behavior: merge
+  literals:
+  - frontend-url=https://event-i.co.ke
+  - payhero-callback-url=https://event-i.co.ke/api/payhero/callback
+  - payhero-success-url=https://event-i.co.ke/checkout/success
+  - payhero-failed-url=https://event-i.co.ke/checkout/failed

@@ -1,0 +1,58 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: event-i-ingress
+  namespace: event-i
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Forwarded-Proto: $scheme";
+      more_set_headers "X-Forwarded-For: $proxy_add_x_forwarded_for";
+      more_set_headers "X-Real-IP: $remote_addr";
+spec:
+  tls:
+  - hosts:
+    - event-i.co.ke
+    secretName: event-i-tls
+  rules:
+  - host: event-i.co.ke
+    http:
+      paths:
+      # API routes
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: server
+            port:
+              number: 5001
+      # WebSocket routes
+      - path: /socket.io
+        pathType: Prefix
+        backend:
+          service:
+            name: server
+            port:
+              number: 5001
+      # Health check
+      - path: /health
+        pathType: Exact
+        backend:
+          service:
+            name: server
+            port:
+              number: 5001
+      # Frontend routes
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: client
+            port:
+              number: 80

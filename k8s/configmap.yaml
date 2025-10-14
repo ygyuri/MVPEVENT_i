@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: event-i
+data:
+  mongodb-uri: "mongodb://admin:password123@mongodb:27017/event_i?authSource=admin&replicaSet=rs0"
+  redis-url: "redis://:redis-password@redis:6379"
+  frontend-url: "https://event-i.co.ke"
+  payhero-callback-url: "https://event-i.co.ke/api/payhero/callback"
+  payhero-success-url: "https://event-i.co.ke/checkout/success"
+  payhero-failed-url: "https://event-i.co.ke/checkout/failed"
+  mpesa-callback-url: "https://event-i.co.ke/api/orders/mpesa/callback"
+  mpesa-timeout-url: "https://event-i.co.ke/api/orders/mpesa/timeout"
+  email-from: "noreply@event-i.co.ke"
+  log-level: "error"
+  debug: "false"

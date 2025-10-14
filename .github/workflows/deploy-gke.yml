@@ -1,0 +1,97 @@
+name: Deploy to GKE
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: event-i-cluster
+  GKE_ZONE: us-central1-a
+  NAMESPACE: event-i
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install server dependencies
+      run: |
+        cd server
+        npm ci
+    
+    - name: Install client dependencies
+      run: |
+        cd client
+        npm ci
+    
+    - name: Run server tests
+      run: |
+        cd server
+        npm test
+    
+    - name: Run client tests
+      run: |
+        cd client
+        npm test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Google Cloud CLI
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+    
+    - name: Configure Docker for GCR
+      run: |
+        gcloud auth configure-docker
+    
+    - name: Get GKE credentials
+      run: |
+        gcloud container clusters get-credentials $GKE_CLUSTER --zone $GKE_ZONE
+    
+    - name: Build and push images
+      run: |
+        # Build server image
+        docker build -t gcr.io/$PROJECT_ID/event-i-server:$GITHUB_SHA -f server/Dockerfile.prod server/
+        docker push gcr.io/$PROJECT_ID/event-i-server:$GITHUB_SHA
+        
+        # Build client image
+        docker build -t gcr.io/$PROJECT_ID/event-i-client:$GITHUB_SHA -f client/Dockerfile.prod client/
+        docker push gcr.io/$PROJECT_ID/event-i-client:$GITHUB_SHA
+    
+    - name: Update image tags
+      run: |
+        sed -i "s|gcr.io/PROJECT_ID/event-i-server:latest|gcr.io/$PROJECT_ID/event-i-server:$GITHUB_SHA|g" k8s/server-deployment.yaml
+        sed -i "s|gcr.io/PROJECT_ID/event-i-client:latest|gcr.io/$PROJECT_ID/event-i-client:$GITHUB_SHA|g" k8s/client-deployment.yaml
+    
+    - name: Deploy to GKE
+      run: |
+        kubectl apply -f k8s/
+        kubectl rollout status deployment/server -n $NAMESPACE
+        kubectl rollout status deployment/client -n $NAMESPACE
+    
+    - name: Get deployment URL
+      run: |
+        INGRESS_IP=$(kubectl get ingress event-i-ingress -n $NAMESPACE -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "🚀 Deployment completed!"
+        echo "🌐 Application URL: https://event-i.co.ke"
+        echo "📊 Ingress IP: $INGRESS_IP"
+        echo ""
+        echo "Please ensure your DNS points event-i.co.ke to: $INGRESS_IP"

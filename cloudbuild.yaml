@@ -1,0 +1,35 @@
+steps:
+  # Build server image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/event-i-server:$COMMIT_SHA', '-f', 'server/Dockerfile.prod', 'server/']
+  
+  # Build client image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/event-i-client:$COMMIT_SHA', '-f', 'client/Dockerfile.prod', 'client/']
+  
+  # Push server image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/event-i-server:$COMMIT_SHA']
+  
+  # Push client image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/event-i-client:$COMMIT_SHA']
+  
+  # Set up kubectl
+  - name: 'gcr.io/cloud-builders/gke-deploy'
+    args:
+      - 'run'
+      - '--filename=k8s/'
+      - '--image=gcr.io/$PROJECT_ID/event-i-server:$COMMIT_SHA'
+      - '--image=gcr.io/$PROJECT_ID/event-i-client:$COMMIT_SHA'
+      - '--location=$_GKE_LOCATION'
+      - '--cluster=$_GKE_CLUSTER'
+      - '--namespace=event-i'
+
+substitutions:
+  _GKE_LOCATION: 'us-central1-a'
+  _GKE_CLUSTER: 'event-i-cluster'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
