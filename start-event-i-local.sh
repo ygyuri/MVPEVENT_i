@@ -67,10 +67,10 @@ show_access_urls() {
     echo "========================"
     
     if check_domain_configured; then
-        echo "✅ Custom Domain (event-i.local):"
-        echo "   Frontend: https://event-i.local/"
-        echo "   API:      https://event-i.local/api/health"
-        echo "   Health:   https://event-i.local/health"
+        echo "✅ Custom Domain (event-i.co.ke):"
+        echo "   Frontend: https://event-i.co.ke/"
+        echo "   API:      https://event-i.co.ke/api/health"
+        echo "   Health:   https://event-i.co.ke/health"
     else
         echo "⚠️  Custom domain not configured"
         echo "   Run: ./setup-local-domain.sh add"
@@ -101,15 +101,15 @@ test_connections() {
         print_error "localhost:443 - Failed"
     fi
     
-    # Test event-i.local if configured
+    # Test event-i.co.ke if configured
     if check_domain_configured; then
-        if curl -k -s -o /dev/null -w "%{http_code}" "https://event-i.local/api/health" | grep -q "200"; then
-            print_success "event-i.local:443 - Working"
+        if curl -k -s -o /dev/null -w "%{http_code}" "https://event-i.co.ke/api/health" | grep -q "200"; then
+            print_success "event-i.co.ke:443 - Working"
         else
-            print_error "event-i.local:443 - Failed"
+            print_error "event-i.co.ke:443 - Failed"
         fi
     else
-        print_warning "event-i.local not configured - skipping test"
+        print_warning "event-i.co.ke not configured - skipping test"
     fi
 }
 
@@ -135,7 +135,7 @@ show_help() {
     echo "  $0 stop     # Stop containers"
     echo ""
     echo "Domain Setup:"
-    echo "  ./setup-local-domain.sh add    # Add event-i.local to hosts"
+    echo "  ./setup-local-domain.sh add    # Add event-i.co.ke to hosts"
     echo "  ./setup-local-domain.sh status # Check domain status"
     echo "  ./setup-local-domain.sh test   # Test domain resolution"
 }

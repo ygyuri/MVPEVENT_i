@@ -15,7 +15,7 @@ openssl genrsa -out ssl/key.pem 2048
 
 # Generate certificate signing request
 echo "📝 Generating certificate signing request..."
-openssl req -new -key ssl/key.pem -out ssl/cert.csr -subj "/C=US/ST=State/L=City/O=Organization/CN=event-i.local"
+openssl req -new -key ssl/key.pem -out ssl/cert.csr -subj "/C=KE/ST=Nairobi/L=Nairobi/O=Event-i/CN=event-i.co.ke"
 
 # Generate self-signed certificate
 echo "📝 Generating self-signed certificate..."

@@ -1,6 +1,6 @@
 # Automated Docker Setup with Local Domain
 
-This guide explains how Event-i automatically sets up the local domain `event-i.local` whenever you run Docker commands.
+This guide explains how Event-i automatically sets up the local domain `event-i.co.ke` whenever you run Docker commands.
 
 ## 🚀 Quick Start
 
@@ -53,12 +53,12 @@ npm run domain:setup
 
 ### Automatic Domain Setup
 
-The system automatically adds `event-i.local` to your hosts file when you start Docker:
+The system automatically adds `event-i.co.ke` to your hosts file when you start Docker:
 
 1. **Scripts Check**: Before starting containers, scripts check if the domain is configured
 2. **Auto-Add**: If not found, the domain is automatically added to `/etc/hosts`
 3. **Backup**: A backup of your hosts file is created before changes
-4. **Safe**: Only affects `event-i.local`, leaves other entries intact
+4. **Safe**: Only affects `event-i.co.ke`, leaves other entries intact
 
 ### Docker Integration
 
@@ -119,8 +119,8 @@ https://localhost/
 https://localhost/api/health
 
 # Custom Domain (after auto-setup)
-https://event-i.local/
-https://event-i.local/api/health
+https://event-i.co.ke/
+https://event-i.co.ke/api/health
 ```
 
 ### Check URLs
@@ -145,7 +145,7 @@ make domain-status
 make domain-setup
 
 # Test domain resolution
-ping event-i.local
+ping event-i.co.ke
 ```
 
 ### Containers Not Starting
@@ -192,7 +192,7 @@ Event-i/
 ### Hosts File Protection
 
 - **Backup**: Automatic backup before changes
-- **Isolation**: Only affects `event-i.local`
+- **Isolation**: Only affects `event-i.co.ke`
 - **Rollback**: Easy removal with `make domain-remove`
 
 ### Container Security
@@ -265,7 +265,7 @@ ifconfig | grep 'inet ' | grep -v 127.0.0.1
 For mobile devices, add to their hosts file:
 
 ```
-YOUR_IP event-i.local
+YOUR_IP event-i.co.ke
 ```
 
 ## 🔧 Configuration
@@ -285,7 +285,7 @@ NGINX_HTTPS_PORT=443
 
 ### Customization
 
-- **Domain**: Change `event-i.local` in scripts
+- **Domain**: Change `event-i.co.ke` in scripts
 - **Ports**: Modify environment variables
 - **SSL**: Update certificate generation
 
@@ -320,4 +320,4 @@ make logs
 make test
 ```
 
-The automated setup ensures that `event-i.local` is always available when you start Docker, making development seamless and production-like.
+The automated setup ensures that `event-i.co.ke` is always available when you start Docker, making development seamless and production-like.

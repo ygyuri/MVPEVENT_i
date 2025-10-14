@@ -182,11 +182,11 @@ clean-prod: ## Clean up production containers and volumes
 	@docker compose -f docker-compose.prod.yml down -v --rmi all
 
 # Domain management
-domain-setup: ## Add event-i.local to hosts file
+domain-setup: ## Add event-i.co.ke to hosts file
 	@echo "🌐 Setting up local domain..."
 	@./setup-local-domain.sh add
 
-domain-remove: ## Remove event-i.local from hosts file
+domain-remove: ## Remove event-i.co.ke from hosts file
 	@echo "🌐 Removing local domain..."
 	@./setup-local-domain.sh remove
 
@@ -257,10 +257,10 @@ urls: ## Show all access URLs
 	@echo "   Health:   https://localhost/health"
 	@echo ""
 	@if grep -q "^127\.0\.0\.1[[:space:]]*event-i\.local$$" /etc/hosts 2>/dev/null; then \
-		echo "✅ Custom Domain (event-i.local):"; \
-		echo "   Frontend: https://event-i.local/"; \
-		echo "   API:      https://event-i.local/api/health"; \
-		echo "   Health:   https://event-i.local/health"; \
+		echo "✅ Custom Domain (event-i.co.ke):"; \
+		echo "   Frontend: https://event-i.co.ke/"; \
+		echo "   API:      https://event-i.co.ke/api/health"; \
+		echo "   Health:   https://event-i.co.ke/health"; \
 	else \
 		echo "⚠️  Custom domain not configured"; \
 		echo "   Run: make domain-setup"; \
