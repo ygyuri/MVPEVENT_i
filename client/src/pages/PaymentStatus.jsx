@@ -26,7 +26,6 @@ const PaymentStatus = () => {
     const waitForPaymentCompletion = async () => {
       try {
         const attemptNum = retryCount + 1;
-        console.log(`⏳ Long polling attempt ${attemptNum}/${MAX_RETRIES + 1} - Waiting for payment...`);
         setPollingCount(attemptNum);
         
         // Single long-polling request (server holds connection for up to 60s)
@@ -39,12 +38,6 @@ const PaymentStatus = () => {
         });
 
         const data = response.data;
-        console.log('📊 Order status received:', {
-          paymentStatus: data.paymentStatus,
-          status: data.status,
-          attempt: attemptNum
-        });
-
         setOrderStatus(data);
         setLoading(false);
 
@@ -53,17 +46,14 @@ const PaymentStatus = () => {
             data.paymentStatus === 'paid' || 
             data.paymentStatus === 'failed' || 
             data.paymentStatus === 'cancelled') {
-          console.log('✅ Payment status resolved! Final status:', data.paymentStatus);
           return; // Done - no more requests needed!
         }
 
         // Still processing after long poll - retry if under max
         if (retryCount < MAX_RETRIES) {
           retryCount++;
-          console.log(`🔄 Still processing after 60s wait, retrying in ${RETRY_DELAY/1000}s... (${retryCount}/${MAX_RETRIES})`);
           setTimeout(waitForPaymentCompletion, RETRY_DELAY);
         } else {
-          console.log('⏰ Max retries reached after long polling');
           setError('timeout');
           setLoading(false);
         }
@@ -71,16 +61,12 @@ const PaymentStatus = () => {
       } catch (err) {
         // Request was aborted (component unmounted)
         if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
-          console.log('Long polling request aborted (user navigated away)');
           return;
         }
 
-        console.error('❌ Error during long polling:', err);
-        
         // Retry on network errors (with limit)
         if (retryCount < MAX_RETRIES) {
           retryCount++;
-          console.log(`🔄 Retrying after error... (${retryCount}/${MAX_RETRIES})`);
           setTimeout(waitForPaymentCompletion, RETRY_DELAY);
         } else {
           setError(err.response?.data?.error || 'Failed to check payment status. Please refresh the page.');
@@ -94,7 +80,6 @@ const PaymentStatus = () => {
 
     // Cleanup function
     return () => {
-      console.log('🧹 Cleaning up long polling connection');
       abortController.abort();
     };
   }, [orderId]);
@@ -324,13 +309,13 @@ const PaymentStatus = () => {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <button
+        {/* <button
           onClick={() => navigate('/wallet')}
           className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
         >
           <Receipt className="w-5 h-5" />
           View My Tickets
-        </button>
+        </button> */}
         <button
           onClick={() => navigate('/events')}
           className={`px-6 py-3 rounded-lg font-semibold transition-all ${
@@ -606,17 +591,7 @@ const PaymentStatus = () => {
     );
   };
 
-  // Loading state
-  if (loading && !orderStatus) {
-    return (
-      <div className={`min-h-screen flex items-center justify-center ${
-        isDarkMode ? 'bg-gray-900' : 'bg-gray-50'
-      }`}>
-        <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
-      </div>
-    );
-  }
-
+  // Always show status UI (StatusPending has its own loading states)
   return (
     <div className={`min-h-screen py-12 px-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       <div className="max-w-2xl mx-auto">

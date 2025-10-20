@@ -153,22 +153,15 @@ const DirectCheckout = () => {
         const params = referralCode ? `?ref=${referralCode}` : '';
         const response = await api.get(`/api/events/${slug}/checkout${params}`);
         
-        console.log('📦 Event data received:', response.data);
-        
         const eventData = response.data.event;
-        console.log('🎫 Ticket types:', eventData?.ticketTypes);
-        
         setEvent(eventData);
         
         // Set default ticket type if available
         if (eventData.ticketTypes && eventData.ticketTypes.length > 0) {
-          console.log('✅ Setting default ticket type:', eventData.ticketTypes[0].name);
           setFormData(prev => ({
             ...prev,
             ticketType: eventData.ticketTypes[0].name
           }));
-        } else {
-          console.warn('⚠️ No ticket types found for this event');
         }
       } catch (err) {
         console.error('❌ Error fetching event:', err);
@@ -254,7 +247,6 @@ const DirectCheckout = () => {
     
     // CRITICAL: Prevent double submission (race condition + React Strict Mode)
     if (isSubmittingRef.current) {
-      console.log('⚠️ Duplicate submission blocked');
       return;
     }
     isSubmittingRef.current = true;
@@ -318,8 +310,6 @@ const DirectCheckout = () => {
       
       if (response.data.success) {
         setSuccess(true);
-        
-        console.log('✅ Order created:', response.data.data);
         
         // Redirect to payment status page to show progress
         setTimeout(() => {

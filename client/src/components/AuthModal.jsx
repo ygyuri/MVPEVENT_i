@@ -10,10 +10,10 @@ const AuthModal = ({ isOpen, onClose }) => {
     email: '',
     password: '',
     confirmPassword: '',
-    username: '',
+    username: '', // Auto-generated from firstName + lastName
     firstName: '',
     lastName: '',
-    walletAddress: '',
+    walletAddress: '', // Hidden from UI
     role: 'customer'
   })
   const [showPassword, setShowPassword] = useState(false)
@@ -21,6 +21,8 @@ const AuthModal = ({ isOpen, onClose }) => {
   const [localError, setLocalError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [isNewUser, setIsNewUser] = useState(false)
+  const [passwordTouched, setPasswordTouched] = useState(false)
+  const [confirmTouched, setConfirmTouched] = useState(false)
 
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -36,6 +38,14 @@ const AuthModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null
 
+  // Auto-generate username from firstName and lastName
+  const generateUsername = (firstName, lastName) => {
+    if (!firstName || !lastName) return ''
+    const base = `${firstName}${lastName}`.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const randomSuffix = Math.floor(Math.random() * 1000)
+    return `${base}${randomSuffix}`
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLocalError('')
@@ -44,9 +54,8 @@ const AuthModal = ({ isOpen, onClose }) => {
     try {
       if (isLogin) {
         const result = await dispatch(login({ email: formData.email, password: formData.password })).unwrap()
-        console.log('✅ [AUTH MODAL] Login successful:', result.user);
         
-        setSuccessMessage('Welcome back! You have successfully signed in.')
+        setSuccessMessage('Signed in successfully.')
         
         // Close modal and navigate based on user role
         setTimeout(() => {
@@ -54,39 +63,44 @@ const AuthModal = ({ isOpen, onClose }) => {
           
           // Navigate based on user role
           if (result.user.role === 'organizer') {
-            console.log('🔄 [AUTH MODAL] Redirecting organizer to dashboard');
             navigate('/organizer/dashboard');
           } else {
-            console.log('🔄 [AUTH MODAL] Redirecting customer to home');
             navigate('/');
           }
         }, 1500)
       } else {
-        if (!formData.firstName || !formData.lastName || !formData.username) {
-          setLocalError('Please fill in all required fields.');
+        // Simple validation (real-time validation already handled)
+        if (!formData.firstName || !formData.lastName) {
+          setLocalError('Please enter your first and last name.')
+          return
+        }
+        if (!formData.email) {
+          setLocalError('Please enter your email address.')
           return
         }
         if (formData.password.length < 8) {
-          setLocalError('Password must be at least 8 characters long.')
+          setLocalError('Password must be at least 8 characters.')
           return
         }
         if (formData.password !== formData.confirmPassword) {
           setLocalError('Passwords do not match.')
           return
         }
+        
+        // Auto-generate username
+        const generatedUsername = generateUsername(formData.firstName, formData.lastName)
+        
         const result = await dispatch(register({
           email: formData.email,
           password: formData.password,
-          username: formData.username,
+          username: generatedUsername,
           firstName: formData.firstName,
           lastName: formData.lastName,
           walletAddress: formData.walletAddress || undefined,
           role: formData.role
         })).unwrap()
         
-        console.log('✅ [AUTH MODAL] Registration successful:', result.user);
-        
-        setSuccessMessage(`🎉 Welcome to Event-i, ${formData.firstName}! Your account has been created successfully. You can now explore events and join the community!`)
+        setSuccessMessage(`Account created successfully. Redirecting...`)
         setIsNewUser(true)
         
         setTimeout(() => {
@@ -94,10 +108,8 @@ const AuthModal = ({ isOpen, onClose }) => {
           
           // Navigate based on user role
           if (result.user.role === 'organizer') {
-            console.log('🔄 [AUTH MODAL] Redirecting new organizer to dashboard');
             navigate('/organizer/dashboard');
           } else {
-            console.log('🔄 [AUTH MODAL] Redirecting new customer to home');
             navigate('/');
           }
         }, 3000)
@@ -111,18 +123,42 @@ const AuthModal = ({ isOpen, onClose }) => {
     dispatch(clearError())
     setLocalError('')
     setSuccessMessage('')
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const newFormData = { ...formData, [e.target.name]: e.target.value }
+    
+    // Auto-generate username when firstName or lastName changes
+    if (e.target.name === 'firstName' || e.target.name === 'lastName') {
+      newFormData.username = generateUsername(
+        e.target.name === 'firstName' ? e.target.value : formData.firstName,
+        e.target.name === 'lastName' ? e.target.value : formData.lastName
+      )
+    }
+    
+    setFormData(newFormData)
   }
 
   const resetForm = () => {
     setLocalError('')
     setSuccessMessage('')
     setIsNewUser(false)
+    setPasswordTouched(false)
+    setConfirmTouched(false)
     dispatch(clearError())
     setFormData({
-      email: '', password: '', confirmPassword: '', username: '', firstName: '', lastName: '', walletAddress: '', role: 'customer'
+      email: '', 
+      password: '', 
+      confirmPassword: '', 
+      username: '', 
+      firstName: '', 
+      lastName: '', 
+      walletAddress: '', 
+      role: 'customer'
     })
   }
+  
+  // Real-time password validation
+  const passwordsMatch = formData.password && formData.confirmPassword && formData.password === formData.confirmPassword
+  const passwordsDontMatch = confirmTouched && formData.confirmPassword && formData.password !== formData.confirmPassword
+  const passwordTooShort = passwordTouched && formData.password && formData.password.length < 8
 
   const toggleMode = () => {
     setIsLogin(!isLogin)
@@ -198,23 +234,6 @@ const AuthModal = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* New User Welcome Message */}
-          {isNewUser && (
-            <div className={`mb-6 p-4 ${isDarkMode ? 'bg-blue-900/20 border-blue-800 text-blue-200' : 'bg-blue-50 border-blue-200 text-blue-800'} border rounded-xl`}>
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <svg className={`h-5 w-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium">
-                    🎯 <strong>Next Steps:</strong> Explore featured events, browse categories, and discover events that match your interests!
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {!isLogin && (
@@ -246,43 +265,34 @@ const AuthModal = ({ isOpen, onClose }) => {
                   </div>
                 </div>
 
+                {/* Auto-generated Username Preview */}
                 <div>
-                  <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Username</label>
-                  <input 
-                    type="text" 
-                    name="username" 
-                    value={formData.username} 
-                    onChange={handleInputChange} 
-                    required 
-                    className="input-web3 w-full px-4 py-3 rounded-xl text-web3-primary placeholder-web3-cyan focus:outline-none focus:ring-2 focus:ring-primary-blue/20 transition-all duration-200" 
-                    placeholder="johndoe" 
-                  />
+                  <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>
+                    Username <span className={`text-xs font-normal ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>(auto-generated)</span>
+                  </label>
+                  <div className={`w-full px-4 py-3 rounded-xl ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-300' : 'bg-gray-100 border-gray-300 text-gray-600'} border cursor-not-allowed`}>
+                    {formData.username || 'Enter your name above'}
+                  </div>
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Generated from your first and last name
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Role</label>
-                    <select 
-                      name="role" 
-                      value={formData.role} 
-                      onChange={handleInputChange} 
-                      className="input-web3 w-full px-4 py-3 rounded-xl text-web3-primary focus:outline-none focus:ring-2 focus:ring-primary-blue/20 transition-all duration-200"
-                    >
-                      <option value="customer">Customer</option>
-                      <option value="organizer">Organizer</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Wallet Address (Optional)</label>
-                    <input 
-                      type="text" 
-                      name="walletAddress" 
-                      value={formData.walletAddress} 
-                      onChange={handleInputChange} 
-                      className={`w-full px-4 py-3 rounded-xl ${isDarkMode ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'} border focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200`} 
-                      placeholder="0x..." 
-                    />
-                  </div>
+                {/* Role Selector */}
+                <div>
+                  <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>I am a...</label>
+                  <select 
+                    name="role" 
+                    value={formData.role} 
+                    onChange={handleInputChange} 
+                    className={`w-full px-4 py-3 rounded-xl ${isDarkMode ? 'bg-gray-800 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} border focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200`}
+                  >
+                    <option value="customer">Customer - Buying tickets to attend events</option>
+                    <option value="organizer">Organizer - Creating and managing events</option>
+                  </select>
+                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {formData.role === 'customer' ? 'You can browse and buy event tickets' : 'You can create events and sell tickets'}
+                  </p>
                 </div>
               </>
             )}
@@ -307,10 +317,17 @@ const AuthModal = ({ isOpen, onClose }) => {
                   type={showPassword ? 'text' : 'password'} 
                   name="password" 
                   value={formData.password} 
-                  onChange={handleInputChange} 
+                  onChange={handleInputChange}
+                  onBlur={() => setPasswordTouched(true)}
                   required 
-                  className="input-web3 w-full px-4 py-3 pr-12 rounded-xl text-web3-primary placeholder-web3-cyan focus:outline-none focus:ring-2 focus:ring-primary-blue/20 transition-all duration-200" 
-                  placeholder="••••••••" 
+                  className={`w-full px-4 py-3 pr-12 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 ${
+                    passwordTooShort && !isLogin
+                      ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500' 
+                      : isDarkMode 
+                        ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:ring-blue-500/20 focus:border-blue-500' 
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-blue-500/20 focus:border-blue-500'
+                  }`}
+                  placeholder="At least 8 characters" 
                 />
                 <button 
                   type="button" 
@@ -320,6 +337,14 @@ const AuthModal = ({ isOpen, onClose }) => {
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
+              {passwordTooShort && !isLogin && (
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Password must be at least 8 characters
+                </p>
+              )}
             </div>
 
             {!isLogin && (
@@ -330,10 +355,19 @@ const AuthModal = ({ isOpen, onClose }) => {
                     type={showConfirm ? 'text' : 'password'} 
                     name="confirmPassword" 
                     value={formData.confirmPassword} 
-                    onChange={handleInputChange} 
+                    onChange={handleInputChange}
+                    onBlur={() => setConfirmTouched(true)}
                     required 
-                    className="input-web3 w-full px-4 py-3 pr-12 rounded-xl text-web3-primary placeholder-web3-cyan focus:outline-none focus:ring-2 focus:ring-primary-blue/20 transition-all duration-200" 
-                    placeholder="••••••••" 
+                    className={`w-full px-4 py-3 pr-12 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 ${
+                      passwordsMatch
+                        ? 'border-green-500 focus:ring-green-500/20 focus:border-green-500'
+                        : passwordsDontMatch
+                          ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500'
+                          : isDarkMode 
+                            ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400 focus:ring-blue-500/20 focus:border-blue-500' 
+                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:ring-blue-500/20 focus:border-blue-500'
+                    }`}
+                    placeholder="Re-enter your password" 
                   />
                   <button 
                     type="button" 
@@ -342,13 +376,36 @@ const AuthModal = ({ isOpen, onClose }) => {
                   >
                     {showConfirm ? 'Hide' : 'Show'}
                   </button>
+                  {passwordsMatch && (
+                    <div className="absolute right-12 top-1/2 -translate-y-1/2 text-green-500">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
+                {passwordsDontMatch && (
+                  <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Passwords do not match
+                  </p>
+                )}
+                {passwordsMatch && (
+                  <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Passwords match
+                  </p>
+                )}
               </div>
             )}
 
             <button 
               type="submit" 
-              disabled={loading} 
+              disabled={loading || (!isLogin && (passwordTooShort || passwordsDontMatch))} 
               className="w-full py-3 sm:py-4 px-6 rounded-xl font-semibold text-white text-base sm:text-lg bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none transition-all duration-200"
             >
               {loading ? (

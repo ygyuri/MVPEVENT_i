@@ -4,13 +4,10 @@ import { useDispatch } from 'react-redux';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
-import DebugAuth from './components/DebugAuth';
 import Home from './pages/Home';
 import Events from './pages/Events';
-import EventDetails from './pages/EventDetails';
 import DirectCheckout from './pages/DirectCheckout';
 import PaymentStatus from './pages/PaymentStatus';
-import Checkout from './pages/Checkout';
 import AuthTest from './pages/AuthTest';
 import UserProfile from './pages/UserProfile';
 import TicketWallet from './pages/TicketWallet';
@@ -56,10 +53,8 @@ function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/events" element={<Events />} />
-                <Route path="/events/:slug" element={<EventDetails />} />
                 <Route path="/events/:slug/checkout" element={<DirectCheckout />} />
                 <Route path="/payment/:orderId" element={<PaymentStatus />} />
-                <Route path="/checkout" element={<Checkout />} />
                 <Route path="/auth-test" element={<AuthTest />} />
                 <Route path="/profile" element={<UserProfile />} />
                 <Route path="/wallet" element={<TicketWallet />} />
@@ -87,7 +82,6 @@ function App() {
               isOpen={isAuthModalOpen} 
               onClose={() => setIsAuthModalOpen(false)} 
             />
-            <DebugAuth />
           </div>
         </ThemeProvider>
       </ToastProvider>

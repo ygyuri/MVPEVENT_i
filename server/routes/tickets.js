@@ -382,29 +382,11 @@ router.post('/direct-purchase',
         });
       }
 
-      // ========== STEP 8: Send Email (Async, Don't Wait) - WITH IDEMPOTENCY ==========
-      if (isNewUser && tempPassword && !user.welcomeEmailSent) {
-        // Send credentials email asynchronously (idempotent)
-        setImmediate(async () => {
-          try {
-            await emailService.sendAccountCreationEmail({
-              email: user.email,
-              firstName: user.firstName,
-              tempPassword,
-              orderNumber: order.orderNumber
-            });
-            
-            // Mark welcome email as sent (idempotency flag)
-            user.welcomeEmailSent = true;
-            await user.save();
-            
-            console.log('✅ Credentials email sent to:', user.email);
-          } catch (emailError) {
-            console.error('❌ Failed to send credentials email:', emailError);
-          }
-        });
-      } else if (isNewUser && user.welcomeEmailSent) {
-        console.log('ℹ️  Welcome email already sent to:', user.email);
+      // ========== STEP 8: Welcome Email ==========
+      // NOTE: Welcome email is sent AFTER payment confirmation in payhero.js callback
+      // to avoid sending credentials before payment is complete
+      if (isNewUser && tempPassword) {
+        console.log('ℹ️  Welcome email will be sent after payment confirmation');
       }
 
       // ========== STEP 9: Return Success Response ==========
