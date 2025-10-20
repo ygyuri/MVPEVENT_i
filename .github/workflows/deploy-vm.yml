@@ -28,9 +28,17 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             set -e
-            # Ensure repo exists
-            if [ ! -d /root/MVPEVENT_i ]; then
-              sudo bash -lc 'cd /root && git clone https://github.com/ygyuri/MVPEVENT_i.git'
-            fi
-            sudo bash -lc 'cd /root/MVPEVENT_i && git fetch --all && git reset --hard origin/main && docker compose -f docker-compose.prod.yml build && docker compose -f docker-compose.prod.yml up -d && docker compose -f docker-compose.prod.yml ps'
+            sudo bash -lc '
+              set -e
+              if [ -d /root/MVPEVENT_i/.git ]; then
+                cd /root/MVPEVENT_i && git fetch --all && git reset --hard origin/main;
+              else
+                rm -rf /root/MVPEVENT_i || true;
+                git clone https://github.com/ygyuri/MVPEVENT_i.git /root/MVPEVENT_i;
+              fi
+              cd /root/MVPEVENT_i;
+              docker compose -f docker-compose.prod.yml build;
+              docker compose -f docker-compose.prod.yml up -d;
+              docker compose -f docker-compose.prod.yml ps;
+            '
 
