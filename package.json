@@ -21,10 +21,7 @@
     "env:staging": "cp env.staging.example .env.staging && echo '✅ .env.staging created'",
     "env:uat": "cp env.uat.example .env.uat && echo '✅ .env.uat created'",
     "env:prod": "cp env.production.example .env.production && echo '✅ .env.production created'",
-    "domain:setup": "./setup-local-domain.sh add",
-    "domain:remove": "./setup-local-domain.sh remove",
-    "domain:status": "./setup-local-domain.sh status",
-    "domain:test": "./setup-local-domain.sh test"
+    
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

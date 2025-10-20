@@ -19,19 +19,7 @@ fi
 
 echo "✅ Docker is running"
 
-# Auto-setup local domain
-echo "🌐 Setting up local domain..."
-if [ -f "./setup-local-domain.sh" ]; then
-    # Check if domain is already configured
-    if ! ./setup-local-domain.sh status | grep -q "is configured"; then
-        echo "📝 Adding event-i.co.ke to hosts file..."
-        ./setup-local-domain.sh add
-    else
-        echo "✅ event-i.co.ke already configured"
-    fi
-else
-    echo "⚠️  setup-local-domain.sh not found, skipping domain setup"
-fi
+# Local domain setup removed for production VM usage
 
 # Stop any existing containers
 echo "🛑 Stopping existing containers..."

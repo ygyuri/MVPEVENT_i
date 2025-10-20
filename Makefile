@@ -1,7 +1,7 @@
 # Event-i Makefile
 # Provides convenient commands for Docker operations with automatic domain setup
 
-.PHONY: help dev staging uat prod up down build logs status clean domain-setup domain-remove domain-status test setup-env setup-env-dev setup-env-staging setup-env-uat setup-env-prod
+.PHONY: help dev staging uat prod up down build logs status clean test setup-env setup-env-dev setup-env-staging setup-env-uat setup-env-prod
 
 # Default target
 help: ## Show this help message
@@ -72,7 +72,7 @@ setup-env-prod: ## Create .env.production from example
 	fi
 
 # Development environment
-dev: setup-env-dev domain-setup ## Start development environment with domain setup
+dev: setup-env-dev ## Start development environment
 	@echo "🐳 Starting Event-i Development Environment..."
 	@./start-docker.sh
 
@@ -87,12 +87,12 @@ uat: setup-env-uat ## Start UAT environment
 	@docker compose -f docker-compose.uat.yml --env-file .env.uat up -d --build
 
 # Production environment
-prod: setup-env-prod domain-setup ## Start production environment with domain setup
+prod: setup-env-prod ## Start production environment
 	@echo "🐳 Starting Event-i Production Environment..."
 	@./start-event-i-local.sh start
 
 # Start containers
-up: setup-env domain-setup ## Start all containers
+up: setup-env ## Start all containers
 	@echo "🚀 Starting Event-i containers..."
 	@docker compose up -d --build
 
@@ -181,18 +181,7 @@ clean-prod: ## Clean up production containers and volumes
 	@echo "🧹 Cleaning up Event-i Production containers..."
 	@docker compose -f docker-compose.prod.yml down -v --rmi all
 
-# Domain management
-domain-setup: ## Add event-i.co.ke to hosts file
-	@echo "🌐 Setting up local domain..."
-	@./setup-local-domain.sh add
-
-domain-remove: ## Remove event-i.co.ke from hosts file
-	@echo "🌐 Removing local domain..."
-	@./setup-local-domain.sh remove
-
-domain-status: ## Check domain configuration status
-	@echo "🌐 Domain configuration status:"
-	@./setup-local-domain.sh status
+# Domain management (removed)
 
 # Testing
 test: ## Test Event-i connections
