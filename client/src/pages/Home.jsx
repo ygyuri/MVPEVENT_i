@@ -64,7 +64,7 @@ const Home = () => {
               transition={{ delay: 0.15, duration: 0.4 }}
               className="mt-4 text-lg md:text-xl text-web3-secondary"
             >
-              The web3 way to explore events you love so much — curated feeds, real-time trends, and more.
+              A modern web3 way to explore events you love so much — curated feeds, real-time trends, and more.
             </motion.p>
           </div>
         </div>

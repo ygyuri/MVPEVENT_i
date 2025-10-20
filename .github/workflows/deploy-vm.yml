@@ -18,6 +18,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    if: always() && needs.build.result == 'success'
     steps:
       - uses: actions/checkout@v4
       - name: SSH deploy to VM
@@ -30,15 +31,63 @@ jobs:
             set -e
             sudo bash -lc '
               set -e
+              echo "🚀 Starting deployment..."
+              
+              # Ensure repo exists and is up to date
               if [ -d /root/MVPEVENT_i/.git ]; then
-                cd /root/MVPEVENT_i && git fetch --all && git reset --hard origin/main;
+                echo "📁 Repository exists, updating..."
+                cd /root/MVPEVENT_i
+                git remote set-url origin https://github.com/ygyuri/MVPEVENT_i.git
+                git fetch --all
+                git reset --hard origin/main
               else
-                rm -rf /root/MVPEVENT_i || true;
-                git clone https://github.com/ygyuri/MVPEVENT_i.git /root/MVPEVENT_i;
+                echo "📁 Cloning repository..."
+                rm -rf /root/MVPEVENT_i || true
+                git clone https://github.com/ygyuri/MVPEVENT_i.git /root/MVPEVENT_i
+                cd /root/MVPEVENT_i
               fi
-              cd /root/MVPEVENT_i;
-              docker compose -f docker-compose.prod.yml build;
-              docker compose -f docker-compose.prod.yml up -d;
-              docker compose -f docker-compose.prod.yml ps;
+              
+              # Show current commit
+              echo "📝 Current commit: $(git log --oneline -1)"
+              
+              # Clean up old images to save space
+              echo "🧹 Cleaning up old Docker images..."
+              docker image prune -f || true
+              
+              # Build with no cache to ensure fresh builds
+              echo "🔨 Building Docker images..."
+              docker compose -f docker-compose.prod.yml build --no-cache
+              
+              # Deploy
+              echo "🚀 Deploying containers..."
+              docker compose -f docker-compose.prod.yml up -d
+              
+              # Wait for health checks
+              echo "⏳ Waiting for health checks..."
+              sleep 15
+              
+              # Verify deployment
+              echo "✅ Checking deployment status..."
+              docker compose -f docker-compose.prod.yml ps
+              
+              # Test API health
+              echo "🔍 Testing API health..."
+              if curl -f -s https://localhost/api/health > /dev/null; then
+                echo "✅ API health check passed"
+              else
+                echo "❌ API health check failed"
+                exit 1
+              fi
+              
+              # Test frontend accessibility
+              echo "🔍 Testing frontend accessibility..."
+              if curl -f -s https://localhost/ > /dev/null; then
+                echo "✅ Frontend accessibility check passed"
+              else
+                echo "❌ Frontend accessibility check failed"
+                exit 1
+              fi
+              
+              echo "🎉 Deployment completed successfully!"
             '
 
