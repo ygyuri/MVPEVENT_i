@@ -1,4 +1,4 @@
-# 🎉 Event-i: Enterprise Event Management Platform
+# 🎉 Event-i: Enterprise Event Management Platforms
 
 [![Tests](https://img.shields.io/badge/tests-99%20passing-brightgreen)](./client/src/__tests__)
 [![Build](https://img.shields.io/badge/build-passing-brightgreen)]()
