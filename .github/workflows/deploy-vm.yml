@@ -1,0 +1,36 @@
+name: Build and Deploy to VM
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build images (no push)
+        run: docker compose -f docker-compose.prod.yml build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH deploy to VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            set -e
+            # Ensure repo exists
+            if [ ! -d /root/MVPEVENT_i ]; then
+              sudo bash -lc 'cd /root && git clone https://github.com/ygyuri/MVPEVENT_i.git'
+            fi
+            sudo bash -lc 'cd /root/MVPEVENT_i && git fetch --all && git reset --hard origin/main && docker compose -f docker-compose.prod.yml build && docker compose -f docker-compose.prod.yml up -d && docker compose -f docker-compose.prod.yml ps'
+
