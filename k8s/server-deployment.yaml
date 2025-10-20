@@ -30,7 +30,8 @@ spec:
     spec:
       containers:
       - name: server
-        image: gcr.io/PROJECT_ID/event-i-server:latest
+        image: event-i-server:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 5001
         env:

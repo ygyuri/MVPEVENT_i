@@ -30,7 +30,8 @@ spec:
     spec:
       containers:
       - name: client
-        image: gcr.io/PROJECT_ID/event-i-client:latest
+        image: event-i-client:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 80
         env:

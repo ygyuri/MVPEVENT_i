@@ -14,8 +14,6 @@ data:
     net:
       port: 27017
       bindIp: 0.0.0.0
-    replication:
-      replSetName: rs0
     security:
       authorization: enabled
 ---
@@ -38,7 +36,6 @@ metadata:
   labels:
     app: mongodb
 spec:
-  clusterIP: None
   ports:
   - port: 27017
     targetPort: 27017
@@ -47,13 +44,14 @@ spec:
     app: mongodb
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: mongodb
   namespace: event-i
+  labels:
+    app: mongodb
 spec:
-  serviceName: mongodb
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: mongodb
@@ -84,8 +82,6 @@ spec:
         - mongod
         - --config
         - /etc/mongod.conf
-        - --replSet
-        - rs0
         - --auth
         volumeMounts:
         - name: mongodb-data
@@ -119,17 +115,11 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 5
       volumes:
+      - name: mongodb-data
+        persistentVolumeClaim:
+          claimName: mongodb-data-mongodb-0
       - name: mongodb-config
         configMap:
           name: mongodb-config
       - name: mongodb-logs
         emptyDir: {}
-  volumeClaimTemplates:
-  - metadata:
-      name: mongodb-data
-    spec:
-      accessModes: ["ReadWriteOnce"]
-      resources:
-        requests:
-          storage: 1Gi
-      storageClassName: "standard"
