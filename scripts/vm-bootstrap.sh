@@ -5,8 +5,8 @@ set -euo pipefail
 # Or run after cloning the repo: ./scripts/vm-bootstrap.sh
 
 DOMAIN=${DOMAIN:-event-i.co.ke}
-CONTACT_EMAIL=${CONTACT_EMAIL:-you@example.com}
-REPO_URL=${REPO_URL:-https://github.com/your-org/MVPEVENT_i.git}
+CONTACT_EMAIL=${CONTACT_EMAIL:-gideonyuri15@gmail.com}
+REPO_URL=${REPO_URL:-https://github.com/ygyuri/MVPEVENT_i.git}
 BRANCH=${BRANCH:-main}
 
 log() { echo -e "[vm-bootstrap] $*"; }
