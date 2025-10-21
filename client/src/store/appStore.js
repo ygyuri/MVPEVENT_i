@@ -19,6 +19,13 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+// Console log for app store API configuration
+console.log('📱 App Store API Configuration:', {
+  environment: import.meta.env.DEV ? 'development' : 'production',
+  viteApiUrl: import.meta.env.VITE_API_URL,
+  resolvedApiBaseUrl: API_BASE_URL
+});
+
 const useAppStore = create((set, get) => ({
   // State
   health: {

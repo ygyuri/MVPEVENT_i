@@ -21,6 +21,14 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+// Console log for debugging API configuration
+console.log('🔧 API Configuration:', {
+  environment: import.meta.env.DEV ? 'development' : 'production',
+  viteApiUrl: import.meta.env.VITE_API_URL,
+  resolvedApiBaseUrl: API_BASE_URL,
+  currentHostname: typeof window !== 'undefined' ? window.location.hostname : 'server-side'
+});
+
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -28,6 +36,24 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Add request interceptor for logging
+api.interceptors.request.use(
+  (config) => {
+    console.log('📤 API Request:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullUrl: `${config.baseURL}${config.url}`,
+      timestamp: new Date().toISOString()
+    });
+    return config;
+  },
+  (error) => {
+    console.error('❌ API Request Error:', error);
+    return Promise.reject(error);
+  }
+);
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
@@ -45,8 +71,23 @@ api.interceptors.request.use(
 
 // Response interceptor to handle token expiration
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('📥 API Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.config.url,
+      timestamp: new Date().toISOString()
+    });
+    return response;
+  },
   async (error) => {
+    console.error('❌ API Response Error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
     const originalRequest = error.config || {};
 
     // Don't attempt refresh for auth endpoints or if no response

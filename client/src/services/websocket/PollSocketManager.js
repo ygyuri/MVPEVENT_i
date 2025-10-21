@@ -462,15 +462,20 @@ class PollSocketManager {
   getApiUrl() {
     // Use VITE_API_URL if available (for Docker environments)
     if (import.meta.env.VITE_API_URL) {
-      return import.meta.env.VITE_API_URL;
+      const apiUrl = import.meta.env.VITE_API_URL;
+      console.log('🔌 WebSocket API URL (VITE_API_URL):', apiUrl);
+      return apiUrl;
     }
     
     // Check if we're in development
     if (import.meta.env.DEV) {
-      return 'http://localhost:5000';
+      const devUrl = 'http://localhost:5000';
+      console.log('🔌 WebSocket API URL (Development):', devUrl);
+      return devUrl;
     }
     
     // Production: use same origin (relative URL)
+    console.log('🔌 WebSocket API URL (Production - Same Origin):', '');
     return '';
   }
 
