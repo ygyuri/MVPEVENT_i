@@ -460,7 +460,18 @@ class PollSocketManager {
    * Get API URL from environment or fallback
    */
   getApiUrl() {
-    return import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    // Use VITE_API_URL if available (for Docker environments)
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+    
+    // Check if we're in development
+    if (import.meta.env.DEV) {
+      return 'http://localhost:5000';
+    }
+    
+    // Production: use same origin (relative URL)
+    return '';
   }
 
   /**

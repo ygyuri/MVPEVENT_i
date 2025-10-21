@@ -15,8 +15,8 @@ const getApiBaseUrl = () => {
     const port = '5000';
     return `http://${hostname}:${port}`;
   }
-  // Production URL (replace with your actual production API URL)
-  return 'https://your-production-api.com';
+  // Production: use same origin (relative URL)
+  return '';
 };
 
 const API_BASE_URL = getApiBaseUrl();

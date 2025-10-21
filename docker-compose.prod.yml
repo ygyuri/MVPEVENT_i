@@ -61,7 +61,7 @@ services:
       dockerfile: Dockerfile.prod
     container_name: event_i_client_prod
     environment:
-      VITE_API_URL: ${FRONTEND_URL:-https://yourdomain.com}
+      VITE_API_URL: ${FRONTEND_URL:-https://event-i.co.ke}
     # Don't expose client port directly - access through nginx
     # ports:
     #   - "3000:3000"
