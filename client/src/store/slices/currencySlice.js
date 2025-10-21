@@ -157,8 +157,24 @@ export const fetchExchangeRates = createAsyncThunk(
       // Store request timestamp
       currencyRequestCache.set(requestKey, now);
 
+      console.log('💱 [CURRENCY API] Fetching exchange rates from:', CURRENCY_API_URL);
       const response = await fetch(CURRENCY_API_URL)
+      
+      if (!response.ok) {
+        throw new Error(`Currency API responded with status: ${response.status}`);
+      }
+      
       const data = await response.json()
+      console.log('💱 [CURRENCY API] Successfully fetched exchange rates:', {
+        base: data.base,
+        date: data.date,
+        ratesCount: Object.keys(data.rates).length,
+        sampleRates: {
+          KES: data.rates.KES,
+          USD: data.rates.USD,
+          EUR: data.rates.EUR
+        }
+      });
       
       // Store result in cache
       currencyRequestCache.set(requestKey + '_result', data.rates);
