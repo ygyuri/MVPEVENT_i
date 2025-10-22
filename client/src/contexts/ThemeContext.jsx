@@ -90,6 +90,7 @@ export const ThemeToggle = ({ className = '', size = 'default' }) => {
   return (
     <button
       onClick={toggleTheme}
+      title={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
       className={`
         ${sizeClasses[size]}
         rounded-full p-2 transition-all duration-300 transform hover:scale-110

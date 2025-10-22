@@ -65,7 +65,7 @@ const CurrencySelector = ({ className = '', showConversion = true }) => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-web3-secondary/60 hover:text-web3-primary hover:bg-web3-secondary/30 rounded-lg transition-all duration-200"
-        title={`${selectedCurrency} (${selectedCurrencyInfo?.symbol})`}
+        title={`Currency: ${selectedCurrency} (${selectedCurrencyInfo?.symbol}) - Click to change`}
         aria-label={`Currency selector: ${selectedCurrency}`}
       >
         <Globe className="w-4 h-4" />
