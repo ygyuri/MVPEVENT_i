@@ -3,6 +3,8 @@ const { query, validationResult, body, param } = require('express-validator');
 const { optionalAuth, verifyToken, requireRole } = require('../middleware/auth');
 const Event = require('../models/Event');
 const EventCategory = require('../models/EventCategory');
+const Ticket = require('../models/Ticket');
+const User = require('../models/User');
 const { cache } = require('../config/database');
 const path = require('path');
 const fs = require('fs');
@@ -205,26 +207,36 @@ router.get(
   }
 );
 
-// Get featured events
+// Get featured events (recently published events)
 router.get('/featured', optionalAuth, async (req, res) => {
   try {
     const userId = req.user?.id;
-    const cacheKey = isProd ? `featured:${userId || 'anon'}` : null;
+    const { page = 1, pageSize = 12 } = req.query;
+    const skip = (Number(page) - 1) * Number(pageSize);
+    
+    const cacheKey = isProd ? `featured:v2:${page}:${pageSize}:${userId || 'anon'}` : null;
     
     if (!userId && cacheKey) {
       const cached = await cache.get(cacheKey);
-      if (cached) return res.json({ events: cached });
+      if (cached) {
+        if (isProd) res.set('Cache-Control', 'public, max-age=60');
+        return res.json(cached);
+      }
     }
     
-    const events = await Event.find({ 
-      status: 'published', 
-      'flags.isFeatured': true 
-    })
-    .populate('organizer', 'firstName lastName username')
-    .populate('category', 'name slug color icon')
-    .sort({ 'dates.startDate': 1 })
-    .limit(6)
-    .lean();
+    // Get recently published events (no isFeatured filter)
+    const [events, total] = await Promise.all([
+      Event.find({ 
+        status: 'published'
+      })
+      .populate('organizer', 'firstName lastName username')
+      .populate('category', 'name slug color icon')
+      .sort({ createdAt: -1 }) // Newest published first
+      .skip(skip)
+      .limit(Number(pageSize))
+      .lean(),
+      Event.countDocuments({ status: 'published' })
+    ]);
 
     const transformedEvents = events.map(event => ({
       id: event._id,
@@ -237,6 +249,8 @@ router.get('/featured', optionalAuth, async (req, res) => {
       startDate: event.dates?.startDate,
       price: event.pricing?.price,
       isFree: event.pricing?.isFree,
+      isFeatured: event.flags?.isFeatured,
+      isTrending: event.flags?.isTrending,
       coverImageUrl: event.media?.coverImageUrl,
       category: event.category ? {
         name: event.category.name,
@@ -249,9 +263,20 @@ router.get('/featured', optionalAuth, async (req, res) => {
       } : null
     }));
 
-    if (!userId && cacheKey) await cache.set(cacheKey, transformedEvents, 60); // 1 minute cache
-    if (isProd) res.set('Cache-Control', 'public, max-age=60');
-    res.json({ events: transformedEvents });
+    const totalPages = Math.ceil(total / Number(pageSize)) || 1;
+    const hasMore = Number(page) < totalPages;
+
+    const payload = {
+      events: transformedEvents,
+      meta: { page: Number(page), pageSize: Number(pageSize), total, totalPages, hasMore }
+    };
+
+    if (!userId && cacheKey) {
+      await cache.set(cacheKey, payload, 60); // 1 minute cache
+      if (isProd) res.set('Cache-Control', 'public, max-age=60');
+    }
+    
+    res.json(payload);
 
   } catch (error) {
     console.error('Get featured events error:', error);
@@ -313,26 +338,129 @@ router.get('/trending', optionalAuth, async (req, res) => {
   }
 });
 
-// Personalized suggestions (simple heuristic by user's favorite categories)
+// Personalized suggestions (weighted scoring based on user behavior)
 router.get('/suggested', optionalAuth, async (req, res) => {
   try {
     const userId = req.user?.id;
+    const { page = 1, pageSize = 12 } = req.query;
+    const skip = (Number(page) - 1) * Number(pageSize);
+    
     if (!userId) {
-      // Fallback to trending if unauthenticated (no explicit cache headers in dev)
-      const cached = isProd ? await cache.get(`trending:${userId || 'anon'}`) : null;
-      if (cached) return res.json({ events: cached });
+      // Fallback to trending events for unauthenticated users
+      const cached = isProd ? await cache.get(`trending:anon`) : null;
+      if (cached) {
+        const payload = {
+          events: cached.slice(skip, skip + Number(pageSize)),
+          meta: { page: Number(page), pageSize: Number(pageSize), total: cached.length, totalPages: Math.ceil(cached.length / Number(pageSize)), hasMore: skip + Number(pageSize) < cached.length }
+        };
+        return res.json(payload);
+      }
+      
+      // If no cache, get trending events
+      const trendingEvents = await Event.find({ 
+        status: 'published', 
+        'flags.isTrending': true 
+      })
+      .populate('organizer', 'firstName lastName username')
+      .populate('category', 'name slug color icon')
+      .sort({ 'dates.startDate': 1 })
+      .limit(Number(pageSize))
+      .lean();
+
+      const transformedEvents = trendingEvents.map(event => ({
+        id: event._id,
+        title: event.title,
+        slug: event.slug,
+        shortDescription: event.shortDescription,
+        venueName: event.location?.venueName,
+        city: event.location?.city,
+        state: event.location?.state,
+        startDate: event.dates?.startDate,
+        price: event.pricing?.price,
+        isFree: event.pricing?.isFree,
+        isFeatured: event.flags?.isFeatured,
+        isTrending: event.flags?.isTrending,
+        coverImageUrl: event.media?.coverImageUrl,
+        category: event.category ? { name: event.category.name, slug: event.category.slug, color: event.category.color, icon: event.category.icon } : null,
+        organizer: event.organizer ? { name: `${event.organizer.firstName} ${event.organizer.lastName}` } : null
+      }));
+
+      return res.json({ 
+        events: transformedEvents,
+        meta: { page: Number(page), pageSize: Number(pageSize), total: transformedEvents.length, totalPages: 1, hasMore: false }
+      });
     }
 
-    const events = await Event.find({ 
-      status: 'published' 
+    // For authenticated users, implement weighted scoring
+    const cacheKey = isProd ? `suggested:v2:${userId}:${page}:${pageSize}` : null;
+    
+    if (cacheKey) {
+      const cached = await cache.get(cacheKey);
+      if (cached) {
+        if (isProd) res.set('Cache-Control', 'public, max-age=300'); // 5 minute cache for personalized results
+        return res.json(cached);
+      }
+    }
+
+    // Get user's purchase history for category preferences
+    const userTickets = await Ticket.find({ 
+      ownerUserId: userId,
+      status: { $in: ['active', 'used'] }
+    }).populate('eventId', 'category').lean();
+
+    // Get user's location from profile
+    const user = await User.findById(userId).select('profile.city profile.country').lean();
+    const userLocation = user?.profile?.city || user?.profile?.country;
+
+    // Calculate category preferences from purchase history
+    const categoryCounts = {};
+    userTickets.forEach(ticket => {
+      if (ticket.eventId?.category) {
+        const categoryId = String(ticket.eventId.category);
+        categoryCounts[categoryId] = (categoryCounts[categoryId] || 0) + 1;
+      }
+    });
+
+    // Get all published events for scoring
+    const allEvents = await Event.find({ 
+      status: 'published',
+      'dates.startDate': { $gte: new Date() } // Only future events
     })
     .populate('organizer', 'firstName lastName username')
     .populate('category', 'name slug color icon')
-    .sort({ 'flags.isTrending': -1, 'flags.isFeatured': -1, 'dates.startDate': 1 })
-    .limit(6)
     .lean();
 
-    const transformedEvents = events.map(event => ({
+    // Score events based on weighted factors
+    const scoredEvents = allEvents.map(event => {
+      let score = 0;
+      
+      // 1. Category preference (50% weight)
+      if (event.category && categoryCounts[String(event.category._id)]) {
+        score += (categoryCounts[String(event.category._id)] / userTickets.length) * 50;
+      }
+      
+      // 2. Location proximity (30% weight)
+      if (userLocation && event.location?.city) {
+        if (event.location.city.toLowerCase().includes(userLocation.toLowerCase()) || 
+            event.location.state?.toLowerCase().includes(userLocation.toLowerCase())) {
+          score += 30;
+        }
+      }
+      
+      // 3. Event recency (20% weight) - newer events get higher scores
+      const daysSinceCreated = (new Date() - new Date(event.createdAt)) / (1000 * 60 * 60 * 24);
+      const recencyScore = Math.max(0, 20 - (daysSinceCreated / 30) * 5); // Decay over 30 days
+      score += recencyScore;
+      
+      return { ...event, score };
+    });
+
+    // Sort by score and apply pagination
+    const sortedEvents = scoredEvents
+      .sort((a, b) => b.score - a.score)
+      .slice(skip, skip + Number(pageSize));
+
+    const transformedEvents = sortedEvents.map(event => ({
       id: event._id,
       title: event.title,
       slug: event.slug,
@@ -343,12 +471,28 @@ router.get('/suggested', optionalAuth, async (req, res) => {
       startDate: event.dates?.startDate,
       price: event.pricing?.price,
       isFree: event.pricing?.isFree,
+      isFeatured: event.flags?.isFeatured,
+      isTrending: event.flags?.isTrending,
       coverImageUrl: event.media?.coverImageUrl,
       category: event.category ? { name: event.category.name, slug: event.category.slug, color: event.category.color, icon: event.category.icon } : null,
       organizer: event.organizer ? { name: `${event.organizer.firstName} ${event.organizer.lastName}` } : null
     }));
 
-    res.json({ events: transformedEvents });
+    const totalPages = Math.ceil(scoredEvents.length / Number(pageSize)) || 1;
+    const hasMore = Number(page) < totalPages;
+
+    const payload = {
+      events: transformedEvents,
+      meta: { page: Number(page), pageSize: Number(pageSize), total: scoredEvents.length, totalPages, hasMore }
+    };
+
+    if (cacheKey) {
+      await cache.set(cacheKey, payload, 300); // 5 minute cache
+      if (isProd) res.set('Cache-Control', 'public, max-age=300');
+    }
+
+    res.json(payload);
+
   } catch (error) {
     console.error('Get suggested events error:', error);
     res.status(500).json({ error: 'Failed to fetch suggested events' });

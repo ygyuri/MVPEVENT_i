@@ -265,35 +265,6 @@ const AuthModal = ({ isOpen, onClose }) => {
                   </div>
                 </div>
 
-                {/* Auto-generated Username Preview */}
-                <div>
-                  <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>
-                    Username <span className={`text-xs font-normal ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>(auto-generated)</span>
-                  </label>
-                  <div className={`w-full px-4 py-3 rounded-xl ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-300' : 'bg-gray-100 border-gray-300 text-gray-600'} border cursor-not-allowed`}>
-                    {formData.username || 'Enter your name above'}
-                  </div>
-                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Generated from your first and last name
-                  </p>
-                </div>
-
-                {/* Role Selector */}
-                <div>
-                  <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>I am a...</label>
-                  <select 
-                    name="role" 
-                    value={formData.role} 
-                    onChange={handleInputChange} 
-                    className={`w-full px-4 py-3 rounded-xl ${isDarkMode ? 'bg-gray-800 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} border focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200`}
-                  >
-                    <option value="customer">Customer - Buying tickets to attend events</option>
-                    <option value="organizer">Organizer - Creating and managing events</option>
-                  </select>
-                  <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {formData.role === 'customer' ? 'You can browse and buy event tickets' : 'You can create events and sell tickets'}
-                  </p>
-                </div>
               </>
             )}
 
@@ -400,6 +371,92 @@ const AuthModal = ({ isOpen, onClose }) => {
                     Passwords match
                   </p>
                 )}
+              </div>
+            )}
+
+            {!isLogin && (
+              /* Role Selection */
+              <div>
+                <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-3`}>
+                  I'm signing up as...
+                </label>
+                <div className="space-y-3">
+                  {/* Customer Option */}
+                  <label className={`flex items-center p-4 rounded-xl border cursor-pointer transition-all duration-200 hover:bg-opacity-50 ${
+                    formData.role === 'customer' 
+                      ? `${isDarkMode ? 'bg-blue-900/30 border-blue-500' : 'bg-blue-50 border-blue-500'}`
+                      : `${isDarkMode ? 'bg-gray-800 border-gray-600 hover:bg-gray-700' : 'bg-white border-gray-300 hover:bg-gray-50'}`
+                  }`}>
+                    <input
+                      type="radio"
+                      name="role"
+                      value="customer"
+                      checked={formData.role === 'customer'}
+                      onChange={handleInputChange}
+                      className="sr-only"
+                    />
+                    <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 mr-4 flex items-center justify-center ${
+                      formData.role === 'customer'
+                        ? 'border-blue-500 bg-blue-500'
+                        : `${isDarkMode ? 'border-gray-500' : 'border-gray-400'}`
+                    }`}>
+                      {formData.role === 'customer' && (
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                      )}
+                    </div>
+                    <div className="flex items-center flex-1">
+                      <svg className={`w-6 h-6 mr-3 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                      </svg>
+                      <div>
+                        <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          Customer
+                        </div>
+                        <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          Attending events and buying tickets
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Organizer Option */}
+                  <label className={`flex items-center p-4 rounded-xl border cursor-pointer transition-all duration-200 hover:bg-opacity-50 ${
+                    formData.role === 'organizer' 
+                      ? `${isDarkMode ? 'bg-blue-900/30 border-blue-500' : 'bg-blue-50 border-blue-500'}`
+                      : `${isDarkMode ? 'bg-gray-800 border-gray-600 hover:bg-gray-700' : 'bg-white border-gray-300 hover:bg-gray-50'}`
+                  }`}>
+                    <input
+                      type="radio"
+                      name="role"
+                      value="organizer"
+                      checked={formData.role === 'organizer'}
+                      onChange={handleInputChange}
+                      className="sr-only"
+                    />
+                    <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 mr-4 flex items-center justify-center ${
+                      formData.role === 'organizer'
+                        ? 'border-blue-500 bg-blue-500'
+                        : `${isDarkMode ? 'border-gray-500' : 'border-gray-400'}`
+                    }`}>
+                      {formData.role === 'organizer' && (
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                      )}
+                    </div>
+                    <div className="flex items-center flex-1">
+                      <svg className={`w-6 h-6 mr-3 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <div>
+                        <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          Organizer
+                        </div>
+                        <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          Creating and managing events
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+                </div>
               </div>
             )}
 

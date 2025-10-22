@@ -39,10 +39,12 @@ export const fetchEvents = createAsyncThunk(
 
 export const fetchFeaturedEvents = createAsyncThunk(
   'events/fetchFeaturedEvents',
-  async (_, { rejectWithValue, signal }) => {
+  async (params = {}, { rejectWithValue, signal }) => {
     try {
-      const response = await api.get('/api/events/featured', { signal });
-      return response.data.events;
+      const { page = 1, pageSize = 12 } = params;
+      const queryParams = new URLSearchParams({ page, pageSize }).toString();
+      const response = await api.get(`/api/events/featured?${queryParams}`, { signal });
+      return response.data;
     } catch (error) {
       if (error?.name === 'CanceledError') {
         return rejectWithValue('cancelled');
@@ -69,10 +71,12 @@ export const fetchTrendingEvents = createAsyncThunk(
 
 export const fetchSuggestedEvents = createAsyncThunk(
   'events/fetchSuggestedEvents',
-  async (_, { rejectWithValue, signal }) => {
+  async (params = {}, { rejectWithValue, signal }) => {
     try {
-      const response = await api.get('/api/events/suggested', { signal });
-      return response.data.events;
+      const { page = 1, pageSize = 12 } = params;
+      const queryParams = new URLSearchParams({ page, pageSize }).toString();
+      const response = await api.get(`/api/events/suggested?${queryParams}`, { signal });
+      return response.data;
     } catch (error) {
       if (error?.name === 'CanceledError') {
         return rejectWithValue('cancelled');
@@ -159,6 +163,20 @@ const initialState = {
     total: 0,
     totalPages: 1,
     hasMore: false
+  },
+  featuredMeta: {
+    page: 1,
+    pageSize: 12,
+    total: 0,
+    totalPages: 1,
+    hasMore: false
+  },
+  suggestedMeta: {
+    page: 1,
+    pageSize: 12,
+    total: 0,
+    totalPages: 1,
+    hasMore: false
   }
 };
 
@@ -206,7 +224,16 @@ const eventsSlice = createSlice({
       })
       .addCase(fetchFeaturedEvents.fulfilled, (state, action) => {
         state.loading = false;
-        state.featuredEvents = action.payload;
+        state.featuredEvents = action.payload.events;
+        // Update featured pagination metadata
+        const meta = action.payload.meta || {};
+        state.featuredMeta = {
+          page: meta.page ?? 1,
+          pageSize: meta.pageSize ?? 12,
+          total: meta.total ?? 0,
+          totalPages: meta.totalPages ?? 1,
+          hasMore: meta.hasMore ?? Boolean(meta.page < meta.totalPages)
+        };
       })
       .addCase(fetchFeaturedEvents.rejected, (state, action) => {
         if (action.payload === 'cancelled') return;
@@ -234,7 +261,16 @@ const eventsSlice = createSlice({
       })
       .addCase(fetchSuggestedEvents.fulfilled, (state, action) => {
         state.loading = false;
-        state.suggestedEvents = action.payload;
+        state.suggestedEvents = action.payload.events;
+        // Update suggested pagination metadata
+        const meta = action.payload.meta || {};
+        state.suggestedMeta = {
+          page: meta.page ?? 1,
+          pageSize: meta.pageSize ?? 12,
+          total: meta.total ?? 0,
+          totalPages: meta.totalPages ?? 1,
+          hasMore: meta.hasMore ?? Boolean(meta.page < meta.totalPages)
+        };
       })
       .addCase(fetchSuggestedEvents.rejected, (state, action) => {
         if (action.payload === 'cancelled') return;

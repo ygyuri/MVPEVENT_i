@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Heart, MapPin, Calendar, Star, Zap, Wallet } from 'lucide-react'
+import { Heart, MapPin, Calendar, Star, Zap } from 'lucide-react'
 import { cn } from '../utils/cn'
 import { useNavigate } from 'react-router-dom'
 import CategoryBadge from './CategoryBadge'
@@ -43,19 +43,11 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
       className="event-card-modern group relative overflow-hidden cursor-pointer z-10"
       onClick={openDetails}
     >
-      {/* Web3 Badge */}
-      <div className="absolute top-4 left-4 z-20">
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center space-x-1 backdrop-blur-sm">
-          <Wallet className="w-3 h-3" />
-          <span>Web3</span>
-        </div>
-      </div>
-
       {/* Featured Badge */}
       {event.isFeatured && (
-        <div className="absolute top-4 left-20 z-20">
-          <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center space-x-1">
-            <Star className="w-3 h-3" />
+        <div className="absolute top-4 left-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="bg-amber-500/20 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center space-x-1 border border-amber-500/30">
+            <Star className="w-2.5 h-2.5" />
             <span>Featured</span>
           </div>
         </div>
@@ -63,10 +55,10 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
 
       {/* Trending Badge */}
       {event.isTrending && (
-        <div className="absolute top-4 right-4 z-20">
-          <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center">
-            <Zap className="w-3 h-3 mr-1" />
-            🔥 Trending
+        <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="bg-rose-500/20 text-rose-700 dark:text-rose-400 px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center border border-rose-500/30">
+            <Zap className="w-2.5 h-2.5 mr-1" />
+            <span>Trending</span>
           </div>
         </div>
       )}
