@@ -125,6 +125,39 @@ backup_production() {
     print_success "Production backup created in $BACKUP_DIR"
 }
 
+# Function to clean up test data from production
+cleanup_test_data() {
+    print_status "Cleaning up test data from production..."
+    
+    # Check if cleanup script exists
+    if [ ! -f "server/scripts/cleanup-production-data.js" ]; then
+        print_error "Cleanup script not found: server/scripts/cleanup-production-data.js"
+        return 1
+    fi
+    
+    print_warning "This will permanently delete all test data from production!"
+    print_warning "Make sure you have a backup before proceeding."
+    echo ""
+    read -p "Do you want to clean up test data? (y/N): " -n 1 -r
+    echo ""
+    
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_status "Skipping test data cleanup"
+        return 0
+    fi
+    
+    # Run cleanup script
+    print_status "Running production data cleanup..."
+    docker compose -f docker-compose.prod.yml exec server node scripts/cleanup-production-data.js
+    
+    if [ $? -eq 0 ]; then
+        print_success "Test data cleanup completed successfully"
+    else
+        print_error "Test data cleanup failed"
+        return 1
+    fi
+}
+
 # Function to deploy production environment
 deploy_production() {
     print_status "Deploying Event-i to production environment..."
@@ -240,6 +273,16 @@ main() {
     fi
     
     deploy_production
+    
+    # Ask about test data cleanup
+    echo ""
+    read -p "Do you want to clean up test data from production? (Y/n): " -n 1 -r
+    echo ""
+    
+    if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+        cleanup_test_data
+    fi
+    
     show_deployment_info
     
     # Ask if user wants to run health checks
