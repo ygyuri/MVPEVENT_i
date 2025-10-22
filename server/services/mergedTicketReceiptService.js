@@ -23,32 +23,21 @@ class MergedTicketReceiptService {
    */
   async initializeTransporter() {
     try {
-      // Get Ethereal test account (same as emailService)
-      const testAccount = await nodemailer.createTestAccount();
-      
+      // Use environment variables directly for production
       this.transporter = nodemailer.createTransport({
-        host: testAccount.smtp.host,
-        port: testAccount.smtp.port,
-        secure: testAccount.smtp.secure,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass
-        }
-      });
-
-      console.log('✅ Merged email service transporter initialized');
-    } catch (error) {
-      console.error('❌ Failed to initialize email transporter:', error);
-      // Fallback to environment variables
-      this.transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-        port: parseInt(process.env.SMTP_PORT || '587'),
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: Number(process.env.SMTP_PORT) || 587,
         secure: false,
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS
         }
       });
+
+      console.log('✅ Merged email service transporter initialized');
+    } catch (error) {
+      console.error('❌ Failed to initialize email transporter:', error);
+      throw error;
     }
   }
 

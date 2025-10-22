@@ -70,81 +70,8 @@ async function run() {
     categoryDocs[c.name] = doc
   }
 
-  // Seed sample events only if none exist
-  const existingCount = await Event.countDocuments()
-  if (existingCount === 0) {
-    const tech = categoryDocs['Technology']
-    const music = categoryDocs['Music']
-    const business = categoryDocs['Business']
-
-    const samples = [
-      {
-        organizer: organizer._id,
-        title: 'Web3 Summit 2025',
-        slug: slugify('Web3 Summit 2025'),
-        description: 'Explore decentralized tech, DeFi, NFTs and beyond.',
-        shortDescription: 'Explore decentralized tech.',
-        category: tech?._id,
-        location: { venueName: 'Crypto Arena', city: 'San Francisco', state: 'CA', country: 'USA' },
-        dates: { startDate: daysFromNow(14), endDate: daysFromNow(16), timezone: 'UTC' },
-        capacity: 800,
-        pricing: { price: 199, currency: 'USD', isFree: false },
-        flags: { isFeatured: true, isTrending: true },
-        status: 'published',
-        media: { coverImageUrl: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=1200&q=80' },
-      },
-      {
-        organizer: organizer._id,
-        title: 'AI Workshop: Build with LLMs',
-        slug: slugify('AI Workshop: Build with LLMs'),
-        description: 'Hands-on workshop building with LLMs and agents.',
-        shortDescription: 'Hands-on LLMs workshop.',
-        category: tech?._id,
-        location: { venueName: 'Tech Learning Center', city: 'San Francisco', state: 'CA', country: 'USA' },
-        dates: { startDate: daysFromNow(5), endDate: daysFromNow(5), timezone: 'UTC' },
-        capacity: 150,
-        pricing: { price: 299, currency: 'USD', isFree: false },
-        flags: { isFeatured: true },
-        status: 'published',
-        media: { coverImageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200&q=80' },
-      },
-      {
-        organizer: organizer._id,
-        title: 'Summer Music Festival',
-        slug: slugify('Summer Music Festival'),
-        description: 'A three-day celebration of music with top artists.',
-        shortDescription: 'Three-day celebration of music.',
-        category: music?._id,
-        location: { venueName: 'LA Music Arena', city: 'Los Angeles', state: 'CA', country: 'USA' },
-        dates: { startDate: daysFromNow(30), endDate: daysFromNow(32), timezone: 'UTC' },
-        capacity: 5000,
-        pricing: { price: 179, currency: 'USD', isFree: false },
-        flags: { isFeatured: true, isTrending: true },
-        status: 'published',
-        media: { coverImageUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=1200&q=80' },
-      },
-      {
-        organizer: organizer._id,
-        title: 'Startup Meetup Night',
-        slug: slugify('Startup Meetup Night'),
-        description: 'Network with fellow founders and investors.',
-        shortDescription: 'Networking for founders and investors.',
-        category: business?._id,
-        location: { venueName: 'NYC Startup Hub', city: 'New York', state: 'NY', country: 'USA' },
-        dates: { startDate: daysFromNow(10), endDate: daysFromNow(10), timezone: 'UTC' },
-        capacity: 400,
-        pricing: { price: 0, currency: 'USD', isFree: true },
-        flags: { isTrending: true },
-        status: 'published',
-        media: { coverImageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&q=80' },
-      },
-    ]
-
-    await Event.insertMany(samples, { ordered: false })
-    console.log('Inserted sample events:', samples.length)
-  } else {
-    console.log('Events already exist, skipping sample insertion')
-  }
+  // Production: No sample events - start with clean slate
+  console.log('Production mode: Skipping sample event creation')
 
   const counts = {
     users: await User.countDocuments(),
