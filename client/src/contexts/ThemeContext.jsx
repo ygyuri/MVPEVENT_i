@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Moon, Sun } from 'lucide-react';
+import Tooltip from '../components/Tooltip';
 
 const ThemeContext = createContext();
 
@@ -88,26 +89,27 @@ export const ThemeToggle = ({ className = '', size = 'default' }) => {
   };
 
   return (
-    <button
-      onClick={toggleTheme}
-      title={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
-      className={`
-        ${sizeClasses[size]}
-        rounded-full p-2 transition-all duration-300 transform hover:scale-110
-        ${isDarkMode 
-          ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/30' 
-          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
-        }
-        ${className}
-      `}
-      aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
-    >
-      {isDarkMode ? (
-        <Sun className="w-full h-full" />
-      ) : (
-        <Moon className="w-full h-full" />
-      )}
-    </button>
+    <Tooltip content={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}>
+      <button
+        onClick={toggleTheme}
+        className={`
+          ${sizeClasses[size]}
+          rounded-full p-2 transition-all duration-300 hover:scale-110
+          ${isDarkMode 
+            ? 'bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-500/30' 
+            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+          }
+          ${className}
+        `}
+        aria-label={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
+      >
+        {isDarkMode ? (
+          <Sun className="w-full h-full" />
+        ) : (
+          <Moon className="w-full h-full" />
+        )}
+      </button>
+    </Tooltip>
   );
 };
 

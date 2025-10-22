@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Globe, RefreshCw } from 'lucide-react'
+import Tooltip from './Tooltip'
 import { 
   setCurrency, 
   fetchExchangeRates, 
@@ -62,17 +63,18 @@ const CurrencySelector = ({ className = '', showConversion = true }) => {
   return (
     <div className={`relative ${className}`}>
       {/* Subtle Currency Icon Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-web3-secondary/60 hover:text-web3-primary hover:bg-web3-secondary/30 rounded-lg transition-all duration-200"
-        title={`Currency: ${selectedCurrency} (${selectedCurrencyInfo?.symbol}) - Click to change`}
-        aria-label={`Currency selector: ${selectedCurrency}`}
-      >
-        <Globe className="w-4 h-4" />
-        <span className="absolute -top-0.5 -right-0.5 text-[8px] font-semibold">
-          {selectedCurrencyInfo?.flag}
-        </span>
-      </button>
+      <Tooltip content={`Currency: ${selectedCurrency} (${selectedCurrencyInfo?.symbol}) - Click to change`}>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="relative p-2 text-web3-secondary/60 hover:text-web3-primary hover:bg-web3-secondary/30 rounded-lg transition-all duration-200"
+          aria-label={`Currency selector: ${selectedCurrency}`}
+        >
+          <Globe className="w-4 h-4" />
+          <span className="absolute -top-0.5 -right-0.5 text-[8px] font-semibold">
+            {selectedCurrencyInfo?.flag}
+          </span>
+        </button>
+      </Tooltip>
 
       {/* Dropdown Menu */}
       {isOpen && (
