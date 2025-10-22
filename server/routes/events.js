@@ -1,9 +1,11 @@
 const express = require('express');
-const { query, validationResult, body } = require('express-validator');
+const { query, validationResult, body, param } = require('express-validator');
 const { optionalAuth, verifyToken, requireRole } = require('../middleware/auth');
 const Event = require('../models/Event');
 const EventCategory = require('../models/EventCategory');
 const { cache } = require('../config/database');
+const path = require('path');
+const fs = require('fs');
 
 const router = express.Router();
 const isProd = process.env.NODE_ENV === 'production';
@@ -145,7 +147,8 @@ router.get(
         'location.venueName': 1, 'location.city': 1, 'location.state': 1,
         'dates.startDate': 1, 'pricing.price': 1, 'pricing.isFree': 1,
         'flags.isFeatured': 1, 'flags.isTrending': 1,
-        'media.coverImageUrl': 1, category: 1, organizer: 1
+        'media.coverImageUrl': 1, 'media.galleryUrls': 1, 
+        category: 1, organizer: 1, ticketTypes: 1
       };
       
       const [events, total] = await Promise.all([
@@ -174,6 +177,8 @@ router.get(
         isFeatured: event.flags?.isFeatured,
         isTrending: event.flags?.isTrending,
         coverImageUrl: event.media?.coverImageUrl,
+        galleryUrls: event.media?.galleryUrls || [],
+        ticketTypes: event.ticketTypes || [],
         category: event.category ? { name: event.category.name, color: event.category.color, slug: event.category.slug } : null,
         organizer: event.organizer ? { name: `${event.organizer.firstName} ${event.organizer.lastName}` } : null
       }));
@@ -702,6 +707,40 @@ router.post('/settings/:eventId/qr', verifyToken, requireRole(['organizer', 'adm
     res.json({ success: true, data: { qrSettings: event.qrSettings } });
   } catch (error) {
     res.status(500).json({ success: false, error: 'Failed to update QR settings' });
+  }
+});
+
+// Serve event images publicly (no auth required for published events)
+router.get('/events/:id/images/:filename', [
+  param('id').isMongoId(),
+  param('filename').isString()
+], async (req, res) => {
+  try {
+    // Validate inputs
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    
+    // Verify event exists and is published (security check)
+    const event = await Event.findById(req.params.id).select('status').lean();
+    if (!event || event.status !== 'published') {
+      return res.status(404).json({ error: 'Event not found or not published' });
+    }
+    
+    const imagePath = path.join(__dirname, '../uploads/events', req.params.filename);
+    
+    if (!fs.existsSync(imagePath)) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+    
+    // Set proper caching headers for images
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year
+    res.sendFile(path.resolve(imagePath));
+    
+  } catch (error) {
+    console.error('Image serve error:', error);
+    res.status(500).json({ error: 'Failed to serve image' });
   }
 });
 

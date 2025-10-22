@@ -49,14 +49,14 @@ const Navbar = ({ onOpenAuthModal }) => {
             >
               Events
             </Link>
-            {isAuthenticated && (
+            {/* {isAuthenticated && (
               <Link 
                 to="/wallet" 
                 className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
               >
                 Wallet
               </Link>
-            )}
+            )} */}
             {isAuthenticated && (user?.role === 'admin' || user?.role === 'organizer') && (
               <Link 
                 to="/organizer" 
@@ -156,14 +156,15 @@ const Navbar = ({ onOpenAuthModal }) => {
                           <Settings className="w-4 h-4" />
                           <span>QR Scanner</span>
                         </Link>
-                        <Link
+                        {/* Analytics feature - temporarily hidden for production */}
+                        {/* <Link
                           to="/organizer/analytics"
                           onClick={() => setIsUserMenuOpen(false)}
                           className={`w-full px-6 py-3 text-left text-sm ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'} flex items-center space-x-3 transition-colors duration-200`}
                         >
                           <BarChart3 className="w-4 h-4" />
                           <span>Analytics</span>
-                        </Link>
+                        </Link> */}
                       </>
                     )}
                     <button
@@ -214,7 +215,8 @@ const Navbar = ({ onOpenAuthModal }) => {
               >
                 Events
               </Link>
-              {isAuthenticated && (
+              {/* Wallet feature - temporarily hidden */}
+              {/* {isAuthenticated && (
                 <Link 
                   to="/wallet" 
                   className="block px-3 py-2 text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
@@ -222,7 +224,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                 >
                   Wallet
                 </Link>
-              )}
+              )} */}
               {isAuthenticated && (user?.role === 'admin' || user?.role === 'organizer') && (
                 <Link 
                   to="/organizer" 

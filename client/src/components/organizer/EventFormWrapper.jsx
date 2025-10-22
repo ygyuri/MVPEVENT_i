@@ -33,7 +33,6 @@ import { formUtils as eventFormUtils } from '../../utils/eventHelpers';
 import organizerAPI, { formUtils } from '../../utils/organizerAPI';
 import { useDebounce } from '../../utils/useDebounce';
 import { formPersistence, autoSaveForm } from '../../utils/formPersistence';
-import testAuth from '../../utils/testAuth';
 
 const EventFormWrapper = ({ children, onSubmit }) => {
   // Mobile and accessibility enhancements
@@ -285,23 +284,16 @@ const EventFormWrapper = ({ children, onSubmit }) => {
 
   // Note: Auto-save is now handled by individual form fields using optimized persistence
 
-  // Ensure user is authenticated
+  // Ensure user is authenticated using Redux state
   useEffect(() => {
-    const ensureAuth = async () => {
-      if (!testAuth.isLoggedIn()) {
-        try {
-          await testAuth.ensureLoggedIn();
-          console.log('✅ User authenticated for organizer access');
-        } catch (error) {
-          console.error('❌ Authentication failed:', error);
-          toast.error('Please log in to access organizer features');
-          navigate('/');
-        }
-      }
-    };
-    
-    ensureAuth();
-  }, [navigate]);
+    if (!user) {
+      console.warn('⚠️ No authenticated user found for organizer access');
+      toast.error('Please log in to access organizer features');
+      navigate('/');
+    } else {
+      console.log('✅ User authenticated for organizer access:', user.email || user.username);
+    }
+  }, [user, navigate]);
 
   // Load existing event if editing or check for saved drafts
   useEffect(() => {

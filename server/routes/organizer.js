@@ -114,8 +114,8 @@ const saveBase64Image = async (base64Data, eventId, imageType) => {
     const buffer = Buffer.from(base64String, 'base64');
     fs.writeFileSync(filePath, buffer);
     
-    // Return URL path
-    return `/api/organizer/events/${eventId}/images/${filename}`;
+    // Return URL path (public route for published events)
+    return `/api/events/${eventId}/images/${filename}`;
     
   } catch (error) {
     console.error('❌ [SAVE BASE64] Error:', error);
@@ -634,7 +634,7 @@ router.post('/events/:id/upload', verifyToken, requireRole(['organizer','admin']
     }
     
     const uploadedUrls = req.files.map(file => {
-      return `/api/organizer/events/${event._id}/images/${file.filename}`;
+      return `/api/events/${event._id}/images/${file.filename}`;
     });
     
     console.log('📸 [IMAGE UPLOAD]', {
@@ -657,17 +657,28 @@ router.post('/events/:id/upload', verifyToken, requireRole(['organizer','admin']
   }
 });
 
-// Serve uploaded images
-router.get('/events/:id/images/:filename', verifyToken, requireRole(['organizer','admin']), [
+// Serve uploaded images - PUBLIC for published events (backward compatibility)
+// This ensures both old (/api/organizer/events/) and new (/api/events/) URLs work
+router.get('/events/:id/images/:filename', [
   param('id').isMongoId(),
   param('filename').isString()
 ], async (req, res) => {
   try {
-    if (!handleValidation(req, res)) return;
+    // Validate inputs
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     
-    const event = await Event.findById(req.params.id);
-    const owns = ensureOwnership(event, req.user);
-    if (!owns.ok) return res.status(owns.code).json({ error: owns.msg });
+    // Security: Only serve images for published events
+    const event = await Event.findById(req.params.id).select('status').lean();
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    if (event.status !== 'published') {
+      return res.status(404).json({ error: 'Event not found or not published' });
+    }
     
     const imagePath = path.join(__dirname, '../uploads/events', req.params.filename);
     
@@ -675,6 +686,8 @@ router.get('/events/:id/images/:filename', verifyToken, requireRole(['organizer'
       return res.status(404).json({ error: 'Image not found' });
     }
     
+    // Set proper caching headers for images
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year
     res.sendFile(path.resolve(imagePath));
     
   } catch (error) {

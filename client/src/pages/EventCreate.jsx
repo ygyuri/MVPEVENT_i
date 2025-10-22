@@ -65,7 +65,6 @@ const EventCreate = () => {
       });
       
       // First, ensure the latest form data is saved to the draft
-      console.log('💾 [PUBLISH] Saving latest form data before publishing...');
       const saveRes = await dispatch(updateEventDraft({ 
         eventId: effectiveEventId, 
         eventData: apiData, 
@@ -75,8 +74,6 @@ const EventCreate = () => {
       if (saveRes?.data?.version !== undefined) {
         // We cannot import setVersion here easily without circular deps; rely on final publish to work with server's latest version post-save.
       }
-      
-      console.log('✅ [PUBLISH] Draft updated, now publishing...');
       
       // Update loading message
       toast.loading('Publishing your event...', {
@@ -114,16 +111,15 @@ const EventCreate = () => {
         }
       );
       
-      // Navigate to event details or organizer dashboard
-      if (result.data?.slug) {
-        navigate(`/events/${result.data.slug}`);
-      } else if (result.data?.id) {
-        // If we have an ID but no slug, navigate to organizer dashboard
-        navigate('/organizer');
-      } else {
-        // Fallback to organizer dashboard
-        navigate('/organizer');
-      }
+      // Navigate to organizer dashboard to see the published event
+      // Note: Individual event detail pages are not yet implemented
+      navigate('/organizer', { 
+        state: { 
+          justPublished: true,
+          eventTitle: formData.title,
+          eventId: result.data?.id || effectiveEventId
+        } 
+      });
       
     } catch (error) {
       console.error('Failed to publish event:', error);
