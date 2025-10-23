@@ -21,6 +21,91 @@ jobs:
     if: always() && needs.build.result == 'success'
     steps:
       - uses: actions/checkout@v4
+      - name: Create production environment file
+        run: |
+          cat > .env.production << 'EOF'
+          # Application Configuration
+          NODE_ENV=${{ secrets.NODE_ENV }}
+          SERVER_PORT=${{ secrets.SERVER_PORT }}
+          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+          BASE_URL=${{ secrets.BASE_URL }}
+          
+          # GKE Configuration
+          KUBERNETES_NAMESPACE=${{ secrets.KUBERNETES_NAMESPACE }}
+          GKE_CLUSTER_NAME=${{ secrets.GKE_CLUSTER_NAME }}
+          GKE_ZONE=${{ secrets.GKE_ZONE }}
+          PROJECT_ID=${{ secrets.PROJECT_ID }}
+          
+          # Nginx Configuration
+          NGINX_HTTP_PORT=${{ secrets.NGINX_HTTP_PORT }}
+          NGINX_HTTPS_PORT=${{ secrets.NGINX_HTTPS_PORT }}
+          
+          # Database Configuration
+          MONGO_ROOT_USERNAME=${{ secrets.MONGO_ROOT_USERNAME }}
+          MONGO_ROOT_PASSWORD=${{ secrets.MONGO_ROOT_PASSWORD }}
+          MONGODB_URI=${{ secrets.MONGODB_URI }}
+          
+          # Redis Configuration
+          REDIS_URL=${{ secrets.REDIS_URL }}
+          
+          # JWT Configuration
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
+          JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
+          JWT_REFRESH_EXPIRES_IN=${{ secrets.JWT_REFRESH_EXPIRES_IN }}
+          
+          # PayHero Configuration
+          PAYHERO_API_USERNAME=${{ secrets.PAYHERO_API_USERNAME }}
+          PAYHERO_API_PASSWORD=${{ secrets.PAYHERO_API_PASSWORD }}
+          PAYHERO_ACCOUNT_ID=${{ secrets.PAYHERO_ACCOUNT_ID }}
+          PAYHERO_BASIC_AUTH_TOKEN=${{ secrets.PAYHERO_BASIC_AUTH_TOKEN }}
+          PAYHERO_CHANNEL_ID=${{ secrets.PAYHERO_CHANNEL_ID }}
+          PAYHERO_CALLBACK_URL=${{ secrets.PAYHERO_CALLBACK_URL }}
+          PAYHERO_SUCCESS_URL=${{ secrets.PAYHERO_SUCCESS_URL }}
+          PAYHERO_FAILED_URL=${{ secrets.PAYHERO_FAILED_URL }}
+          
+          # MPESA Configuration
+          MPESA_BASE_URL=${{ secrets.MPESA_BASE_URL }}
+          MPESA_CONSUMER_KEY=${{ secrets.MPESA_CONSUMER_KEY }}
+          MPESA_CONSUMER_SECRET=${{ secrets.MPESA_CONSUMER_SECRET }}
+          MPESA_PASSKEY=${{ secrets.MPESA_PASSKEY }}
+          MPESA_SHORTCODE=${{ secrets.MPESA_SHORTCODE }}
+          MPESA_CALLBACK_URL=${{ secrets.MPESA_CALLBACK_URL }}
+          MPESA_TIMEOUT_URL=${{ secrets.MPESA_TIMEOUT_URL }}
+          
+          # Email Configuration
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASS=${{ secrets.SMTP_PASS }}
+          EMAIL_FROM=${{ secrets.EMAIL_FROM }}
+          
+          # Security Configuration
+          TICKET_QR_SECRET=${{ secrets.TICKET_QR_SECRET }}
+          TICKET_QR_ENC_KEY=${{ secrets.TICKET_QR_ENC_KEY }}
+          TICKET_QR_AUTO_ROTATE_MS=${{ secrets.TICKET_QR_AUTO_ROTATE_MS }}
+          
+          # Rate Limiting
+          RATE_LIMIT_WINDOW_MS=${{ secrets.RATE_LIMIT_WINDOW_MS }}
+          RATE_LIMIT_MAX_REQUESTS=${{ secrets.RATE_LIMIT_MAX_REQUESTS }}
+          
+          # Debug Configuration
+          DEBUG=${{ secrets.DEBUG }}
+          LOG_LEVEL=${{ secrets.LOG_LEVEL }}
+          
+          # Monitoring and Logging
+          SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+          LOG_TO_FILE=${{ secrets.LOG_TO_FILE }}
+          LOG_FILE_PATH=${{ secrets.LOG_FILE_PATH }}
+          EOF
+      - name: Transfer environment file to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: ".env.production"
+          target: "/tmp/.env.production"
       - name: SSH deploy to VM
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -49,6 +134,12 @@ jobs:
               
               # Show current commit
               echo "📝 Current commit: $(git log --oneline -1)"
+              
+              # Move and secure environment file
+              echo "🔐 Setting up environment file..."
+              sudo mv /tmp/.env.production /root/MVPEVENT_i/.env.production
+              sudo chown root:root /root/MVPEVENT_i/.env.production
+              sudo chmod 600 /root/MVPEVENT_i/.env.production
               
               # Clean up old images to save space
               echo "🧹 Cleaning up old Docker images..."

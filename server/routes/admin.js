@@ -1,5 +1,6 @@
 const express = require('express');
 const { verifyToken, requireRole } = require('../middleware/auth');
+const { param, body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const Event = require('../models/Event');
 const Session = require('../models/Session');
@@ -43,6 +44,50 @@ router.get('/users', verifyToken, requireRole(['admin']), async (req, res) => {
     res.json({ users });
   } catch (error) {
     res.status(500).json({ error: 'Failed to list users' });
+  }
+});
+
+// Update event flags (admin only)
+router.patch('/events/:eventId/flags', verifyToken, requireRole('admin'), [
+  param('eventId').isMongoId(),
+  body('isFeatured').optional().isBoolean(),
+  body('isTrending').optional().isBoolean()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: 'Invalid input', details: errors.array() });
+    }
+
+    const { eventId } = req.params;
+    const { isFeatured, isTrending } = req.body;
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Update flags
+    if (typeof isFeatured === 'boolean') {
+      event.flags.isFeatured = isFeatured;
+    }
+    if (typeof isTrending === 'boolean') {
+      event.flags.isTrending = isTrending;
+    }
+
+    await event.save();
+
+    res.json({ 
+      success: true, 
+      data: { 
+        id: event._id, 
+        flags: event.flags 
+      } 
+    });
+
+  } catch (error) {
+    console.error('Update event flags error:', error);
+    res.status(500).json({ error: 'Failed to update event flags' });
   }
 });
 

@@ -54,8 +54,7 @@ const CustomerInfoForm = () => {
   };
   
   const [formData, setFormData] = useState({
-    firstName: customerInfo?.firstName || '',
-    lastName: customerInfo?.lastName || '',
+    name: customerInfo?.name || `${customerInfo?.firstName || ''} ${customerInfo?.lastName || ''}`.trim(),
     email: customerInfo?.email || '',
     phone: customerInfo?.phone ? customerInfo.phone.replace(/^\+\d{3}/, '') : '' // Remove country code for display
   });
@@ -67,12 +66,8 @@ const CustomerInfoForm = () => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    }
-    
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
     }
     
     if (!formData.email.trim()) {
@@ -162,7 +157,7 @@ const CustomerInfoForm = () => {
         const stkPushData = {
           amount: Math.round(totalAmount),
           phoneNumber: customerDataWithFullPhone.phone.replace('+254', '0'), // Convert to 0XXXXXXXX format
-          customerName: `${customerDataWithFullPhone.firstName} ${customerDataWithFullPhone.lastName}`.trim(),
+          customerName: customerDataWithFullPhone.name,
           orderId: order.orderId, // Use orderId instead of _id
           channelId: 3424, // Your correct channel ID
           provider: 'm-pesa',
@@ -212,67 +207,35 @@ const CustomerInfoForm = () => {
         {/* Form Card */}
         <div className={`rounded-3xl p-6 sm:p-8 ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} shadow-sm`}>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* First Name & Last Name */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  First Name <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <User className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    className={`w-full pl-10 pr-4 py-3 rounded-2xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${
-                      errors.firstName
-                        ? isDarkMode
-                          ? 'bg-gray-700 border-red-500 text-white placeholder-gray-400'
-                          : 'bg-white border-red-500 text-gray-900 placeholder-gray-500'
-                        : isDarkMode
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                    }`}
-                    placeholder="Enter your first name"
-                  />
-                </div>
-                {errors.firstName && (
-                  <p className={`mt-1 text-sm ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
-                    {errors.firstName}
-                  </p>
-                )}
+            {/* Name */}
+            <div>
+              <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                Full Name <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <User className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className={`w-full pl-10 pr-4 py-3 rounded-2xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${
+                    errors.name
+                      ? isDarkMode
+                        ? 'bg-gray-700 border-red-500 text-white placeholder-gray-400'
+                        : 'bg-white border-red-500 text-gray-900 placeholder-gray-500'
+                      : isDarkMode
+                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                  }`}
+                  placeholder="Enter your full name"
+                />
               </div>
-
-              <div>
-                <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Last Name <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <User className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    className={`w-full pl-10 pr-4 py-3 rounded-2xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${
-                      errors.lastName
-                        ? isDarkMode
-                          ? 'bg-gray-700 border-red-500 text-white placeholder-gray-400'
-                          : 'bg-white border-red-500 text-gray-900 placeholder-gray-500'
-                        : isDarkMode
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                    }`}
-                    placeholder="Enter your last name"
-                  />
-                </div>
-                {errors.lastName && (
-                  <p className={`mt-1 text-sm ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
-                    {errors.lastName}
-                  </p>
-                )}
-              </div>
+              {errors.name && (
+                <p className={`mt-1 text-sm ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                  {errors.name}
+                </p>
+              )}
             </div>
 
             {/* Email */}

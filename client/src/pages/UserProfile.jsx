@@ -6,6 +6,7 @@ import SavedEvents from '../components/SavedEvents';
 import PaymentHistory from '../components/PaymentHistory';
 import ProfileImageUpload from '../components/ProfileImageUpload';
 import PhoneNumberInput from '../components/PhoneNumberInput';
+import { updateUserProfile } from '../store/slices/authSlice';
 import { 
   User, 
   Calendar, 
@@ -24,7 +25,8 @@ import {
   Eye,
   EyeOff,
   Save,
-  AlertCircle
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
 
 const UserProfile = () => {
@@ -40,8 +42,7 @@ const UserProfile = () => {
   const [errors, setErrors] = useState({});
   const [profileImage, setProfileImage] = useState(null);
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    name: '',
     email: '',
     phone: '',
     bio: '',
@@ -63,10 +64,9 @@ const UserProfile = () => {
   useEffect(() => {
     if (user) {
       setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
+        name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
         email: user.email || '',
-        phone: user.phone || '',
+        phone: user.profile?.phone || '',
         bio: user.bio || '',
         location: user.location || '',
         website: user.website || '',
@@ -88,18 +88,11 @@ const UserProfile = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // First Name validation
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    } else if (formData.firstName.trim().length < 2) {
-      newErrors.firstName = 'First name must be at least 2 characters';
-    }
-
-    // Last Name validation
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-    } else if (formData.lastName.trim().length < 2) {
-      newErrors.lastName = 'Last name must be at least 2 characters';
+    // Name validation
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters';
     }
 
     // Email validation
@@ -179,22 +172,60 @@ const UserProfile = () => {
     setSaveMessage('');
 
     try {
-      // TODO: Implement API call to update user profile
+      // Convert profile image to base64 if present
+      let avatarUrl = null;
+      if (profileImage) {
+        avatarUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(profileImage);
+        });
+      }
+
+      // Prepare update data with proper field mapping
       const updateData = {
-        ...formData,
-        profileImage: profileImage
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        bio: formData.bio,
+        website: formData.website,
+        location: formData.location,
+        walletAddress: formData.walletAddress,
+        notifications: formData.notifications,
+        privacy: formData.privacy
       };
-      
+
+      // Only include avatarUrl if we have a new image
+      if (avatarUrl) {
+        updateData.avatarUrl = avatarUrl;
+      }
+
       console.log('Saving profile:', updateData);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Dispatch the update action
+      const result = await dispatch(updateUserProfile(updateData));
       
-      setSaveMessage('Profile updated successfully!');
-      setIsEditing(false);
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSaveMessage(''), 3000);
+      if (updateUserProfile.fulfilled.match(result)) {
+        setSaveMessage('Profile updated successfully!');
+        setIsEditing(false);
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSaveMessage(''), 3000);
+      } else {
+        // Handle validation errors from server
+        const errorData = result.payload;
+        if (errorData && errorData.details) {
+          const serverErrors = {};
+          errorData.details.forEach(error => {
+            serverErrors[error.path] = error.msg;
+          });
+          setErrors(serverErrors);
+          setSaveMessage('Please fix the validation errors below');
+        } else {
+          setSaveMessage(errorData || 'Failed to update profile. Please try again.');
+        }
+      }
     } catch (error) {
       console.error('Error saving profile:', error);
       setSaveMessage('Failed to update profile. Please try again.');
@@ -237,7 +268,7 @@ const UserProfile = () => {
               {/* Profile Picture */}
               <div className="relative">
                 <ProfileImageUpload
-                  currentImage={user?.profileImage}
+                  currentImage={user?.avatarUrl}
                   onImageChange={handleImageChange}
                   disabled={!isEditing}
                 />
@@ -246,7 +277,7 @@ const UserProfile = () => {
               {/* User Info */}
               <div className="flex-1">
                 <h1 className="text-xl sm:text-2xl font-bold mb-1">
-                  {user?.firstName} {user?.lastName}
+                  {user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim()}
                 </h1>
                 <p className="text-white/90 text-sm sm:text-base mb-2">{user?.email}</p>
                 <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
@@ -359,18 +390,18 @@ const UserProfile = () => {
                   )}
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
+                    <div className="md:col-span-2">
                       <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        First Name <span className="text-red-500">*</span>
+                        Full Name <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
-                        name="firstName"
-                        value={formData.firstName}
+                        name="name"
+                        value={formData.name}
                         onChange={handleInputChange}
                         disabled={!isEditing}
                         className={`w-full px-4 py-3 rounded-2xl border ${
-                          errors.firstName 
+                          errors.name 
                             ? isDarkMode 
                               ? 'bg-gray-700 border-red-500 text-white placeholder-gray-400' 
                               : 'bg-white border-red-500 text-gray-900 placeholder-gray-500'
@@ -380,41 +411,11 @@ const UserProfile = () => {
                         } focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 ${
                           !isEditing ? 'opacity-60 cursor-not-allowed' : ''
                         }`}
-                        placeholder="Enter your first name"
+                        placeholder="Enter your full name"
                       />
-                      {errors.firstName && (
+                      {errors.name && (
                         <p className={`mt-1 text-sm ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
-                          {errors.firstName}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div>
-                      <label className={`block text-sm font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        Last Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        className={`w-full px-4 py-3 rounded-2xl border ${
-                          errors.lastName 
-                            ? isDarkMode 
-                              ? 'bg-gray-700 border-red-500 text-white placeholder-gray-400' 
-                              : 'bg-white border-red-500 text-gray-900 placeholder-gray-500'
-                            : isDarkMode 
-                              ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
-                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                        } focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 ${
-                          !isEditing ? 'opacity-60 cursor-not-allowed' : ''
-                        }`}
-                        placeholder="Enter your last name"
-                      />
-                      {errors.lastName && (
-                        <p className={`mt-1 text-sm ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
-                          {errors.lastName}
+                          {errors.name}
                         </p>
                       )}
                     </div>

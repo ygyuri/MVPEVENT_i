@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { ChevronDown, Globe, RefreshCw } from 'lucide-react'
+import { Globe, RefreshCw } from 'lucide-react'
+import Tooltip from './Tooltip'
 import { 
   setCurrency, 
   fetchExchangeRates, 
@@ -61,41 +62,42 @@ const CurrencySelector = ({ className = '', showConversion = true }) => {
 
   return (
     <div className={`relative ${className}`}>
-      {/* Currency Display */}
-      <div className="flex items-center space-x-2 px-4 py-2 bg-web3-secondary border border-web3-secondary-border rounded-lg hover:bg-web3-card-hover transition-all duration-200 text-web3-primary">
+      {/* Subtle Currency Icon Button */}
+      <Tooltip content={`Currency: ${selectedCurrency} (${selectedCurrencyInfo?.symbol}) - Click to change`}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center space-x-2 flex-1"
+          className="relative p-2 text-web3-secondary/60 hover:text-web3-primary hover:bg-web3-secondary/30 rounded-lg transition-all duration-200"
+          aria-label={`Currency selector: ${selectedCurrency}`}
         >
-          <Globe className="w-4 h-4 text-web3-accent" />
-          <span className="text-lg">{selectedCurrencyInfo?.flag}</span>
-          <span className="font-medium">{selectedCurrency}</span>
-          <span className="text-sm text-web3-secondary">({selectedCurrencyInfo?.symbol})</span>
-          <ChevronDown className={`w-4 h-4 text-web3-secondary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+          <Globe className="w-4 h-4" />
+          <span className="absolute -top-0.5 -right-0.5 text-[8px] font-semibold">
+            {selectedCurrencyInfo?.flag}
+          </span>
         </button>
-        
-        {/* Refresh Button */}
-        <button
-          onClick={handleRefresh}
-          disabled={loading}
-          className="ml-2 p-1 rounded hover:bg-web3-card transition-colors"
-        >
-          <RefreshCw className={`w-3 h-3 text-web3-accent ${loading ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
+      </Tooltip>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-web3-card border border-web3-secondary-border rounded-lg shadow-lg z-50 max-h-96 overflow-hidden">
-          {/* Search Input */}
+        <div className="absolute top-full right-0 w-72 mt-2 bg-web3-card border border-web3-secondary-border rounded-lg shadow-lg z-50 max-h-96 overflow-hidden">
+          {/* Search Input with Refresh Button */}
           <div className="p-3 border-b border-web3-secondary-border">
-            <input
-              type="text"
-              placeholder="Search currencies..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 bg-web3-secondary border border-web3-secondary-border rounded-lg text-web3-primary placeholder-web3-secondary focus:outline-none focus:border-web3-accent"
-            />
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                placeholder="Search currencies..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 px-3 py-2 bg-web3-secondary border border-web3-secondary-border rounded-lg text-web3-primary placeholder-web3-secondary focus:outline-none focus:border-web3-accent"
+              />
+              <button
+                onClick={handleRefresh}
+                disabled={loading}
+                className="p-2 text-web3-secondary hover:text-web3-primary hover:bg-web3-secondary/30 rounded-lg transition-colors"
+                title="Refresh exchange rates"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
 
           {/* Currency List */}

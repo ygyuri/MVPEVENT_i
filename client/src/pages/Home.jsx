@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { motion } from 'framer-motion'
 import { fetchFeaturedEvents, fetchTrendingEvents, fetchSuggestedEvents } from '../store/slices/eventsSlice'
@@ -27,16 +27,30 @@ const EmptyList = ({ loading, text }) => {
 
 const Home = () => {
   const dispatch = useDispatch()
-  const { featuredEvents, trendingEvents, suggestedEvents, loading } = useSelector(state => state.events)
+  const { featuredEvents, trendingEvents, suggestedEvents, loading, featuredMeta, suggestedMeta } = useSelector(state => state.events)
   const didFetchRef = useRef(false)
+  const [featuredPage, setFeaturedPage] = useState(1)
+  const [suggestedPage, setSuggestedPage] = useState(1)
 
   useEffect(() => {
     if (didFetchRef.current) return
     didFetchRef.current = true
-    dispatch(fetchFeaturedEvents())
+    dispatch(fetchFeaturedEvents({ page: 1, pageSize: 12 }))
     dispatch(fetchTrendingEvents())
-    dispatch(fetchSuggestedEvents())
+    dispatch(fetchSuggestedEvents({ page: 1, pageSize: 12 }))
   }, [dispatch])
+
+  const loadMoreFeatured = () => {
+    const nextPage = featuredPage + 1
+    setFeaturedPage(nextPage)
+    dispatch(fetchFeaturedEvents({ page: nextPage, pageSize: 12 }))
+  }
+
+  const loadMoreSuggested = () => {
+    const nextPage = suggestedPage + 1
+    setSuggestedPage(nextPage)
+    dispatch(fetchSuggestedEvents({ page: nextPage, pageSize: 12 }))
+  }
 
   return (
     <div className="relative">
@@ -76,16 +90,29 @@ const Home = () => {
           {/* Featured */}
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-web3-primary">Featured</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-web3-primary">Recently Published</h2>
             </div>
             {featuredEvents?.length ? (
-              <div className="grid-modern">
-                {featuredEvents.map((e, idx) => (
-                  <EventCard key={e.id || idx} event={e} index={idx % 9} />
-                ))}
-              </div>
+              <>
+                <div className="grid-modern">
+                  {featuredEvents.map((e, idx) => (
+                    <EventCard key={e.id || idx} event={e} index={idx % 9} />
+                  ))}
+                </div>
+                {featuredMeta?.hasMore && (
+                  <div className="flex justify-center mt-8">
+                    <button
+                      onClick={loadMoreFeatured}
+                      disabled={loading}
+                      className="px-6 py-3 bg-web3-accent text-white rounded-lg font-medium hover:bg-web3-accent/90 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? 'Loading...' : 'Load More Events'}
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
-              <EmptyList loading={loading} text="No featured events right now" />
+              <EmptyList loading={loading} text="No recent events right now" />
             )}
           </div>
 
@@ -111,13 +138,26 @@ const Home = () => {
               <h2 className="text-2xl md:text-3xl font-bold text-web3-primary">Suggested For You</h2>
             </div>
             {suggestedEvents?.length ? (
-              <div className="grid-modern">
-                {suggestedEvents.map((e, idx) => (
-                  <EventCard key={e.id || idx} event={e} index={idx % 9} />
-                ))}
-              </div>
+              <>
+                <div className="grid-modern">
+                  {suggestedEvents.map((e, idx) => (
+                    <EventCard key={e.id || idx} event={e} index={idx % 9} />
+                  ))}
+                </div>
+                {suggestedMeta?.hasMore && (
+                  <div className="flex justify-center mt-8">
+                    <button
+                      onClick={loadMoreSuggested}
+                      disabled={loading}
+                      className="px-6 py-3 bg-web3-accent text-white rounded-lg font-medium hover:bg-web3-accent/90 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? 'Loading...' : 'Load More Suggestions'}
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
-              <EmptyList loading={loading} text="No suggestions yet" />
+              <EmptyList loading={loading} text="Sign up to get personalized event suggestions" />
             )}
           </div>
         </div>

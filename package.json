@@ -20,8 +20,7 @@
     "env:dev": "cp env.development.example .env.development && echo '✅ .env.development created'",
     "env:staging": "cp env.staging.example .env.staging && echo '✅ .env.staging created'",
     "env:uat": "cp env.uat.example .env.uat && echo '✅ .env.uat created'",
-    "env:prod": "cp env.production.example .env.production && echo '✅ .env.production created'",
-    
+    "env:prod": "cp env.production.example .env.production && echo '✅ .env.production created'"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

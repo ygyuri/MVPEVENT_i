@@ -37,12 +37,53 @@ services:
       dockerfile: Dockerfile.prod
     container_name: event_i_server_prod
     environment:
-      NODE_ENV: production
-      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-password123}@mongodb:27017/event_i?authSource=admin
-      REDIS_URL: redis://redis:6379
+      NODE_ENV: ${NODE_ENV:-production}
+      MONGODB_URI: ${MONGODB_URI}
+      REDIS_URL: ${REDIS_URL}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
-      PORT: ${SERVER_PORT:-5000}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN}
+      PORT: ${SERVER_PORT:-5001}
+      FRONTEND_URL: ${FRONTEND_URL}
+      BASE_URL: ${BASE_URL}
+      # PayHero Configuration
+      PAYHERO_API_USERNAME: ${PAYHERO_API_USERNAME}
+      PAYHERO_API_PASSWORD: ${PAYHERO_API_PASSWORD}
+      PAYHERO_ACCOUNT_ID: ${PAYHERO_ACCOUNT_ID}
+      PAYHERO_BASIC_AUTH_TOKEN: ${PAYHERO_BASIC_AUTH_TOKEN}
+      PAYHERO_CHANNEL_ID: ${PAYHERO_CHANNEL_ID}
+      PAYHERO_CALLBACK_URL: ${PAYHERO_CALLBACK_URL}
+      PAYHERO_SUCCESS_URL: ${PAYHERO_SUCCESS_URL}
+      PAYHERO_FAILED_URL: ${PAYHERO_FAILED_URL}
+      # MPESA Configuration
+      MPESA_BASE_URL: ${MPESA_BASE_URL}
+      MPESA_CONSUMER_KEY: ${MPESA_CONSUMER_KEY}
+      MPESA_CONSUMER_SECRET: ${MPESA_CONSUMER_SECRET}
+      MPESA_PASSKEY: ${MPESA_PASSKEY}
+      MPESA_SHORTCODE: ${MPESA_SHORTCODE}
+      MPESA_CALLBACK_URL: ${MPESA_CALLBACK_URL}
+      MPESA_TIMEOUT_URL: ${MPESA_TIMEOUT_URL}
+      # Email Configuration
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      EMAIL_FROM: ${EMAIL_FROM}
+      # Security Configuration
+      TICKET_QR_SECRET: ${TICKET_QR_SECRET}
+      TICKET_QR_ENC_KEY: ${TICKET_QR_ENC_KEY}
+      TICKET_QR_AUTO_ROTATE_MS: ${TICKET_QR_AUTO_ROTATE_MS}
+      # Rate Limiting
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS}
+      # Debug Configuration
+      DEBUG: ${DEBUG}
+      LOG_LEVEL: ${LOG_LEVEL}
+      # Monitoring
+      SENTRY_DSN: ${SENTRY_DSN}
+      LOG_TO_FILE: ${LOG_TO_FILE}
+      LOG_FILE_PATH: ${LOG_FILE_PATH}
     # Don't expose server port directly - access through nginx
     # ports:
     #   - "5000:5000"
@@ -52,7 +93,7 @@ services:
     networks:
       - event_i_network_prod
     restart: unless-stopped
-    command: sh -c "sleep 15 && npm run seed && npm start"
+    command: sh -c "sleep 15 && npm start"
 
   # Frontend Client
   client:

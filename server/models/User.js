@@ -40,20 +40,77 @@ const userSchema = new mongoose.Schema({
     maxlength: 50,
     match: /^[a-zA-Z0-9_]+$/
   },
-  firstName: {
+  name: {
     type: String,
     required: function() { return this.role !== 'affiliate' && process.env.NODE_ENV !== 'test'; },
+    trim: true,
+    maxlength: 200
+  },
+  firstName: {
+    type: String,
+    required: false, // Deprecated - kept for backward compatibility
     trim: true,
     maxlength: 100
   },
   lastName: {
     type: String,
-    required: function() { return this.role !== 'affiliate' && process.env.NODE_ENV !== 'test'; },
+    required: false, // Deprecated - kept for backward compatibility
     trim: true,
     maxlength: 100
   },
   avatarUrl: String,
-  bio: String,
+  bio: {
+    type: String,
+    maxlength: 500
+  },
+  website: {
+    type: String,
+    validate: {
+      validator: function(v) {
+        if (!v) return true; // Optional field
+        try {
+          new URL(v);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      message: 'Invalid website URL format'
+    }
+  },
+  location: {
+    type: String,
+    maxlength: 100
+  },
+  notifications: {
+    email: {
+      type: Boolean,
+      default: true
+    },
+    push: {
+      type: Boolean,
+      default: true
+    },
+    sms: {
+      type: Boolean,
+      default: false
+    }
+  },
+  privacy: {
+    profileVisibility: {
+      type: String,
+      enum: ['public', 'private', 'friends'],
+      default: 'public'
+    },
+    showEmail: {
+      type: Boolean,
+      default: false
+    },
+    showPhone: {
+      type: Boolean,
+      default: false
+    }
+  },
   role: {
     type: String,
     enum: ['customer', 'organizer', 'admin', 'affiliate'],
@@ -96,9 +153,32 @@ userSchema.index({ role: 1, isActive: 1 });
 userSchema.index({ accountStatus: 1 }); // For filtering by account status
 userSchema.index({ email: 1, accountStatus: 1 }); // For login and account status checks
 
-// Virtual for full name
+// Virtual for full name - prioritize name field, fallback to firstName/lastName
 userSchema.virtual('fullName').get(function() {
-  return `${this.firstName} ${this.lastName}`;
+  if (this.name) {
+    return this.name;
+  }
+  if (this.firstName && this.lastName) {
+    return `${this.firstName} ${this.lastName}`;
+  }
+  return this.firstName || this.lastName || '';
+});
+
+// Method to sync name field with firstName/lastName for backward compatibility
+userSchema.methods.syncNameFields = function() {
+  if (this.name && (!this.firstName || !this.lastName)) {
+    const nameParts = this.name.trim().split(' ');
+    this.firstName = nameParts[0] || '';
+    this.lastName = nameParts.slice(1).join(' ') || '';
+  } else if (this.firstName && this.lastName && !this.name) {
+    this.name = `${this.firstName} ${this.lastName}`.trim();
+  }
+};
+
+// Pre-save middleware to sync name fields
+userSchema.pre('save', function(next) {
+  this.syncNameFields();
+  next();
 });
 
 // Password methods
