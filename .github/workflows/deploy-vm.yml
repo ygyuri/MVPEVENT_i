@@ -164,9 +164,14 @@ jobs:
               echo "📋 Environment file created successfully:"
               sudo ls -la /root/MVPEVENT_i/.env.production
               
+              # Ensure we're in the correct directory for docker compose commands
+              echo "📁 Current working directory: $(pwd)"
+              echo "📋 Contents of current directory:"
+              ls -la
+              
               # Stop existing containers gracefully
               echo "🛑 Stopping existing containers..."
-              docker compose -f docker-compose.prod.yml down --remove-orphans || true
+              docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml down --remove-orphans || true
               
               # Clean up old images and containers to save space
               echo "🧹 Cleaning up old Docker resources..."
@@ -176,15 +181,15 @@ jobs:
               
               # Pull latest base images to ensure we have the most recent versions
               echo "📥 Pulling latest base images..."
-              docker compose -f docker-compose.prod.yml pull || true
+              docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml pull || true
               
               # Build with no cache and force pull to ensure fresh builds
               echo "🔨 Building Docker images with fresh cache..."
-              docker compose -f docker-compose.prod.yml build --no-cache --pull
+              docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml build --no-cache --pull
               
               # Deploy with force recreate to ensure containers are restarted
               echo "🚀 Deploying containers with force recreate..."
-              docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
+              docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml up -d --force-recreate --remove-orphans
               
               # Wait for services to start and perform health checks
               echo "⏳ Waiting for services to start..."
@@ -192,11 +197,12 @@ jobs:
               
               # Verify deployment status
               echo "✅ Checking deployment status..."
-              docker compose -f docker-compose.prod.yml ps
+              echo "📁 Current working directory: $(pwd)"
+              docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps
               
               # Check container health status
               echo "🔍 Checking container health..."
-              docker compose -f docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+              docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
               
               # Wait for containers to be healthy
               echo "⏳ Waiting for containers to be healthy..."
@@ -207,7 +213,7 @@ jobs:
                 echo "Health check attempt $attempt/$max_attempts..."
                 
                 # Check if all containers are running
-                if docker compose -f docker-compose.prod.yml ps | grep -q "Up"; then
+                if docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps | grep -q "Up"; then
                   echo "✅ All containers are running"
                   break
                 else
@@ -220,7 +226,7 @@ jobs:
               if [ $attempt -gt $max_attempts ]; then
                 echo "❌ Containers failed to start within timeout"
                 echo "📋 Container logs:"
-                docker compose -f docker-compose.prod.yml logs --tail=50
+                docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs --tail=50
                 exit 1
               fi
               
@@ -245,7 +251,7 @@ jobs:
                 
                 # Test nginx directly
                 echo "🔍 Testing nginx container..."
-                if docker compose -f docker-compose.prod.yml exec nginx curl -f -s http://localhost/health > /dev/null 2>&1; then
+                if docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec nginx curl -f -s http://localhost/health > /dev/null 2>&1; then
                   echo "✅ Nginx health endpoint working"
                 else
                   echo "❌ Nginx health endpoint failed"
@@ -253,16 +259,16 @@ jobs:
                 
                 # Test backend directly
                 echo "🔍 Testing backend container..."
-                if docker compose -f docker-compose.prod.yml exec server curl -f -s http://localhost:5000/api/health > /dev/null 2>&1; then
+                if docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec server curl -f -s http://localhost:5000/api/health > /dev/null 2>&1; then
                   echo "✅ Backend health endpoint working"
                 else
                   echo "❌ Backend health endpoint failed"
                 fi
                 
                 echo "📋 Server logs:"
-                docker compose -f docker-compose.prod.yml logs server --tail=50
+                docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs server --tail=50
                 echo "📋 Nginx logs:"
-                docker compose -f docker-compose.prod.yml logs nginx --tail=50
+                docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs nginx --tail=50
                 exit 1
               fi
               
@@ -283,9 +289,9 @@ jobs:
               if [ "$frontend_healthy" = false ]; then
                 echo "❌ Frontend accessibility check failed after 5 attempts"
                 echo "📋 Client logs:"
-                docker compose -f docker-compose.prod.yml logs client --tail=50
+                docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs client --tail=50
                 echo "📋 Nginx logs:"
-                docker compose -f docker-compose.prod.yml logs nginx --tail=50
+                docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs nginx --tail=50
                 exit 1
               fi
               
@@ -297,7 +303,7 @@ jobs:
               echo "✅ Frontend accessibility check passed"
               echo ""
               echo "📋 Container Status:"
-              docker compose -f docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
+              docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
               echo ""
               echo "🔗 Service URLs:"
               echo "   Frontend: https://event-i.co.ke/"
@@ -305,7 +311,7 @@ jobs:
               echo "   Health:   https://event-i.co.ke/health"
               echo ""
               echo "📝 Recent logs (last 10 lines):"
-              docker compose -f docker-compose.prod.yml logs --tail=10
+              docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs --tail=10
               echo ""
               echo "🎉 Deployment completed successfully!"
             '
