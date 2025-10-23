@@ -137,9 +137,18 @@ jobs:
               
               # Move and secure environment file
               echo "🔐 Setting up environment file..."
+              # Debug: Check what's in /tmp
+              echo "📋 Contents of /tmp/.env.production:"
+              ls -la /tmp/.env.production || echo "File not found"
+              # Remove existing file/directory if it exists
+              sudo rm -rf /root/MVPEVENT_i/.env.production || true
+              # Move the new file
               sudo mv /tmp/.env.production /root/MVPEVENT_i/.env.production
               sudo chown root:root /root/MVPEVENT_i/.env.production
               sudo chmod 600 /root/MVPEVENT_i/.env.production
+              # Verify the file was created correctly
+              echo "📋 Environment file created successfully:"
+              ls -la /root/MVPEVENT_i/.env.production
               
               # Stop existing containers gracefully
               echo "🛑 Stopping existing containers..."
