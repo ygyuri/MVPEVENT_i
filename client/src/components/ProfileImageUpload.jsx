@@ -33,14 +33,10 @@ const ProfileImageUpload = ({ currentImage, onImageChange, disabled = false }) =
     reader.onload = (e) => {
       setPreview(e.target.result);
       setIsUploading(false);
+      // Pass file to parent immediately after validation
+      onImageChange(file);
     };
     reader.readAsDataURL(file);
-
-    // Simulate upload (replace with actual API call)
-    setTimeout(() => {
-      onImageChange(file);
-      setIsUploading(false);
-    }, 1000);
   };
 
   const handleRemoveImage = () => {

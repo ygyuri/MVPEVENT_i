@@ -10,9 +10,8 @@ const AuthModal = ({ isOpen, onClose }) => {
     email: '',
     password: '',
     confirmPassword: '',
-    username: '', // Auto-generated from firstName + lastName
-    firstName: '',
-    lastName: '',
+    username: '', // Auto-generated from name
+    name: '',
     walletAddress: '', // Hidden from UI
     role: 'customer'
   })
@@ -38,10 +37,10 @@ const AuthModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null
 
-  // Auto-generate username from firstName and lastName
-  const generateUsername = (firstName, lastName) => {
-    if (!firstName || !lastName) return ''
-    const base = `${firstName}${lastName}`.toLowerCase().replace(/[^a-z0-9]/g, '')
+  // Auto-generate username from name
+  const generateUsername = (name) => {
+    if (!name) return ''
+    const base = name.toLowerCase().replace(/[^a-z0-9]/g, '')
     const randomSuffix = Math.floor(Math.random() * 1000)
     return `${base}${randomSuffix}`
   }
@@ -70,8 +69,8 @@ const AuthModal = ({ isOpen, onClose }) => {
         }, 1500)
       } else {
         // Simple validation (real-time validation already handled)
-        if (!formData.firstName || !formData.lastName) {
-          setLocalError('Please enter your first and last name.')
+        if (!formData.name) {
+          setLocalError('Please enter your name.')
           return
         }
         if (!formData.email) {
@@ -88,14 +87,13 @@ const AuthModal = ({ isOpen, onClose }) => {
         }
         
         // Auto-generate username
-        const generatedUsername = generateUsername(formData.firstName, formData.lastName)
+        const generatedUsername = generateUsername(formData.name)
         
         const result = await dispatch(register({
           email: formData.email,
           password: formData.password,
           username: generatedUsername,
-          firstName: formData.firstName,
-          lastName: formData.lastName,
+          name: formData.name,
           walletAddress: formData.walletAddress || undefined,
           role: formData.role
         })).unwrap()
@@ -125,12 +123,9 @@ const AuthModal = ({ isOpen, onClose }) => {
     setSuccessMessage('')
     const newFormData = { ...formData, [e.target.name]: e.target.value }
     
-    // Auto-generate username when firstName or lastName changes
-    if (e.target.name === 'firstName' || e.target.name === 'lastName') {
-      newFormData.username = generateUsername(
-        e.target.name === 'firstName' ? e.target.value : formData.firstName,
-        e.target.name === 'lastName' ? e.target.value : formData.lastName
-      )
+    // Auto-generate username when name changes
+    if (e.target.name === 'name') {
+      newFormData.username = generateUsername(e.target.value)
     }
     
     setFormData(newFormData)
@@ -148,8 +143,7 @@ const AuthModal = ({ isOpen, onClose }) => {
       password: '', 
       confirmPassword: '', 
       username: '', 
-      firstName: '', 
-      lastName: '', 
+      name: '', 
       walletAddress: '', 
       role: 'customer'
     })
@@ -237,35 +231,18 @@ const AuthModal = ({ isOpen, onClose }) => {
 
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {!isLogin && (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>First Name</label>
-                    <input 
-                      type="text" 
-                      name="firstName" 
-                      value={formData.firstName} 
-                      onChange={handleInputChange} 
-                      required 
-                      className={`w-full px-4 py-3 rounded-xl ${isDarkMode ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'} border focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200`} 
-                      placeholder="John" 
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Last Name</label>
-                    <input 
-                      type="text" 
-                      name="lastName" 
-                      value={formData.lastName} 
-                      onChange={handleInputChange} 
-                      required 
-                      className={`w-full px-4 py-3 rounded-xl ${isDarkMode ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'} border focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200`} 
-                      placeholder="Doe" 
-                    />
-                  </div>
-                </div>
-
-              </>
+              <div>
+                <label className={`block text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>Full Name</label>
+                <input 
+                  type="text" 
+                  name="name" 
+                  value={formData.name} 
+                  onChange={handleInputChange} 
+                  required 
+                  className={`w-full px-4 py-3 rounded-xl ${isDarkMode ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'} border focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200`} 
+                  placeholder="John Doe" 
+                />
+              </div>
             )}
 
             <div>

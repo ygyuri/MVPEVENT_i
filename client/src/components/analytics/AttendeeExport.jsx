@@ -33,8 +33,7 @@ const AttendeeExport = ({ eventId, eventTitle, loading, error }) => {
   });
   const [selectedFields, setSelectedFields] = useState([
     'ticketNumber',
-    'holder.firstName',
-    'holder.lastName',
+    'holder.name',
     'holder.email',
     'ticketType',
     'price',
@@ -52,8 +51,7 @@ const AttendeeExport = ({ eventId, eventTitle, loading, error }) => {
 
   const availableFields = [
     { id: 'ticketNumber', label: 'Ticket Number', required: true },
-    { id: 'holder.firstName', label: 'First Name', required: true },
-    { id: 'holder.lastName', label: 'Last Name', required: true },
+    { id: 'holder.name', label: 'Full Name', required: true },
     { id: 'holder.email', label: 'Email', required: true },
     { id: 'holder.phone', label: 'Phone Number' },
     { id: 'ticketType', label: 'Ticket Type', required: true },

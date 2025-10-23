@@ -119,6 +119,38 @@ export const getCurrentUser = createAsyncThunk(
   }
 );
 
+export const updateUserProfile = createAsyncThunk(
+  'auth/updateProfile',
+  async (profileData, { rejectWithValue }) => {
+    try {
+      console.log('🔄 [API PROFILE UPDATE] Request:', {
+        data: profileData,
+        timestamp: new Date().toISOString()
+      });
+      
+      const response = await api.put('/api/auth/profile', profileData);
+      
+      console.log('✅ [API PROFILE UPDATE] Response:', {
+        status: response.status,
+        data: response.data.user,
+        timestamp: new Date().toISOString()
+      });
+      
+      return response.data.user;
+    } catch (error) {
+      console.error('❌ [API PROFILE UPDATE] Error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+      
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to update profile';
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 const initialState = {
   user: null,
   authToken: localStorage.getItem('authToken') || null,
@@ -195,6 +227,20 @@ const authSlice = createSlice({
         state.user = null;
         state.authToken = null;
         state.isAuthenticated = false;
+      })
+      
+      // Update User Profile
+      .addCase(updateUserProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload;
+      })
+      .addCase(updateUserProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   }
 });

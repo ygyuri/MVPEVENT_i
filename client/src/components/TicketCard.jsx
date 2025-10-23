@@ -19,7 +19,7 @@ export default function TicketCard({ ticket, onOpen, className }) {
         <div className="text-white/60 text-sm">{new Date(ticket.event?.startDate).toLocaleString()}</div>
       </div>
       <div className="mt-4 flex items-center justify-between">
-        <div className="text-white/70 text-sm">Holder: {ticket.holder?.firstName} {ticket.holder?.lastName}</div>
+        <div className="text-white/70 text-sm">Holder: {ticket.holder?.name || `${ticket.holder?.firstName || ''} ${ticket.holder?.lastName || ''}`.trim()}</div>
         <button onClick={onOpen} className="px-3 py-2 text-sm rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow hover:opacity-90 disabled:opacity-40" disabled={ticket.status !== 'active'}>
           {ticket.status === 'active' ? 'Show QR' : 'Used'}
         </button>

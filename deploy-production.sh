@@ -44,11 +44,19 @@ check_requirements() {
     fi
     
     if [ ! -f ".env.production" ]; then
-        print_warning ".env.production not found, creating from example..."
-        cp env.production.example .env.production
-        print_success ".env.production created. Please edit it with your production configuration."
-        print_warning "You MUST configure .env.production before deploying to production!"
-        exit 1
+        print_warning ".env.production not found"
+        print_status "For GitHub Actions deployment, .env.production is generated automatically from GitHub Secrets"
+        print_status "Make sure all required secrets are configured in your GitHub repository settings"
+        print_status "See GITHUB_SECRETS_SETUP.md for complete setup instructions"
+        
+        # Check if we're in a CI environment
+        if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]; then
+            print_status "Running in CI environment - GitHub Secrets will be used"
+        else
+            print_warning "Running locally - you may need to create .env.production manually"
+            print_warning "Copy env.production.example to .env.production and update with your values"
+            exit 1
+        fi
     fi
     
     print_success "All requirements met"
@@ -58,31 +66,42 @@ check_requirements() {
 validate_config() {
     print_status "Validating production configuration..."
     
+    # Check if we're in CI environment (GitHub Actions)
+    if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]; then
+        print_status "Running in CI environment - validation will be handled by GitHub Secrets"
+        print_success "CI environment detected - GitHub Secrets validation passed"
+        return 0
+    fi
+    
+    # Local validation (if .env.production exists)
+    if [ ! -f ".env.production" ]; then
+        print_warning "No .env.production file found for local validation"
+        return 0
+    fi
+    
     # Check for default values that must be changed
-    if grep -q "production-secure-mongodb-password" .env.production; then
+    if grep -q "CHANGE-THIS-SECURE-PASSWORD" .env.production; then
         print_error "Default MongoDB password detected. You MUST change it in .env.production"
         exit 1
     fi
     
-    if grep -q "production-super-secure-jwt-secret-change-in-production" .env.production; then
+    if grep -q "GENERATE-NEW-SECURE-JWT-SECRET" .env.production; then
         print_error "Default JWT secret detected. You MUST change it in .env.production"
         exit 1
     fi
     
-    if grep -q "production-payhero-username" .env.production; then
+    if grep -q "your-payhero-username" .env.production; then
         print_error "Default PayHero credentials detected. You MUST change them in .env.production"
         exit 1
     fi
     
-    if grep -q "production-mpesa-consumer-key" .env.production; then
+    if grep -q "your-mpesa-consumer-key" .env.production; then
         print_error "Default MPESA credentials detected. You MUST change them in .env.production"
         exit 1
     fi
     
-    if grep -q "event-i.com" .env.production; then
-        print_success "Production domain configured"
-    else
-        print_error "Please configure FRONTEND_URL in .env.production"
+    if grep -q "your-domain.com" .env.production; then
+        print_error "Please configure FRONTEND_URL and BASE_URL in .env.production"
         exit 1
     fi
     

@@ -38,8 +38,10 @@ router.post('/register', registrationRateLimit, [
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email address'),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
   body('username').isLength({ min: 3, max: 50 }).matches(/^[a-zA-Z0-9_]+$/).withMessage('Username must be 3-50 characters and contain only letters, numbers, and underscores'),
-  body('firstName').trim().isLength({ min: 1, max: 100 }).withMessage('First name is required and must be less than 100 characters'),
-  body('lastName').trim().isLength({ min: 1, max: 100 }).withMessage('Last name is required and must be less than 100 characters'),
+  // Support both new name field and legacy firstName/lastName fields
+  body('name').optional().trim().isLength({ min: 1, max: 200 }).withMessage('Name must be less than 200 characters'),
+  body('firstName').optional().trim().isLength({ min: 1, max: 100 }).withMessage('First name must be less than 100 characters'),
+  body('lastName').optional().trim().isLength({ min: 1, max: 100 }).withMessage('Last name must be less than 100 characters'),
   body('role').optional().isIn(['customer','organizer']).withMessage('Role must be customer or organizer')
 ], async (req, res) => {
   try {
@@ -51,8 +53,16 @@ router.post('/register', registrationRateLimit, [
       });
     }
 
-    const { email, password, username, firstName, lastName, walletAddress } = req.body;
+    const { email, password, username, name, firstName, lastName, walletAddress } = req.body;
     const role = ['customer','organizer'].includes(req.body.role) ? req.body.role : 'customer';
+
+    // Validate name fields - require either name or both firstName/lastName
+    if (!name && (!firstName || !lastName)) {
+      return res.status(400).json({ 
+        error: 'Please provide either a full name or both first and last name.',
+        details: [{ field: 'name', message: 'Name is required' }]
+      });
+    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -63,8 +73,24 @@ router.post('/register', registrationRateLimit, [
       return res.status(409).json({ error: 'This username is already taken. Please choose a different username.', code: 'USERNAME_EXISTS' });
     }
 
-    // Create user
-    const user = new User({ email, username, firstName, lastName, walletAddress: walletAddress || null, emailVerified: false, role });
+    // Create user with name field (firstName/lastName will be synced by pre-save middleware)
+    const userData = { 
+      email, 
+      username, 
+      walletAddress: walletAddress || null, 
+      emailVerified: false, 
+      role 
+    };
+
+    // Use name field if provided, otherwise use firstName/lastName
+    if (name) {
+      userData.name = name;
+    } else {
+      userData.firstName = firstName;
+      userData.lastName = lastName;
+    }
+
+    const user = new User(userData);
 
     // Set password (bcrypt 12 rounds)
     await user.setPassword(password);
@@ -76,7 +102,15 @@ router.post('/register', registrationRateLimit, [
 
     res.status(201).json({
       message: 'Account created successfully! Welcome to Event-i!',
-      user: { id: user._id, email: user.email, username: user.username, firstName: user.firstName, lastName: user.lastName, role: user.role },
+      user: { 
+        id: user._id, 
+        email: user.email, 
+        username: user.username, 
+        name: user.name,
+        firstName: user.firstName, 
+        lastName: user.lastName, 
+        role: user.role 
+      },
       tokens: { accessToken, refreshToken }
     });
 
@@ -145,6 +179,7 @@ router.post('/login', loginRateLimit, [
         id: user._id,
         email: user.email,
         username: user.username,
+        name: user.name,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role
@@ -190,6 +225,7 @@ router.get('/me', verifyToken, async (req, res) => {
         id: user._id,
         email: user.email,
         username: user.username,
+        name: user.name,
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
@@ -253,11 +289,32 @@ router.post('/refresh', async (req, res) => {
 
 // Update user profile
 router.put('/profile', verifyToken, [
+  body('name').optional().trim().isLength({ min: 1, max: 200 }),
   body('firstName').optional().trim().isLength({ min: 1, max: 100 }),
   body('lastName').optional().trim().isLength({ min: 1, max: 100 }),
   body('phone').optional().isMobilePhone(),
   body('city').optional().trim().isLength({ max: 100 }),
   body('country').optional().trim().isLength({ max: 100 }),
+  body('bio').optional().trim().isLength({ max: 500 }),
+  body('website').optional().isURL().withMessage('Invalid website URL'),
+  body('location').optional().trim().isLength({ max: 100 }),
+  body('avatarUrl').optional().custom((value) => {
+    if (!value) return true; // Optional field
+    // Check if it's a valid base64 data URL
+    if (typeof value !== 'string') return false;
+    if (!value.startsWith('data:image/')) return false;
+    // Check size (base64 is ~1.33x larger than original, so 3.75MB base64 = ~5MB image)
+    if (value.length > 3.75 * 1024 * 1024) {
+      throw new Error('Avatar image too large (max 5MB)');
+    }
+    return true;
+  }),
+  body('notifications.email').optional().isBoolean(),
+  body('notifications.push').optional().isBoolean(),
+  body('notifications.sms').optional().isBoolean(),
+  body('privacy.profileVisibility').optional().isIn(['public', 'private', 'friends']),
+  body('privacy.showEmail').optional().isBoolean(),
+  body('privacy.showPhone').optional().isBoolean(),
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -268,18 +325,55 @@ router.put('/profile', verifyToken, [
       });
     }
 
-    const { firstName, lastName, phone, city, country, preferences } = req.body;
+    const { 
+      name,
+      firstName, 
+      lastName, 
+      phone, 
+      city, 
+      country, 
+      bio,
+      website,
+      location,
+      avatarUrl,
+      notifications,
+      privacy,
+      preferences 
+    } = req.body;
 
     // Update user
     const updateData = {};
+    if (name) updateData.name = name;
     if (firstName) updateData.firstName = firstName;
     if (lastName) updateData.lastName = lastName;
+    if (bio !== undefined) updateData.bio = bio;
+    if (website !== undefined) updateData.website = website;
+    if (location !== undefined) updateData.location = location;
+    if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
+    
+    // Handle nested objects
     if (phone || city || country || preferences) {
       updateData.profile = {
         phone: phone || req.user.profile?.phone,
         city: city || req.user.profile?.city,
         country: country || req.user.profile?.country,
         preferences: preferences || req.user.profile?.preferences || {}
+      };
+    }
+    
+    if (notifications) {
+      updateData.notifications = {
+        email: notifications.email !== undefined ? notifications.email : req.user.notifications?.email ?? true,
+        push: notifications.push !== undefined ? notifications.push : req.user.notifications?.push ?? true,
+        sms: notifications.sms !== undefined ? notifications.sms : req.user.notifications?.sms ?? false
+      };
+    }
+    
+    if (privacy) {
+      updateData.privacy = {
+        profileVisibility: privacy.profileVisibility || req.user.privacy?.profileVisibility || 'public',
+        showEmail: privacy.showEmail !== undefined ? privacy.showEmail : req.user.privacy?.showEmail ?? false,
+        showPhone: privacy.showPhone !== undefined ? privacy.showPhone : req.user.privacy?.showPhone ?? false
       };
     }
 

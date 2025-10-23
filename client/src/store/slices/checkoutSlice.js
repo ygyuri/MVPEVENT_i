@@ -80,8 +80,7 @@ const loadInitialState = () => {
         
         // Customer info
         customerInfo: parsed.customerInfo || {
-          firstName: '',
-          lastName: '',
+          name: '',
           email: '',
           phone: '',
         },
@@ -122,8 +121,7 @@ const loadInitialState = () => {
     
     // Customer info
     customerInfo: {
-      firstName: '',
-      lastName: '',
+      name: '',
       email: '',
       phone: '',
     },
@@ -292,8 +290,7 @@ const checkoutSlice = createSlice({
       state.pricing = null;
       state.paymentStatus = 'idle';
       state.customerInfo = {
-        firstName: '',
-        lastName: '',
+        name: '',
         email: '',
         phone: '',
       };

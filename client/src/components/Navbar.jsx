@@ -96,7 +96,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                 >
                   <User className="w-6 h-6" />
                   <span className="hidden md:block text-sm font-medium">
-                    {user?.firstName || user?.username || 'User'}
+                    {user?.name || user?.firstName || user?.username || 'User'}
                   </span>
                 </button>
                 
@@ -105,7 +105,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                   <div className={`absolute right-0 mt-3 w-64 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-2xl py-3 z-50 theme-transition shadow-2xl`}>
                     <div className={`px-6 py-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
                       <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {user?.firstName} {user?.lastName}
+                        {user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim()}
                       </p>
                       <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>{user?.email}</p>
                       <div className="mt-3">
