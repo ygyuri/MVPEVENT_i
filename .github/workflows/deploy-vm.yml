@@ -162,13 +162,19 @@ jobs:
               
               # Create .env file for docker compose (it looks for .env by default)
               echo "📄 Creating .env file for docker compose..."
+              echo "📋 Checking if .env.production exists:"
+              sudo ls -la /root/MVPEVENT_i/.env.production || echo "❌ .env.production not found"
+              
+              # Copy the file
               sudo cp /root/MVPEVENT_i/.env.production /root/MVPEVENT_i/.env
+              echo "📋 Copy completed, setting permissions..."
               sudo chown root:root /root/MVPEVENT_i/.env
               sudo chmod 600 /root/MVPEVENT_i/.env
               
               # Verify the files were created correctly
               echo "📋 Environment files created successfully:"
-              sudo ls -la /root/MVPEVENT_i/.env*
+              sudo ls -la /root/MVPEVENT_i/.env.production
+              sudo ls -la /root/MVPEVENT_i/.env
               
               # Ensure we're in the correct directory for docker compose commands
               echo "📁 Current working directory: $(pwd)"
