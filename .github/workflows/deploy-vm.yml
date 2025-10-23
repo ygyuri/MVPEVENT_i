@@ -160,9 +160,15 @@ jobs:
               sudo chown root:root /root/MVPEVENT_i/.env.production
               sudo chmod 600 /root/MVPEVENT_i/.env.production
               
-              # Verify the file was created correctly
-              echo "📋 Environment file created successfully:"
-              sudo ls -la /root/MVPEVENT_i/.env.production
+              # Create .env file for docker compose (it looks for .env by default)
+              echo "📄 Creating .env file for docker compose..."
+              sudo cp /root/MVPEVENT_i/.env.production /root/MVPEVENT_i/.env
+              sudo chown root:root /root/MVPEVENT_i/.env
+              sudo chmod 600 /root/MVPEVENT_i/.env
+              
+              # Verify the files were created correctly
+              echo "📋 Environment files created successfully:"
+              sudo ls -la /root/MVPEVENT_i/.env*
               
               # Ensure we're in the correct directory for docker compose commands
               echo "📁 Current working directory: $(pwd)"
