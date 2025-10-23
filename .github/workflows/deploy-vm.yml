@@ -336,6 +336,6 @@ jobs:
               echo "📝 Recent logs (last 10 lines):"
               sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs --tail=10
               echo ""
-              echo "🎉 Deployment completed successfully!"
+              echo "Deployment completed successfully!"
             '
 
