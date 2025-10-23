@@ -209,7 +209,10 @@ jobs:
               
               # Deploy with force recreate to ensure containers are restarted
               echo "🚀 Deploying containers with force recreate..."
-              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml up -d --force-recreate --remove-orphans
+              # Override MongoDB and Redis URLs to use Docker Compose service names
+              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml up -d --force-recreate --remove-orphans \
+                -e MONGODB_URI="mongodb://${{ secrets.MONGO_ROOT_USERNAME }}:${{ secrets.MONGO_ROOT_PASSWORD }}@mongodb:27017/event_i_production?authSource=admin" \
+                -e REDIS_URL="redis://redis:6379"
               
               # Wait for services to start and perform health checks
               echo "⏳ Waiting for services to start..."
