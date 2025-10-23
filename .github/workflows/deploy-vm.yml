@@ -189,6 +189,39 @@ jobs:
               echo "📋 Contents of current directory:"
               ls -la
               
+              # Setup Let's Encrypt SSL certificates
+              echo "🔐 Setting up Let's Encrypt SSL certificates..."
+              
+              # Install certbot if not already installed
+              if ! command -v certbot &> /dev/null; then
+                echo "📦 Installing certbot..."
+                sudo apt update
+                sudo apt install -y certbot
+              fi
+              
+              # Stop nginx temporarily for certificate generation
+              echo "🛑 Temporarily stopping nginx for certificate generation..."
+              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml stop nginx || true
+              
+              # Generate Let's Encrypt certificate
+              echo "🔑 Generating Let's Encrypt certificate for event-i.co.ke..."
+              sudo certbot certonly --standalone \
+                --non-interactive \
+                --agree-tos \
+                --email admin@event-i.co.ke \
+                -d event-i.co.ke \
+                --force-renewal || echo "⚠️ Certificate generation failed, using existing certificates"
+              
+              # Copy certificates to nginx ssl directory
+              echo "📁 Copying certificates to nginx ssl directory..."
+              sudo mkdir -p /root/MVPEVENT_i/nginx/ssl
+              sudo cp /etc/letsencrypt/live/event-i.co.ke/fullchain.pem /root/MVPEVENT_i/nginx/ssl/cert.pem || echo "⚠️ Using existing cert.pem"
+              sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem || echo "⚠️ Using existing key.pem"
+              sudo chmod 644 /root/MVPEVENT_i/nginx/ssl/cert.pem
+              sudo chmod 600 /root/MVPEVENT_i/nginx/ssl/key.pem
+              
+              echo "✅ SSL certificates setup completed"
+              
               # Stop existing containers gracefully
               echo "🛑 Stopping existing containers..."
               sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml down --remove-orphans || true
@@ -333,7 +366,7 @@ jobs:
               echo "   API:      https://event-i.co.ke/api/health"
               echo "   Health:   https://event-i.co.ke/health"
               echo ""
-              echo "📝 Recent logs (last 10 lines):"
+              echo "Recent logs (last 10 lines):"
               sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs --tail=10
               echo ""
               echo "Deployment completed successfully!"
