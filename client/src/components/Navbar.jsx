@@ -108,12 +108,24 @@ const Navbar = ({ onOpenAuthModal }) => {
                 <img
                   src={
                     isDarkMode
-                      ? "/logos/evet-i_dark_mode_logo.png"
+                      ? "/logos/event-i_dark_mode_logo.png"
                       : "/logos/event-i_light_mode_logo.png"
                   }
                   alt="Event-i Logo"
                   className="h-28 w-auto object-contain"
+                  onError={(e) => {
+                    console.error("Logo failed to load:", e.target.src);
+                    // Fallback to text logo
+                    e.target.style.display = "none";
+                    e.target.nextSibling.style.display = "block";
+                  }}
                 />
+                <div
+                  className="h-28 flex items-center justify-center text-2xl font-bold text-web3-accent"
+                  style={{ display: "none" }}
+                >
+                  Event-i
+                </div>
               </div>
             </Link>
           </motion.div>
