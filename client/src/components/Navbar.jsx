@@ -10,17 +10,10 @@ import {
   Bell,
   Settings,
   BarChart3,
-  Calendar,
-  Search,
   Globe,
   ChevronDown,
-  Ticket,
-  MapPin,
   Star,
   Shield,
-  CreditCard,
-  HelpCircle,
-  MessageSquare,
 } from "lucide-react";
 import { ThemeToggle, useTheme } from "../contexts/ThemeContext";
 import CurrencySelector from "./CurrencySelector";
@@ -52,12 +45,12 @@ const Navbar = ({ onOpenAuthModal }) => {
         isDarkMode ? "bg-transparent" : "bg-web3-primary"
       }`}
     >
-      {/* Top Bar - Trust Indicators */}
+      {/* Top Bar - Trust Indicators - Hidden on Mobile */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.4 }}
-        className={`py-1 ${
+        className={`py-1 hidden md:block ${
           isDarkMode
             ? "bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] text-white"
             : "bg-gradient-to-r from-[#4f0f69]/90 to-[#6b1a8a]/90 text-white"
@@ -135,27 +128,25 @@ const Navbar = ({ onOpenAuthModal }) => {
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Link
                 to="/"
-                className={`flex items-center space-x-2 px-6 py-3 rounded-2xl transition-colors duration-300 font-medium text-sm ${
+                className={`px-8 py-4 rounded-2xl transition-all duration-300 font-semibold text-base ${
                   isDarkMode
-                    ? "text-gray-300 hover:text-white hover:bg-[#4f0f69]/20"
-                    : "text-gray-700 hover:text-[#4f0f69] hover:bg-white/80"
+                    ? "text-gray-200 hover:text-white hover:bg-[#4f0f69]/30 hover:shadow-lg hover:shadow-[#4f0f69]/20"
+                    : "text-gray-600 hover:text-[#4f0f69] hover:bg-white hover:shadow-lg hover:shadow-gray-200/50"
                 }`}
               >
-                <MapPin className="w-4 h-4" />
-                <span>Discover</span>
+                Discover
               </Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
               <Link
                 to="/events"
-                className={`flex items-center space-x-2 px-6 py-3 rounded-2xl transition-colors duration-300 font-medium text-sm ${
+                className={`px-8 py-4 rounded-2xl transition-all duration-300 font-semibold text-base ${
                   isDarkMode
-                    ? "text-gray-300 hover:text-white hover:bg-[#4f0f69]/20"
-                    : "text-gray-700 hover:text-[#4f0f69] hover:bg-white/80"
+                    ? "text-gray-200 hover:text-white hover:bg-[#4f0f69]/30 hover:shadow-lg hover:shadow-[#4f0f69]/20"
+                    : "text-gray-600 hover:text-[#4f0f69] hover:bg-white hover:shadow-lg hover:shadow-gray-200/50"
                 }`}
               >
-                <Calendar className="w-4 h-4" />
-                <span>Events</span>
+                Events
               </Link>
             </motion.div>
             {/* {isAuthenticated && (
@@ -174,14 +165,13 @@ const Navbar = ({ onOpenAuthModal }) => {
                 >
                   <Link
                     to="/organizer"
-                    className={`flex items-center space-x-2 px-6 py-3 rounded-2xl transition-colors duration-300 font-medium text-sm ${
+                    className={`px-8 py-4 rounded-2xl transition-all duration-300 font-semibold text-base ${
                       isDarkMode
-                        ? "text-gray-300 hover:text-white hover:bg-[#4f0f69]/20"
-                        : "text-gray-700 hover:text-[#4f0f69] hover:bg-white/80"
+                        ? "text-gray-200 hover:text-white hover:bg-[#4f0f69]/30 hover:shadow-lg hover:shadow-[#4f0f69]/20"
+                        : "text-gray-600 hover:text-[#4f0f69] hover:bg-white hover:shadow-lg hover:shadow-gray-200/50"
                     }`}
                   >
-                    <BarChart3 className="w-4 h-4" />
-                    <span>Organizer</span>
+                    Organizer
                   </Link>
                 </motion.div>
               )}
@@ -230,8 +220,8 @@ const Navbar = ({ onOpenAuthModal }) => {
               <ThemeToggle size="default" />
             </motion.div>
 
-            {/* Notifications */}
-            {isAuthenticated && (
+            {/* Notifications - Hidden */}
+            {/* {isAuthenticated && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -250,7 +240,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                   <span className="text-xs text-white font-bold">3</span>
                 </motion.div>
               </motion.button>
-            )}
+            )} */}
 
             {/* Modern Authentication Section */}
             {isAuthenticated ? (
@@ -338,40 +328,37 @@ const Navbar = ({ onOpenAuthModal }) => {
                     <Link
                       to="/profile"
                       onClick={() => setIsUserMenuOpen(false)}
-                      className={`w-full px-6 py-3 text-left text-sm ${
+                      className={`w-full px-6 py-4 text-left text-sm font-medium ${
                         isDarkMode
-                          ? "text-gray-300 hover:bg-gray-700"
-                          : "text-gray-700 hover:bg-gray-50"
-                      } flex items-center space-x-3 transition-colors duration-200`}
+                          ? "text-gray-200 hover:bg-gray-700 hover:text-white"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      } transition-all duration-200 rounded-lg`}
                     >
-                      <User className="w-4 h-4" />
-                      <span>My Profile</span>
+                      My Profile
                     </Link>
 
                     {/* Reminders Section */}
                     <Link
                       to="/preferences/reminders"
                       onClick={() => setIsUserMenuOpen(false)}
-                      className={`w-full px-6 py-3 text-left text-sm ${
+                      className={`w-full px-6 py-4 text-left text-sm font-medium ${
                         isDarkMode
-                          ? "text-gray-300 hover:bg-gray-700"
-                          : "text-gray-700 hover:bg-gray-50"
-                      } flex items-center space-x-3 transition-colors duration-200`}
+                          ? "text-gray-200 hover:bg-gray-700 hover:text-white"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      } transition-all duration-200 rounded-lg`}
                     >
-                      <Bell className="w-4 h-4" />
-                      <span>Reminder Preferences</span>
+                      Reminder Preferences
                     </Link>
                     <Link
                       to="/reminders/history"
                       onClick={() => setIsUserMenuOpen(false)}
-                      className={`w-full px-6 py-3 text-left text-sm ${
+                      className={`w-full px-6 py-4 text-left text-sm font-medium ${
                         isDarkMode
-                          ? "text-gray-300 hover:bg-gray-700"
-                          : "text-gray-700 hover:bg-gray-50"
-                      } flex items-center space-x-3 transition-colors duration-200`}
+                          ? "text-gray-200 hover:bg-gray-700 hover:text-white"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      } transition-all duration-200 rounded-lg`}
                     >
-                      <Calendar className="w-4 h-4" />
-                      <span>Reminder History</span>
+                      Reminder History
                     </Link>
 
                     {/* Organizer Section */}
@@ -387,14 +374,13 @@ const Navbar = ({ onOpenAuthModal }) => {
                         <Link
                           to="/scanner"
                           onClick={() => setIsUserMenuOpen(false)}
-                          className={`w-full px-6 py-3 text-left text-sm ${
+                          className={`w-full px-6 py-4 text-left text-sm font-medium ${
                             isDarkMode
-                              ? "text-gray-300 hover:bg-gray-700"
-                              : "text-gray-700 hover:bg-gray-50"
-                          } flex items-center space-x-3 transition-colors duration-200`}
+                              ? "text-gray-200 hover:bg-gray-700 hover:text-white"
+                              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                          } transition-all duration-200 rounded-lg`}
                         >
-                          <Settings className="w-4 h-4" />
-                          <span>QR Scanner</span>
+                          QR Scanner
                         </Link>
                         {/* Analytics feature - temporarily hidden for production */}
                         {/* <Link
@@ -409,14 +395,13 @@ const Navbar = ({ onOpenAuthModal }) => {
                     )}
                     <button
                       onClick={handleLogout}
-                      className={`w-full px-6 py-3 text-left text-sm ${
+                      className={`w-full px-6 py-4 text-left text-sm font-medium ${
                         isDarkMode
-                          ? "text-red-400 hover:bg-red-900/20"
-                          : "text-red-600 hover:bg-red-50"
-                      } flex items-center space-x-3 transition-colors duration-200 rounded-b-2xl`}
+                          ? "text-red-400 hover:bg-red-900/20 hover:text-red-300"
+                          : "text-red-600 hover:bg-red-50 hover:text-red-700"
+                      } transition-all duration-200 rounded-lg`}
                     >
-                      <LogOut className="w-4 h-4" />
-                      <span>Sign Out</span>
+                      Sign Out
                     </button>
                   </div>
                 )}
@@ -487,15 +472,14 @@ const Navbar = ({ onOpenAuthModal }) => {
                 >
                   <Link
                     to="/"
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors duration-300 font-medium ${
+                    className={`px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base ${
                       isDarkMode
-                        ? "text-gray-300 hover:text-white hover:bg-[#4f0f69]/20"
-                        : "text-gray-700 hover:text-[#4f0f69] hover:bg-white/80"
+                        ? "text-gray-200 hover:text-white hover:bg-[#4f0f69]/30 hover:shadow-lg hover:shadow-[#4f0f69]/20"
+                        : "text-gray-600 hover:text-[#4f0f69] hover:bg-white hover:shadow-lg hover:shadow-gray-200/50"
                     }`}
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    <MapPin className="w-5 h-5" />
-                    <span>Discover</span>
+                    Discover
                   </Link>
                 </motion.div>
                 <motion.div
@@ -505,15 +489,14 @@ const Navbar = ({ onOpenAuthModal }) => {
                 >
                   <Link
                     to="/events"
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors duration-300 font-medium ${
+                    className={`px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base ${
                       isDarkMode
-                        ? "text-gray-300 hover:text-white hover:bg-[#4f0f69]/20"
-                        : "text-gray-700 hover:text-[#4f0f69] hover:bg-white/80"
+                        ? "text-gray-200 hover:text-white hover:bg-[#4f0f69]/30 hover:shadow-lg hover:shadow-[#4f0f69]/20"
+                        : "text-gray-600 hover:text-[#4f0f69] hover:bg-white hover:shadow-lg hover:shadow-gray-200/50"
                     }`}
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    <Calendar className="w-5 h-5" />
-                    <span>Events</span>
+                    Events
                   </Link>
                 </motion.div>
                 {isAuthenticated &&
@@ -525,15 +508,14 @@ const Navbar = ({ onOpenAuthModal }) => {
                     >
                       <Link
                         to="/organizer"
-                        className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors duration-300 font-medium ${
+                        className={`px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base ${
                           isDarkMode
-                            ? "text-gray-300 hover:text-white hover:bg-[#4f0f69]/20"
-                            : "text-gray-700 hover:text-[#4f0f69] hover:bg-white/80"
+                            ? "text-gray-200 hover:text-white hover:bg-[#4f0f69]/30 hover:shadow-lg hover:shadow-[#4f0f69]/20"
+                            : "text-gray-600 hover:text-[#4f0f69] hover:bg-white hover:shadow-lg hover:shadow-gray-200/50"
                         }`}
                         onClick={() => setIsMenuOpen(false)}
                       >
-                        <BarChart3 className="w-5 h-5" />
-                        <span>Organizer</span>
+                        Organizer
                       </Link>
                     </motion.div>
                   )}
