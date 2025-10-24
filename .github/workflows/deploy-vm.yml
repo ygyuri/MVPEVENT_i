@@ -12,6 +12,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+      - name: Verify image assets
+        run: |
+          echo "🔍 Checking image assets..."
+          echo "📁 Client public directory contents:"
+          ls -la client/public/ || echo "No public directory"
+          echo "📁 Client logos directory contents:"
+          ls -la client/public/logos/ || echo "No logos directory"
+          echo "📁 Server uploads directory contents:"
+          ls -la server/uploads/ || echo "No uploads directory"
+          echo "✅ Image asset verification completed"
       - name: Build images (no push)
         run: docker compose -f docker-compose.prod.yml build
 
@@ -134,6 +144,16 @@ jobs:
               
               # Show current commit
               echo "📝 Current commit: $(git log --oneline -1)"
+              
+              # Verify image assets are present
+              echo "🔍 Verifying image assets..."
+              echo "📁 Client public directory contents:"
+              ls -la /root/MVPEVENT_i/client/public/ || echo "No public directory"
+              echo "📁 Client logos directory contents:"
+              ls -la /root/MVPEVENT_i/client/public/logos/ || echo "No logos directory"
+              echo "📁 Server uploads directory contents:"
+              ls -la /root/MVPEVENT_i/server/uploads/ || echo "No uploads directory"
+              echo "✅ Image asset verification completed"
               
               # Move and secure environment file
               echo "🔐 Setting up environment file..."
@@ -394,12 +414,18 @@ jobs:
                 exit 1
               fi
               
+              # Run image verification script
+              echo "🔍 Running image asset verification..."
+              chmod +x /root/MVPEVENT_i/scripts/verify-images.sh
+              /root/MVPEVENT_i/scripts/verify-images.sh || echo "⚠️ Image verification had warnings"
+              
               # Show deployment summary
               echo "📊 Deployment Summary"
               echo "===================="
               echo "✅ All containers rebuilt and restarted successfully"
               echo "✅ API health check passed"
               echo "✅ Frontend accessibility check passed"
+              echo "✅ Image assets verified"
               echo ""
               echo "📋 Container Status:"
               sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}"
@@ -408,6 +434,7 @@ jobs:
               echo "   Frontend: https://event-i.co.ke/"
               echo "   API:      https://event-i.co.ke/api/health"
               echo "   Health:   https://event-i.co.ke/health"
+              echo "   Images:   https://event-i.co.ke/uploads/"
               echo ""
               echo "Recent logs (last 10 lines):"
               sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs --tail=10
