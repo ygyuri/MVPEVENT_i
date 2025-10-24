@@ -69,6 +69,40 @@ app.use(helmet());
 // Trust proxy for rate limiting behind nginx
 app.set("trust proxy", true);
 
+// CORS Configuration - Environment-aware
+const getAllowedOrigins = () => {
+  const baseOrigins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001"
+  ];
+
+  // Add production domains from environment
+  if (process.env.FRONTEND_URL) {
+    baseOrigins.push(process.env.FRONTEND_URL);
+  }
+  
+  if (process.env.BASE_URL) {
+    baseOrigins.push(process.env.BASE_URL);
+  }
+
+  // Add common production domains
+  const productionDomains = [
+    "https://event-i.co.ke",
+    "https://www.event-i.co.ke",
+    "https://eventi.co.ke",
+    "https://www.eventi.co.ke"
+  ];
+
+  // Only add production domains if we're in production
+  if (process.env.NODE_ENV === "production") {
+    baseOrigins.push(...productionDomains);
+  }
+
+  return baseOrigins;
+};
+
 // In development, allow all origins to simplify mobile testing on LAN
 if (process.env.NODE_ENV !== "production") {
   app.use(
@@ -80,10 +114,24 @@ if (process.env.NODE_ENV !== "production") {
     })
   );
 } else {
-  // In production, keep a strict allowlist
+  // In production, use strict allowlist with environment-aware domains
+  const allowedOrigins = getAllowedOrigins();
+  
+  console.log("🔒 CORS Configuration - Allowed Origins:", allowedOrigins);
+  
   app.use(
     cors({
-      origin: ["http://localhost:3000", "http://localhost:3001"],
+      origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, Postman, etc.)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        
+        console.warn(`🚫 CORS blocked request from origin: ${origin}`);
+        return callback(new Error(`Origin ${origin} not allowed by CORS`));
+      },
       credentials: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
@@ -261,8 +309,37 @@ if (process.env.NODE_ENV !== "test") {
   }
 }
 
-// 404 handler (after Socket.io initialization)
+// Global error handler (before 404 handler)
+app.use((error, req, res, next) => {
+  console.error("🚨 Global Error Handler:", {
+    message: error.message,
+    stack: error.stack,
+    url: req.url,
+    method: req.method,
+    origin: req.get('origin'),
+    userAgent: req.get('user-agent'),
+    timestamp: new Date().toISOString()
+  });
+
+  // Don't leak error details in production
+  if (process.env.NODE_ENV === "production") {
+    res.status(500).json({ 
+      error: "Internal server error",
+      message: "Something went wrong. Please try again later."
+    });
+  } else {
+    res.status(500).json({ 
+      error: error.message,
+      stack: error.stack,
+      url: req.url,
+      method: req.method
+    });
+  }
+});
+
+// 404 handler (after error handler)
 app.use("*", (req, res) => {
+  console.warn(`🚫 404 - Route not found: ${req.method} ${req.url}`);
   res.status(404).json({ error: "Route not found" });
 });
 
