@@ -541,6 +541,129 @@ router.get('/categories', async (req, res) => {
   }
 });
 
+// Check if category name exists (for duplicate detection)
+router.post('/categories/check', [
+  body('name').isString().trim().isLength({ min: 2, max: 100 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: 'Invalid input', details: errors.array() });
+    }
+
+    const { name } = req.body;
+    const normalized = name.toLowerCase().trim();
+    
+    // Check for exact match (case-insensitive)
+    const exactMatch = await EventCategory.findOne({ 
+      name: { $regex: new RegExp(`^${normalized}$`, 'i') }
+    }).lean();
+
+    // Check for similar matches (fuzzy search)
+    const similarMatches = await EventCategory.find({
+      name: { $regex: new RegExp(normalized, 'i') },
+      _id: exactMatch ? { $ne: exactMatch._id } : undefined
+    }).limit(5).lean();
+
+    res.json({
+      exists: !!exactMatch,
+      exactMatch: exactMatch ? {
+        id: exactMatch._id,
+        name: exactMatch.name,
+        slug: exactMatch.slug
+      } : null,
+      similarMatches: similarMatches.map(cat => ({
+        id: cat._id,
+        name: cat.name,
+        slug: cat.slug
+      }))
+    });
+
+  } catch (error) {
+    console.error('Check category error:', error);
+    res.status(500).json({ error: 'Failed to check category' });
+  }
+});
+
+// Create new category (organizer only)
+router.post('/categories', verifyToken, requireRole(['organizer', 'admin']), [
+  body('name').isString().trim().isLength({ min: 2, max: 100 }),
+  body('description').optional().isString().trim().isLength({ max: 500 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: 'Invalid input', details: errors.array() });
+    }
+
+    const { name, description = '' } = req.body;
+    const normalized = name.toLowerCase().trim();
+    
+    // Check for exact duplicate
+    const existing = await EventCategory.findOne({ 
+      name: { $regex: new RegExp(`^${normalized}$`, 'i') }
+    });
+    
+    if (existing) {
+      return res.status(409).json({ 
+        error: 'Category already exists',
+        existing: {
+          id: existing._id,
+          name: existing.name,
+          slug: existing.slug
+        }
+      });
+    }
+
+    // Generate slug from name
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    // Check if slug is unique
+    const slugExists = await EventCategory.findOne({ slug });
+    if (slugExists) {
+      return res.status(409).json({ 
+        error: 'Category with similar name already exists',
+        suggestion: slugExists.name
+      });
+    }
+
+    // Create new category
+    const newCategory = new EventCategory({
+      name: name.trim(),
+      slug,
+      description: description.trim(),
+      isActive: true,
+      color: '#3B82F6' // Default color
+    });
+
+    await newCategory.save();
+
+    // Invalidate cache
+    if (isProd) {
+      await cache.del('categories:withCounts:v1');
+    }
+
+    res.status(201).json({
+      success: true,
+      category: {
+        id: newCategory._id,
+        name: newCategory.name,
+        slug: newCategory.slug,
+        description: newCategory.description,
+        color: newCategory.color,
+        isActive: newCategory.isActive
+      }
+    });
+
+  } catch (error) {
+    console.error('Create category error:', error);
+    res.status(500).json({ error: 'Failed to create category' });
+  }
+});
+
 // ===== IMPORTANT: All routes with /:slug/* MUST be defined before the generic /:slug route =====
 
 // Direct checkout endpoint with affiliate tracking
