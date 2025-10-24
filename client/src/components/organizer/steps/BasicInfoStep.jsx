@@ -6,6 +6,7 @@ import { createEventDraft, updateEventDraft } from '../../../store/slices/organi
 import { categoriesAPI } from '../../../utils/organizerAPI';
 import { validateField, stepValidators } from '../../../utils/eventValidation';
 import FormValidation, { FieldValidation, FieldSuccess } from '../../common/FormValidation';
+import CategoryInput from '../../common/CategoryInput';
 import { formUtils } from '../../../utils/eventHelpers';
 import { useOptimizedFormField } from '../../../hooks/useOptimizedFormField';
 
@@ -22,42 +23,6 @@ const BasicInfoStep = () => {
     eventId, 
     { createEventDraft, updateEventDraft }
   );
-
-  // Fetch categories
-  const [categories, setCategories] = useState([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-    const fetchCategories = async () => {
-      try {
-        setCategoriesLoading(true);
-        // Deduplicate by caching in sessionStorage for the session
-        const cached = sessionStorage.getItem('event_categories_cache');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && isMounted) {
-            setCategories(parsed);
-            setCategoriesLoading(false);
-            return;
-          }
-        }
-        const data = await categoriesAPI.getCategories();
-        if (!isMounted) return;
-        setCategories(data);
-        try {
-          sessionStorage.setItem('event_categories_cache', JSON.stringify(data));
-        } catch (_) {}
-      } catch (error) {
-        console.error('Failed to fetch categories:', error);
-      } finally {
-        if (isMounted) setCategoriesLoading(false);
-      }
-    };
-
-    fetchCategories();
-    return () => { isMounted = false; };
-  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -239,44 +204,13 @@ const BasicInfoStep = () => {
           <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Event Category *
           </label>
-          <div className="relative">
-            <select
-              id="category"
-              value={formData.category || ''}
-              onChange={(e) => validateAndUpdateField('category', e.target.value)}
-              onBlur={() => setTouched(prev => ({ ...prev, category: true }))}
-              className={`
-                input-modern w-full
-                ${fieldErrors.category && touched.category 
-                  ? 'border-red-300 dark:border-red-600 focus:border-red-500 focus:ring-red-500' 
-                  : 'border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-blue-500'
-                }
-              `}
-              disabled={categoriesLoading}
-            >
-              <option value="">
-                {categoriesLoading ? 'Loading categories...' : 'Select a category'}
-              </option>
-              {categories.map((category) => (
-                <option key={category._id || category.id} value={category._id || category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-            
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-              <Tag className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-            </div>
-          </div>
-          
-          <FieldValidation 
-            error={fieldErrors.category} 
+          <CategoryInput
+            value={formData.category}
+            onChange={(categoryId) => validateAndUpdateField('category', categoryId)}
+            onBlur={() => setTouched(prev => ({ ...prev, category: true }))}
+            error={fieldErrors.category}
             touched={touched.category}
           />
-          
-          {!fieldErrors.category && touched.category && formData.category && (
-            <FieldSuccess message="Category selected!" />
-          )}
         </div>
 
         {/* Tags */}
