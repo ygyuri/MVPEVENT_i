@@ -286,11 +286,6 @@ app.use("/api/events", eventRoutes);
 const commissionConfigRoutes = require("./routes/commission-config");
 app.use("/api", commissionConfigRoutes);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: "Something went wrong!" });
-});
 
 // Initialize Socket.io server with Redis adapter (skip in tests)
 let httpServer;
