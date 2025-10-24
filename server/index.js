@@ -402,11 +402,6 @@ app.use("/api/test", testRoutes);
 
 // Event routes
 app.use("/api/events", eventRoutes);
-
-// Category routes (public and organizer endpoints)
-const categoryRoutes = require("./routes/categories");
-app.use("/api", categoryRoutes);
-
 // Commission config routes (under /api)
 const commissionConfigRoutes = require("./routes/commission-config");
 app.use("/api", commissionConfigRoutes);
