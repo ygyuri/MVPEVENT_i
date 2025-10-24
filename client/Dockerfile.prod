@@ -8,11 +8,23 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy source code and static assets
 COPY . .
+
+# Verify static assets are present
+RUN echo "🔍 Verifying static assets..." && \
+  ls -la public/ && \
+  ls -la public/logos/ && \
+  echo "✅ Static assets verified"
 
 # Build the application
 RUN npm run build
+
+# Verify build output includes static assets
+RUN echo "🔍 Verifying build output..." && \
+  ls -la dist/ && \
+  ls -la dist/assets/ && \
+  echo "✅ Build output verified"
 
 # Production stage
 FROM nginx:alpine AS production

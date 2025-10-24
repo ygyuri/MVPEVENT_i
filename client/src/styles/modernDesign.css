@@ -188,8 +188,8 @@
   .event-card-modern {
     background: var(--glass-bg);
     backdrop-filter: var(--glass-backdrop);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-xl);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 0;
     padding: var(--card-padding);
     transition: all 0.3s ease-in-out;
     box-shadow: var(--shadow-lg);
@@ -246,7 +246,7 @@
   }
   
   .event-card-modern {
-    border-radius: var(--radius-lg);
+    border-radius: 0;
     padding: var(--space-md);
   }
   

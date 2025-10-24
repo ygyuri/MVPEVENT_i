@@ -1,29 +1,46 @@
-import React, { useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { Link, useLocation } from 'react-router-dom';
-import { Plus, Calendar, Users, TrendingUp, Eye, MessageSquare, Clock, Bell, CheckCircle } from 'lucide-react';
-import EnhancedButton from '../components/EnhancedButton';
-import EventStatusBadge from '../components/organizer/EventStatusBadge';
-import UpdateComposer from '../components/organizer/UpdateComposer';
-import { getOrganizerOverview, fetchMyEvents } from '../store/slices/organizerSlice';
-import { dateUtils } from '../utils/eventHelpers';
-import { useEventUpdates } from '../hooks/useEventUpdates';
-import { useSocket } from '../hooks/useSocket';
+import React, { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { Link, useLocation } from "react-router-dom";
+import {
+  Plus,
+  Calendar,
+  Users,
+  TrendingUp,
+  Eye,
+  MessageSquare,
+  Clock,
+  Bell,
+  CheckCircle,
+} from "lucide-react";
+import EnhancedButton from "../components/EnhancedButton";
+import EventStatusBadge from "../components/organizer/EventStatusBadge";
+import UpdateComposer from "../components/organizer/UpdateComposer";
+import {
+  getOrganizerOverview,
+  fetchMyEvents,
+} from "../store/slices/organizerSlice";
+import { dateUtils } from "../utils/eventHelpers";
+import { useEventUpdates } from "../hooks/useEventUpdates";
+import { useSocket } from "../hooks/useSocket";
 
 const OrganizerDashboard = () => {
   const dispatch = useDispatch();
   const location = useLocation();
-  const { user, isAuthenticated, loading: authLoading } = useSelector(state => state.auth);
-  const { overview, events, loading } = useSelector(state => state.organizer);
-  
+  const {
+    user,
+    isAuthenticated,
+    loading: authLoading,
+  } = useSelector((state) => state.auth);
+  const { overview, events, loading } = useSelector((state) => state.organizer);
+
   // Check if user just published an event
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
-  const [publishedEventTitle, setPublishedEventTitle] = useState('');
-  
+  const [publishedEventTitle, setPublishedEventTitle] = useState("");
+
   // Update composer state
   const [showUpdateComposer, setShowUpdateComposer] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState(null);
-  
+
   // Recent updates state
   const [recentUpdates, setRecentUpdates] = useState([]);
   const [allEventUpdates, setAllEventUpdates] = useState({});
@@ -32,7 +49,7 @@ const OrganizerDashboard = () => {
   useEffect(() => {
     if (location.state?.justPublished) {
       setShowPublishSuccess(true);
-      setPublishedEventTitle(location.state.eventTitle || 'Your event');
+      setPublishedEventTitle(location.state.eventTitle || "Your event");
       // Clear the state so it doesn't show again on refresh
       window.history.replaceState({}, document.title);
       // Auto-hide after 10 seconds
@@ -47,15 +64,15 @@ const OrganizerDashboard = () => {
     }
 
     // Check if user is an organizer
-    if (user.role !== 'organizer') {
+    if (user.role !== "organizer") {
       return;
     }
-    
+
     // Check if overview is already loaded
     if (!overview || Object.keys(overview).length === 0) {
       dispatch(getOrganizerOverview());
     }
-    
+
     // Check if events are already loaded
     if (!events || events.length === 0) {
       dispatch(fetchMyEvents({ page: 1, pageSize: 6 }));
@@ -77,7 +94,7 @@ const OrganizerDashboard = () => {
   }
 
   // Show error if user is not an organizer
-  if (user && user.role !== 'organizer') {
+  if (user && user.role !== "organizer") {
     return (
       <div className="container-modern">
         <div className="flex items-center justify-center min-h-screen">
@@ -95,7 +112,7 @@ const OrganizerDashboard = () => {
   }
 
   const recentEvents = events.slice(0, 5);
-  
+
   // Handle update composer
   const handlePostUpdate = (eventId) => {
     setSelectedEventId(eventId);
@@ -106,16 +123,20 @@ const OrganizerDashboard = () => {
     // Add the new update to recent updates
     const newUpdate = {
       ...update,
-      eventTitle: events.find(e => e._id === update.eventId)?.title || 'Unknown Event',
-      eventId: update.eventId
+      eventTitle:
+        events.find((e) => e._id === update.eventId)?.title || "Unknown Event",
+      eventId: update.eventId,
     };
-    
-    setRecentUpdates(prev => [newUpdate, ...prev].slice(0, 5)); // Keep only 5 most recent
-    
+
+    setRecentUpdates((prev) => [newUpdate, ...prev].slice(0, 5)); // Keep only 5 most recent
+
     // Update the specific event's updates
-    setAllEventUpdates(prev => ({
+    setAllEventUpdates((prev) => ({
       ...prev,
-      [update.eventId]: [newUpdate, ...(prev[update.eventId] || [])].slice(0, 3)
+      [update.eventId]: [newUpdate, ...(prev[update.eventId] || [])].slice(
+        0,
+        3
+      ),
     }));
   };
 
@@ -126,37 +147,40 @@ const OrganizerDashboard = () => {
 
   const stats = [
     {
-      label: 'Total Events',
+      label: "Total Events",
       value: overview.myEventsCount || 0,
       icon: Calendar,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-50 dark:bg-blue-900/20'
+      color: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-50 dark:bg-blue-900/20",
     },
     {
-      label: 'Published Events',
-      value: events.filter(event => event.status === 'published').length,
+      label: "Published Events",
+      value: events.filter((event) => event.status === "published").length,
       icon: Eye,
-      color: 'text-green-600 dark:text-green-400',
-      bgColor: 'bg-green-50 dark:bg-green-900/20'
+      color: "text-green-600 dark:text-green-400",
+      bgColor: "bg-green-50 dark:bg-green-900/20",
     },
     {
-      label: 'Draft Events',
-      value: events.filter(event => event.status === 'draft').length,
+      label: "Draft Events",
+      value: events.filter((event) => event.status === "draft").length,
       icon: Users,
-      color: 'text-yellow-600 dark:text-yellow-400',
-      bgColor: 'bg-yellow-50 dark:bg-yellow-900/20'
+      color: "text-yellow-600 dark:text-yellow-400",
+      bgColor: "bg-yellow-50 dark:bg-yellow-900/20",
     },
     {
-      label: 'This Month',
-      value: events.filter(event => {
+      label: "This Month",
+      value: events.filter((event) => {
         const eventDate = new Date(event.dates?.startDate);
         const now = new Date();
-        return eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear();
+        return (
+          eventDate.getMonth() === now.getMonth() &&
+          eventDate.getFullYear() === now.getFullYear()
+        );
       }).length,
       icon: TrendingUp,
-      color: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-purple-50 dark:bg-purple-900/20'
-    }
+      color: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-50 dark:bg-purple-900/20",
+    },
   ];
 
   return (
@@ -175,7 +199,8 @@ const OrganizerDashboard = () => {
                 🎉 Event Published Successfully!
               </h3>
               <p className="text-green-800 dark:text-green-200 mb-3">
-                <strong>{publishedEventTitle}</strong> is now live and ready for attendees to discover and purchase tickets!
+                <strong>{publishedEventTitle}</strong> is now live and ready for
+                attendees to discover and purchase tickets!
               </p>
               <div className="flex flex-wrap gap-3">
                 <Link
@@ -196,19 +221,19 @@ const OrganizerDashboard = () => {
           </div>
         </div>
       )}
-      
+
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Welcome back, {user?.firstName || 'Organizer'}!
+              Welcome back, {user?.firstName || "Organizer"}!
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
               Manage your events and track your performance
             </p>
           </div>
-          
+
           <Link to="/organizer/events/create">
             <EnhancedButton
               variant="primary"
@@ -254,8 +279,8 @@ const OrganizerDashboard = () => {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Recent Events
               </h2>
-              <Link 
-                to="/organizer/events" 
+              <Link
+                to="/organizer/events"
                 className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
               >
                 View All
@@ -276,39 +301,41 @@ const OrganizerDashboard = () => {
                 {recentEvents.map((event) => (
                   <div
                     key={event._id}
-                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
+                    className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 border border-gray-200/20 dark:border-gray-700/20"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-medium text-gray-900 dark:text-white">
-                          {event.title || 'Untitled Event'}
+                          {event.title || "Untitled Event"}
                         </h3>
                         <EventStatusBadge status={event.status} size="small" />
                       </div>
-                      
+
                       <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                         {event.dates?.startDate && (
                           <span>
-                            {dateUtils.formatDate(event.dates.startDate, { 
-                              month: 'short', 
-                              day: 'numeric', 
-                              year: 'numeric' 
+                            {dateUtils.formatDate(event.dates.startDate, {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
                             })}
                           </span>
                         )}
-                        
+
                         {event.location?.city && (
                           <span>📍 {event.location.city}</span>
                         )}
-                        
+
                         {event.pricing && (
                           <span>
-                            {event.pricing.isFree ? 'Free' : `$${event.pricing.price}`}
+                            {event.pricing.isFree
+                              ? "Free"
+                              : `$${event.pricing.price}`}
                           </span>
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       {/* Post Update feature - temporarily hidden for production */}
                       {/* <button
@@ -362,7 +389,7 @@ const OrganizerDashboard = () => {
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
               Quick Actions
             </h2>
-            
+
             <div className="space-y-3">
               <Link
                 to="/organizer/events/create"
@@ -372,8 +399,12 @@ const OrganizerDashboard = () => {
                   <Plus className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Create Event</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Start a new event</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    Create Event
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Start a new event
+                  </p>
                 </div>
               </Link>
 
@@ -385,8 +416,12 @@ const OrganizerDashboard = () => {
                   <Calendar className="w-5 h-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Manage Events</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">View all your events</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    Manage Events
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    View all your events
+                  </p>
                 </div>
               </Link>
 
@@ -398,8 +433,12 @@ const OrganizerDashboard = () => {
                   <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Analytics</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">View performance</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    Analytics
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    View performance
+                  </p>
                 </div>
               </Link>
             </div>
@@ -469,7 +508,8 @@ const OrganizerDashboard = () => {
               💡 Pro Tip
             </h3>
             <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-              Save your events as drafts to work on them over time. You can publish them when you're ready to go live!
+              Save your events as drafts to work on them over time. You can
+              publish them when you're ready to go live!
             </p>
           </div>
         </div>
