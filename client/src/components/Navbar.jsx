@@ -114,15 +114,15 @@ const Navbar = ({ onOpenAuthModal }) => {
                   alt="Event-i Logo"
                   className="h-28 w-auto object-contain"
                   onError={(e) => {
-                    console.error('Logo failed to load:', e.target.src);
+                    console.error("Logo failed to load:", e.target.src);
                     // Fallback to text logo
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'block';
+                    e.target.style.display = "none";
+                    e.target.nextSibling.style.display = "block";
                   }}
                 />
-                <div 
+                <div
                   className="h-28 flex items-center justify-center text-2xl font-bold text-web3-accent"
-                  style={{ display: 'none' }}
+                  style={{ display: "none" }}
                 >
                   Event-i
                 </div>
