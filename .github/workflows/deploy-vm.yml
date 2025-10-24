@@ -222,6 +222,15 @@ jobs:
               
               echo "✅ SSL certificates setup completed"
               
+              # Debug: Show the actual environment file being used
+              echo "🔍 Debug: Current environment file contents:"
+              sudo cat /root/MVPEVENT_i/.env || echo "❌ .env file not found"
+              echo ""
+              echo "🔍 Debug: Environment variables for Docker Compose:"
+              echo "MONGODB_URI: mongodb://${{ secrets.MONGO_ROOT_USERNAME }}:${{ secrets.MONGO_ROOT_PASSWORD }}@mongodb:27017/event_i_production?authSource=admin"
+              echo "REDIS_URL: redis://redis:6379"
+              echo ""
+              
               # Stop existing containers gracefully
               echo "🛑 Stopping existing containers..."
               sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml down --remove-orphans || true
@@ -250,6 +259,19 @@ jobs:
               # Wait for services to start and perform health checks
               echo "⏳ Waiting for services to start..."
               sleep 20
+              
+              # Debug: Check what environment variables the server container is using
+              echo "🔍 Debug: Server container environment variables:"
+              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec server env | grep -E "(MONGODB_URI|REDIS_URL|NODE_ENV|PORT)" || echo "❌ Could not get server environment"
+              echo ""
+              
+              # Debug: Test connectivity from server to MongoDB and Redis
+              echo "🔍 Debug: Testing connectivity from server container:"
+              echo "Testing MongoDB connection..."
+              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec server nc -zv mongodb 27017 || echo "❌ MongoDB connection failed"
+              echo "Testing Redis connection..."
+              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec server nc -zv redis 6379 || echo "❌ Redis connection failed"
+              echo ""
               
               # Verify deployment status
               echo "✅ Checking deployment status..."
