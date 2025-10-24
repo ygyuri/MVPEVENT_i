@@ -223,10 +223,25 @@ const databaseIndexes = require("./services/databaseIndexes");
 const initializeDatabases = async () => {
   console.log("💾 [DATABASE] Initializing database connections...");
   
-  // Log sanitized MongoDB URI
+  // Log sanitized MongoDB URI with more details
   const mongoUri = process.env.MONGODB_URI || "not set";
   const sanitizedMongoUri = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, "//***:***@");
   console.log("💾 [DATABASE] MongoDB URI:", sanitizedMongoUri);
+  
+  // Log MongoDB connection details for debugging
+  if (mongoUri !== "not set") {
+    try {
+      const url = new URL(mongoUri);
+      console.log("💾 [DATABASE] MongoDB Details:", {
+        host: url.hostname,
+        port: url.port,
+        database: url.pathname.substring(1),
+        authSource: url.searchParams.get('authSource') || 'default'
+      });
+    } catch (e) {
+      console.warn("⚠️ [DATABASE] Could not parse MongoDB URI:", e.message);
+    }
+  }
   
   try {
     await connectMongoDB();
@@ -272,13 +287,23 @@ app.get("/api/health", async (req, res) => {
   const mongoose = require("mongoose");
   const startTime = Date.now();
   
-  // Check MongoDB connection
+  // Check MongoDB connection with detailed status
   const mongoStatus = mongoose.connection.readyState;
   const mongoStatusMap = {
     0: "disconnected",
     1: "connected",
     2: "connecting",
     3: "disconnecting"
+  };
+  
+  // Get MongoDB connection details
+  const mongoDetails = {
+    readyState: mongoStatus,
+    status: mongoStatusMap[mongoStatus] || "unknown",
+    host: mongoose.connection.host || "unknown",
+    port: mongoose.connection.port || "unknown",
+    name: mongoose.connection.name || "unknown",
+    user: mongoose.connection.user || "unknown"
   };
   
   // Check Redis connection
@@ -301,10 +326,7 @@ app.get("/api/health", async (req, res) => {
     version: process.env.npm_package_version || "unknown",
     node: process.version,
     services: {
-      mongodb: {
-        status: mongoStatusMap[mongoStatus] || "unknown",
-        readyState: mongoStatus
-      },
+      mongodb: mongoDetails,
       redis: {
         status: redisStatus
       }
