@@ -218,6 +218,7 @@ if (process.env.NODE_ENV !== "production") {
 // Database connections
 const { connectMongoDB, connectRedis } = require("./config/database");
 const databaseIndexes = require("./services/databaseIndexes");
+const { seedProductionData, shouldSeed } = require("./scripts/productionSeeder");
 
 // Connect to databases with enhanced logging
 const initializeDatabases = async () => {
@@ -272,6 +273,21 @@ const initializeDatabases = async () => {
     console.log("✅ [DATABASE] Analytics indexes created");
   } catch (error) {
     console.warn("⚠️ [DATABASE] Failed to create analytics indexes:", error.message);
+  }
+
+  // Seed production data (event categories, etc.)
+  try {
+    const needsSeeding = await shouldSeed();
+    if (needsSeeding) {
+      const seedResult = await seedProductionData();
+      if (seedResult.success) {
+        console.log("✅ [DATABASE] Production data seeded successfully");
+      } else {
+        console.warn("⚠️ [DATABASE] Production seeding failed:", seedResult.error);
+      }
+    }
+  } catch (error) {
+    console.warn("⚠️ [DATABASE] Production seeding error:", error.message);
   }
 };
 
@@ -344,6 +360,37 @@ app.get("/api/health", async (req, res) => {
   
   res.status(statusCode).json(health);
 });
+
+// Production seeding endpoint (for debugging)
+if (process.env.NODE_ENV === "production") {
+  app.post("/api/admin/seed", async (req, res) => {
+    try {
+      console.log("🌱 [ADMIN] Manual seeding triggered via API");
+      const seedResult = await seedProductionData();
+      
+      if (seedResult.success) {
+        res.json({
+          success: true,
+          message: "Production data seeded successfully",
+          data: seedResult
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: "Seeding failed",
+          error: seedResult.error
+        });
+      }
+    } catch (error) {
+      console.error("❌ [ADMIN] Manual seeding error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Seeding error",
+        error: error.message
+      });
+    }
+  });
+}
 
 // Authentication routes
 app.use("/api/auth", authRoutes);
