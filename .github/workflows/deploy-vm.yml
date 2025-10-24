@@ -15,10 +15,20 @@ jobs:
       - name: Verify image assets
         run: |
           echo "🔍 Checking image assets..."
+          echo "📁 Client directory structure:"
+          ls -la client/ || echo "No client directory"
           echo "📁 Client public directory contents:"
-          ls -la client/public/ || echo "No public directory"
-          echo "📁 Client logos directory contents:"
-          ls -la client/public/logos/ || echo "No logos directory"
+          if [ -d "client/public/" ]; then
+            ls -la client/public/ || echo "No public directory"
+            echo "📁 Client logos directory contents:"
+            if [ -d "client/public/logos/" ]; then
+              ls -la client/public/logos/ || echo "No logos directory"
+            else
+              echo "⚠️ No logos directory in public/"
+            fi
+          else
+            echo "⚠️ No public directory found"
+          fi
           echo "📁 Server uploads directory contents:"
           ls -la server/uploads/ || echo "No uploads directory"
           echo "✅ Image asset verification completed"
@@ -147,10 +157,20 @@ jobs:
               
               # Verify image assets are present
               echo "🔍 Verifying image assets..."
+              echo "📁 Client directory structure:"
+              ls -la /root/MVPEVENT_i/client/ || echo "No client directory"
               echo "📁 Client public directory contents:"
-              ls -la /root/MVPEVENT_i/client/public/ || echo "No public directory"
-              echo "📁 Client logos directory contents:"
-              ls -la /root/MVPEVENT_i/client/public/logos/ || echo "No logos directory"
+              if [ -d "/root/MVPEVENT_i/client/public/" ]; then
+                ls -la /root/MVPEVENT_i/client/public/ || echo "No public directory"
+                echo "📁 Client logos directory contents:"
+                if [ -d "/root/MVPEVENT_i/client/public/logos/" ]; then
+                  ls -la /root/MVPEVENT_i/client/public/logos/ || echo "No logos directory"
+                else
+                  echo "⚠️ No logos directory in public/"
+                fi
+              else
+                echo "⚠️ No public directory found"
+              fi
               echo "📁 Server uploads directory contents:"
               ls -la /root/MVPEVENT_i/server/uploads/ || echo "No uploads directory"
               echo "✅ Image asset verification completed"
