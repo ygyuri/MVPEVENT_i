@@ -82,7 +82,7 @@ dist
 
 # Gatsby files
 .cache/
-public
+# Note: client/public/logos/ is needed for production, so we don't ignore the entire public directory
 
 # Storybook build outputs
 .out
