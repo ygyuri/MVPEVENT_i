@@ -436,8 +436,28 @@ jobs:
               
               # Run image verification script
               echo "🔍 Running image asset verification..."
-              chmod +x /root/MVPEVENT_i/scripts/verify-images.sh
-              /root/MVPEVENT_i/scripts/verify-images.sh || echo "⚠️ Image verification had warnings"
+              echo "📁 Checking scripts directory..."
+              sudo ls -la /root/MVPEVENT_i/scripts/ || echo "No scripts directory found"
+              
+              if [ -f "/root/MVPEVENT_i/scripts/verify-images.sh" ]; then
+                echo "📄 Found verify-images.sh script"
+                echo "📋 Current permissions:"
+                sudo ls -la /root/MVPEVENT_i/scripts/verify-images.sh
+                echo "🔧 Making script executable..."
+                sudo chmod +x /root/MVPEVENT_i/scripts/verify-images.sh
+                echo "📋 Updated permissions:"
+                sudo ls -la /root/MVPEVENT_i/scripts/verify-images.sh
+                echo "🚀 Executing image verification script..."
+                if sudo /root/MVPEVENT_i/scripts/verify-images.sh; then
+                  echo "✅ Image verification completed successfully"
+                else
+                  echo "⚠️ Image verification had warnings or failed, but continuing deployment"
+                fi
+              else
+                echo "⚠️ verify-images.sh script not found, skipping verification"
+                echo "📁 Available scripts in /root/MVPEVENT_i/scripts/:"
+                sudo ls -la /root/MVPEVENT_i/scripts/ || echo "No scripts directory found"
+              fi
               
               # Show deployment summary
               echo "📊 Deployment Summary"

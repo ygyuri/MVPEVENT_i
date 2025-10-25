@@ -68,7 +68,7 @@ check_url "$FRONTEND_URL/logo512.png" "logo512" || echo -e "${YELLOW}⚠️  log
 # Check logos directory
 echo -e "${BLUE}🎨 Logo Assets:${NC}"
 check_url "$FRONTEND_URL/logos/event-i_light_mode_logo.png" "light mode logo"
-check_url "$FRONTEND_URL/logos/evet-i_dark_mode_logo.png" "dark mode logo"
+check_url "$FRONTEND_URL/logos/event-i_dark_mode_logo.png" "dark mode logo"
 
 # Check uploaded images endpoint
 echo -e "${BLUE}📤 Uploaded Images Endpoint:${NC}"
