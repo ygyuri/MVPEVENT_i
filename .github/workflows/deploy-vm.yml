@@ -300,11 +300,11 @@ jobs:
               MONGO_USER="${{ secrets.MONGO_ROOT_USERNAME }}"
               MONGO_PASS="${{ secrets.MONGO_ROOT_PASSWORD }}"
               # URL encode the password to handle special characters
-              MONGO_PASS_ENCODED=$(python3 -c "import urllib.parse; print(urllib.parse.quote('${MONGO_PASS}'))")
+              MONGO_PASS_ENCODED=$(python3 -c "import urllib.parse; print(urllib.parse.quote(\"${MONGO_PASS}\"))")
               # Replace MongoDB URL with proper Docker Compose service name
               sudo sed -i "s|MONGODB_URI=.*|MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASS_ENCODED}@mongodb:27017/event_i_production?authSource=admin|g" /root/MVPEVENT_i/.env
               # Replace Redis URL with Docker Compose service name
-              sudo sed -i 's|REDIS_URL=.*|REDIS_URL=redis://redis:6379|g' /root/MVPEVENT_i/.env
+              sudo sed -i "s|REDIS_URL=.*|REDIS_URL=redis://redis:6379|g" /root/MVPEVENT_i/.env
               
               # Verify the changes
               echo "🔍 Updated environment file:"
