@@ -29,6 +29,12 @@ const ticketSchema = new mongoose.Schema({
   
   // Ticket holder information
   holder: {
+    name: {
+      type: String,
+      required: false, // Full name (merged from firstName + lastName)
+      trim: true,
+      maxlength: 200
+    },
     firstName: {
       type: String,
       required: true,
