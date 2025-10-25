@@ -294,129 +294,168 @@ const Navbar = ({ onOpenAuthModal }) => {
                 </motion.button>
 
                 {/* User Dropdown Menu */}
-                {isUserMenuOpen && (
-                  <div
-                    className={`absolute right-0 mt-3 w-64 ${
-                      isDarkMode
-                        ? "bg-gray-800 border-gray-700"
-                        : "bg-white border-gray-200"
-                    } border rounded-2xl py-3 z-50 theme-transition shadow-2xl backdrop-blur-md bg-opacity-95 animate-in slide-in-from-top-2 duration-300`}
-                  >
-                    <div
-                      className={`px-6 py-4 border-b ${
-                        isDarkMode ? "border-gray-700" : "border-gray-100"
-                      }`}
+                <AnimatePresence>
+                  {isUserMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className={`absolute right-0 mt-2 w-72 ${
+                        isDarkMode
+                          ? "bg-gray-800 border-gray-700"
+                          : "bg-white border-gray-200"
+                      } border rounded-xl shadow-2xl z-50 overflow-hidden`}
                     >
-                      <p
-                        className={`text-sm font-semibold ${
-                          isDarkMode ? "text-white" : "text-gray-900"
+                      {/* User Info Header */}
+                      <div
+                        className={`px-4 py-3 border-b ${
+                          isDarkMode ? "border-gray-700" : "border-gray-100"
                         }`}
                       >
-                        {user?.name ||
-                          `${user?.firstName || ""} ${
-                            user?.lastName || ""
-                          }`.trim()}
-                      </p>
-                      <p
-                        className={`text-xs ${
-                          isDarkMode ? "text-gray-300" : "text-gray-600"
-                        } mt-1`}
-                      >
-                        {user?.email}
-                      </p>
-                      <div className="mt-3">
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize ${
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-[#4f0f69] to-[#6b1a8a] rounded-full flex items-center justify-center flex-shrink-0">
+                            <User className="w-5 h-5 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className={`text-sm font-semibold truncate ${
+                                isDarkMode ? "text-white" : "text-gray-900"
+                              }`}
+                            >
+                              {user?.name ||
+                                `${user?.firstName || ""} ${
+                                  user?.lastName || ""
+                                }`.trim() || "User"}
+                            </p>
+                            <p
+                              className={`text-xs truncate ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              } mt-0.5`}
+                            >
+                              {user?.email || "No email"}
+                            </p>
+                            <div className="mt-1.5">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium capitalize ${
+                                  isDarkMode
+                                    ? "bg-blue-900/30 text-blue-300"
+                                    : "bg-blue-100 text-blue-700"
+                                }`}
+                              >
+                                {user?.role || "user"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Menu Items */}
+                      <div className="py-1">
+                        {/* My Profile */}
+                        <Link
+                          to="/profile"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className={`flex items-center px-4 py-2.5 text-sm font-medium mx-1 my-0.5 rounded-lg transition-colors duration-150 ${
                             isDarkMode
-                              ? "bg-blue-900 text-blue-200"
-                              : "bg-blue-100 text-blue-800"
+                              ? "text-gray-300 hover:bg-gray-700 hover:text-white"
+                              : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                           }`}
                         >
-                          {user?.role}
-                        </span>
-                      </div>
-                    </div>
-                    {/* User Section */}
-                    <Link
-                      to="/profile"
-                      onClick={() => setIsUserMenuOpen(false)}
-                      className={`w-full px-6 py-4 text-left text-sm font-medium ${
-                        isDarkMode
-                          ? "text-gray-200 hover:bg-gray-700 hover:text-white"
-                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                      } transition-all duration-200 rounded-lg`}
-                    >
-                      My Profile
-                    </Link>
-
-                    {/* Reminders Section */}
-                    <Link
-                      to="/preferences/reminders"
-                      onClick={() => setIsUserMenuOpen(false)}
-                      className={`w-full px-6 py-4 text-left text-sm font-medium ${
-                        isDarkMode
-                          ? "text-gray-200 hover:bg-gray-700 hover:text-white"
-                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                      } transition-all duration-200 rounded-lg`}
-                    >
-                      Reminder Preferences
-                    </Link>
-                    <Link
-                      to="/reminders/history"
-                      onClick={() => setIsUserMenuOpen(false)}
-                      className={`w-full px-6 py-4 text-left text-sm font-medium ${
-                        isDarkMode
-                          ? "text-gray-200 hover:bg-gray-700 hover:text-white"
-                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                      } transition-all duration-200 rounded-lg`}
-                    >
-                      Reminder History
-                    </Link>
-
-                    {/* Organizer Section */}
-                    {(user?.role === "admin" || user?.role === "organizer") && (
-                      <>
-                        <div
-                          className={`px-6 py-2 text-xs font-semibold ${
-                            isDarkMode ? "text-gray-400" : "text-gray-500"
-                          } uppercase tracking-wider`}
-                        >
-                          Organizer Tools
-                        </div>
-                        <Link
-                          to="/scanner"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className={`w-full px-6 py-4 text-left text-sm font-medium ${
-                            isDarkMode
-                              ? "text-gray-200 hover:bg-gray-700 hover:text-white"
-                              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                          } transition-all duration-200 rounded-lg`}
-                        >
-                          QR Scanner
+                          <User className="w-4 h-4 mr-3 flex-shrink-0" />
+                          <span>My Profile</span>
                         </Link>
-                        {/* Analytics feature - temporarily hidden for production */}
-                        {/* <Link
-                          to="/organizer/analytics"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className={`w-full px-6 py-3 text-left text-sm ${isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'} flex items-center space-x-3 transition-colors duration-200`}
+
+                        {/* Reminders Section */}
+                        <div
+                          className={`px-4 py-2 mt-1 ${
+                            isDarkMode ? "border-t border-gray-700" : "border-t border-gray-100"
+                          }`}
                         >
-                          <BarChart3 className="w-4 h-4" />
-                          <span>Analytics</span>
-                        </Link> */}
-                      </>
-                    )}
-                    <button
-                      onClick={handleLogout}
-                      className={`w-full px-6 py-4 text-left text-sm font-medium ${
-                        isDarkMode
-                          ? "text-red-400 hover:bg-red-900/20 hover:text-red-300"
-                          : "text-red-600 hover:bg-red-50 hover:text-red-700"
-                      } transition-all duration-200 rounded-lg`}
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                )}
+                          <p
+                            className={`text-xs font-semibold mb-1 ${
+                              isDarkMode ? "text-gray-400" : "text-gray-500"
+                            } uppercase tracking-wide`}
+                          >
+                            Reminders
+                          </p>
+                          <Link
+                            to="/preferences/reminders"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${
+                              isDarkMode
+                                ? "text-gray-300 hover:bg-gray-700 hover:text-white"
+                                : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                            }`}
+                          >
+                            <Settings className="w-4 h-4 mr-3 flex-shrink-0" />
+                            <span>Preferences</span>
+                          </Link>
+                          <Link
+                            to="/reminders/history"
+                            onClick={() => setIsUserMenuOpen(false)}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${
+                              isDarkMode
+                                ? "text-gray-300 hover:bg-gray-700 hover:text-white"
+                                : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                            }`}
+                          >
+                            <Bell className="w-4 h-4 mr-3 flex-shrink-0" />
+                            <span>History</span>
+                          </Link>
+                        </div>
+
+                        {/* Organizer Section */}
+                        {(user?.role === "admin" || user?.role === "organizer") && (
+                          <div
+                            className={`px-4 py-2 ${
+                              isDarkMode ? "border-t border-gray-700" : "border-t border-gray-100"
+                            }`}
+                          >
+                            <p
+                              className={`text-xs font-semibold mb-1 ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              } uppercase tracking-wide`}
+                            >
+                              Organizer Tools
+                            </p>
+                            <Link
+                              to="/scanner"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${
+                                isDarkMode
+                                  ? "text-gray-300 hover:bg-gray-700 hover:text-white"
+                                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                              }`}
+                            >
+                              <Shield className="w-4 h-4 mr-3 flex-shrink-0" />
+                              <span>QR Scanner</span>
+                            </Link>
+                          </div>
+                        )}
+
+                        {/* Sign Out */}
+                        <div
+                          className={`px-4 pt-2 pb-1 ${
+                            isDarkMode ? "border-t border-gray-700" : "border-t border-gray-100"
+                          }`}
+                        >
+                          <button
+                            onClick={handleLogout}
+                            className={`flex items-center w-full px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${
+                              isDarkMode
+                                ? "text-red-400 hover:bg-red-900/20 hover:text-red-300"
+                                : "text-red-600 hover:bg-red-50 hover:text-red-700"
+                            }`}
+                          >
+                            <LogOut className="w-4 h-4 mr-3 flex-shrink-0" />
+                            <span>Sign Out</span>
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             ) : (
               <motion.button

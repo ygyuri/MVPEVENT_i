@@ -109,15 +109,26 @@ router.post('/direct-purchase',
         });
       }
 
-      // Find the specific ticket type
+      // Find the specific ticket type (trim whitespace for robust matching)
       const ticketTypeData = event.ticketTypes?.find(
-        tt => tt.name === ticketType
+        tt => tt.name?.trim() === ticketType?.trim()
       );
 
       if (!ticketTypeData) {
+        console.error('❌ Ticket type mismatch:', {
+          requested: `"${ticketType}"`,
+          available: event.ticketTypes?.map(tt => `"${tt.name}"`),
+          eventId,
+          eventSlug: event.slug
+        });
+        
         return res.status(404).json({ 
           success: false, 
-          error: 'Ticket type not found' 
+          error: 'Ticket type not found',
+          debug: process.env.NODE_ENV !== 'production' ? {
+            requested: ticketType,
+            available: event.ticketTypes?.map(tt => tt.name)
+          } : undefined
         });
       }
 
