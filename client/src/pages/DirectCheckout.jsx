@@ -24,8 +24,7 @@ const DirectCheckout = () => {
 
   // Form state
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    fullName: '', // Merged name field instead of firstName/lastName
     email: '',
     phone: '',
     quantity: 1,
@@ -56,8 +55,7 @@ const DirectCheckout = () => {
   const formRefs = {
     ticketType: useRef(null),
     quantity: useRef(null),
-    firstName: useRef(null),
-    lastName: useRef(null),
+    fullName: useRef(null),
     email: useRef(null),
     phone: useRef(null)
   };
@@ -105,8 +103,7 @@ const DirectCheckout = () => {
 
   const validateField = (name, value) => {
     switch (name) {
-      case 'firstName':
-      case 'lastName':
+      case 'fullName':
         return validateName(value);
       case 'email':
         return validateEmail(value);
@@ -253,7 +250,7 @@ const DirectCheckout = () => {
     
     // Validate all fields
     const errors = {};
-    const fields = ['ticketType', 'quantity', 'firstName', 'lastName', 'email', 'phone'];
+    const fields = ['ticketType', 'quantity', 'fullName', 'email', 'phone'];
     
     fields.forEach(field => {
       const error = validateField(field, formData[field]);
@@ -295,12 +292,17 @@ const DirectCheckout = () => {
       const cleanPhone = formData.phone.replace(/\D/g, '');
       const fullPhone = `${countryCode}${cleanPhone}`;
       
+      // Split full name into firstName and lastName for backend compatibility
+      const nameParts = formData.fullName.trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
       const purchaseData = {
         eventId: event.id,
         ticketType: formData.ticketType.trim(),
         quantity: parseInt(formData.quantity),
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
+        firstName: firstName,
+        lastName: lastName,
         email: formData.email.trim().toLowerCase(),
         phone: fullPhone, // Send full phone with country code
         ...(referralCode && { referralCode })
@@ -591,74 +593,41 @@ const DirectCheckout = () => {
             </div>
 
             {/* Customer Information */}
-            <div className="grid md:grid-cols-2 gap-4">
-              <div ref={formRefs.firstName}>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  First Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  placeholder="John"
-                  className={`w-full px-4 py-3 rounded-lg border ${
-                    touchedFields.firstName && validationErrors.firstName
-                      ? 'border-red-500 focus:ring-red-500'
-                      : isDarkMode 
-                        ? 'bg-gray-900 border-gray-600 text-white focus:ring-blue-500' 
-                        : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
-                  } focus:ring-2 focus:border-transparent transition-all`}
-                />
-                <AnimatePresence>
-                  {touchedFields.firstName && validationErrors.firstName && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="mt-2 text-sm text-red-500 flex items-center gap-1"
-                    >
-                      <AlertCircle className="w-4 h-4" />
-                      {validationErrors.firstName}
-                    </motion.p>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <div ref={formRefs.lastName}>
-                <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Last Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  placeholder="Doe"
-                  className={`w-full px-4 py-3 rounded-lg border ${
-                    touchedFields.lastName && validationErrors.lastName
-                      ? 'border-red-500 focus:ring-red-500'
-                      : isDarkMode 
-                        ? 'bg-gray-900 border-gray-600 text-white focus:ring-blue-500' 
-                        : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
-                  } focus:ring-2 focus:border-transparent transition-all`}
-                />
-                <AnimatePresence>
-                  {touchedFields.lastName && validationErrors.lastName && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="mt-2 text-sm text-red-500 flex items-center gap-1"
-                    >
-                      <AlertCircle className="w-4 h-4" />
-                      {validationErrors.lastName}
-                    </motion.p>
-                  )}
-                </AnimatePresence>
-              </div>
+            <div ref={formRefs.fullName}>
+              <label className={`block text-sm font-medium mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                Full Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleInputChange}
+                onBlur={handleBlur}
+                placeholder="John Doe"
+                className={`w-full px-4 py-3 rounded-lg border ${
+                  touchedFields.fullName && validationErrors.fullName
+                    ? 'border-red-500 focus:ring-red-500'
+                    : isDarkMode 
+                      ? 'bg-gray-900 border-gray-600 text-white focus:ring-blue-500' 
+                      : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
+                } focus:ring-2 focus:border-transparent transition-all`}
+              />
+              <AnimatePresence>
+                {touchedFields.fullName && validationErrors.fullName && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mt-2 text-sm text-red-500 flex items-center gap-1"
+                  >
+                    <AlertCircle className="w-4 h-4" />
+                    {validationErrors.fullName}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+              <p className={`mt-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                Enter your full name (first and last)
+              </p>
             </div>
 
             <div ref={formRefs.email}>

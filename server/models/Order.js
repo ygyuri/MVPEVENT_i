@@ -20,6 +20,12 @@ const orderSchema = new mongoose.Schema({
       lowercase: true,
       trim: true
     },
+    name: {
+      type: String,
+      required: false, // Full name (merged from firstName + lastName)
+      trim: true,
+      maxlength: 200
+    },
     firstName: {
       type: String,
       required: false, // Made optional for guest checkout

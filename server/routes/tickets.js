@@ -199,6 +199,7 @@ router.post('/direct-purchase',
         user = new User({
           email: email.toLowerCase(),
           username,
+          name: `${firstName} ${lastName}`.trim(), // Set name field explicitly
           firstName,
           lastName,
           profile: { phone },
@@ -256,12 +257,16 @@ router.post('/direct-purchase',
       console.log('💰 Pricing calculated:', { unitPrice, quantity, subtotal, serviceFee, totalAmount, currency });
 
       // ========== STEP 5: Create Order Record ==========
+      // Create full name for consistent usage across the order
+      const fullName = `${firstName} ${lastName}`.trim();
+      
       const order = new Order({
         customer: {
           userId: user._id,
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
+          name: fullName, // Add full name field
           phone
         },
         isGuestOrder: isNewUser,
@@ -312,6 +317,7 @@ router.post('/direct-purchase',
           holder: {
             firstName: user.firstName,
             lastName: user.lastName,
+            name: fullName, // Add full name field
             email: user.email,
             phone
           },
@@ -347,7 +353,7 @@ router.post('/direct-purchase',
           amount: totalAmount,
           phoneNumber: validatedPhone,
           externalReference,
-          customerName: `${firstName} ${lastName}`,
+          customerName: fullName, // Use the pre-computed full name
           callbackUrl: process.env.PAYHERO_CALLBACK_URL || 'https://your-domain.com/api/payhero/callback'
         };
 
@@ -361,7 +367,7 @@ router.post('/direct-purchase',
         order.payment.paymentData = {
           amount: totalAmount,
           phoneNumber: validatedPhone,
-          customerName: `${firstName} ${lastName}`
+          customerName: fullName // Use the pre-computed full name
         };
         order.payment.status = 'processing';
         order.paymentStatus = 'processing';
@@ -396,8 +402,11 @@ router.post('/direct-purchase',
       // ========== STEP 8: Welcome Email ==========
       // NOTE: Welcome email is sent AFTER payment confirmation in payhero.js callback
       // to avoid sending credentials before payment is complete
+      // For local development, you can manually trigger payment callback to test emails
       if (isNewUser && tempPassword) {
         console.log('ℹ️  Welcome email will be sent after payment confirmation');
+        console.log('📧 Email will be sent to:', email);
+        console.log('🔑 Temporary password generated:', tempPassword);
       }
 
       // ========== STEP 9: Return Success Response ==========
