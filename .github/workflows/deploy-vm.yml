@@ -134,7 +134,7 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             set -e
-            sudo bash -lc '
+            sudo bash -lc << 'DEPLOYMENT_SCRIPT'
               set -e
               echo "🚀 Starting deployment..."
               
@@ -480,5 +480,5 @@ jobs:
               sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs --tail=10
               echo ""
               echo "Deployment completed successfully!"
-            '
+            DEPLOYMENT_SCRIPT
 
