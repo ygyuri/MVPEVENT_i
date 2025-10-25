@@ -89,6 +89,18 @@ export const categoriesAPI = {
   getCategories: async () => {
     const response = await api.get('/api/events/categories');
     return response.data.categories;
+  },
+
+  // Check if category name exists (for duplicate detection)
+  checkDuplicate: async (name) => {
+    const response = await api.post('/api/events/categories/check', { name });
+    return response.data;
+  },
+
+  // Create new category
+  createCategory: async (name, description = '') => {
+    const response = await api.post('/api/events/categories', { name, description });
+    return response.data;
   }
 };
 

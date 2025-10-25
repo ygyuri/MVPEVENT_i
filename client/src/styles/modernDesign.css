@@ -43,7 +43,20 @@
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   
-  /* Modern Glassmorphism */
+  /* Brand Colors */
+  --brand-primary: #4f0f69;
+  --brand-primary-hover: #6b1a8a;
+  --brand-secondary: #ffffff;
+  
+  /* Light Mode Colors */
+  --bg-primary: rgba(255, 255, 255, 0.95);
+  --bg-secondary: rgba(249, 250, 251, 0.8);
+  --bg-card: rgba(255, 255, 255, 0.8);
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --border-primary: rgba(229, 231, 235, 0.8);
+  
+  /* Modern Glassmorphism - Light Mode */
   --glass-bg: rgba(255, 255, 255, 0.1);
   --glass-border: rgba(255, 255, 255, 0.2);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -175,8 +188,8 @@
   .event-card-modern {
     background: var(--glass-bg);
     backdrop-filter: var(--glass-backdrop);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-xl);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 0;
     padding: var(--card-padding);
     transition: all 0.3s ease-in-out;
     box-shadow: var(--shadow-lg);
@@ -233,7 +246,7 @@
   }
   
   .event-card-modern {
-    border-radius: var(--radius-lg);
+    border-radius: 0;
     padding: var(--space-md);
   }
   
@@ -274,6 +287,15 @@
 
 /* ===== DARK MODE ADAPTATIONS ===== */
 .dark {
+  /* Dark Mode Colors */
+  --bg-primary: rgba(17, 24, 39, 0.95);
+  --bg-secondary: rgba(31, 41, 55, 0.8);
+  --bg-card: rgba(31, 41, 55, 0.8);
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --border-primary: rgba(75, 85, 99, 0.8);
+  
+  /* Modern Glassmorphism - Dark Mode */
   --glass-bg: rgba(0, 0, 0, 0.2);
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);

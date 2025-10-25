@@ -36,6 +36,8 @@ services:
       context: ./server
       dockerfile: Dockerfile.prod
     container_name: event_i_server_prod
+    volumes:
+      - server_uploads:/app/uploads
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       MONGODB_URI: ${MONGODB_URI}
@@ -139,6 +141,7 @@ volumes:
   mongodb_data_prod:
   redis_data_prod:
   nginx_logs:
+  server_uploads:
 
 networks:
   event_i_network_prod:

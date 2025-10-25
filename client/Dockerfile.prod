@@ -8,11 +8,47 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-# Copy source code
+# Copy source code and static assets
 COPY . .
+
+# Verify static assets are present
+RUN echo "🔍 Verifying static assets..." && \
+  echo "📁 Current directory structure:" && \
+  ls -la && \
+  if [ -d "public/" ]; then \
+  echo "📁 Public directory found:" && \
+  ls -la public/ && \
+  if [ -d "public/logos/" ]; then \
+  echo "🎨 Logos directory found:" && \
+  ls -la public/logos/; \
+  else \
+  echo "⚠️ No logos directory in public/"; \
+  fi; \
+  else \
+  echo "⚠️ No public directory found"; \
+  fi && \
+  echo "✅ Static assets verification completed"
 
 # Build the application
 RUN npm run build
+
+# Verify build output includes static assets
+RUN echo "🔍 Verifying build output..." && \
+  echo "📁 Build output directory:" && \
+  ls -la dist/ && \
+  if [ -d "dist/assets/" ]; then \
+  echo "📦 Assets directory found:" && \
+  ls -la dist/assets/; \
+  else \
+  echo "⚠️ No assets directory in dist/"; \
+  fi && \
+  if [ -d "dist/logos/" ]; then \
+  echo "🎨 Logos in dist found:" && \
+  ls -la dist/logos/; \
+  else \
+  echo "ℹ️ Logos will be served from public/"; \
+  fi && \
+  echo "✅ Build output verified"
 
 # Production stage
 FROM nginx:alpine AS production
