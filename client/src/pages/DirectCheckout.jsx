@@ -297,7 +297,7 @@ const DirectCheckout = () => {
       
       const purchaseData = {
         eventId: event.id,
-        ticketType: formData.ticketType,
+        ticketType: formData.ticketType.trim(),
         quantity: parseInt(formData.quantity),
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
