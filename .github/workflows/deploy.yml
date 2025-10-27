@@ -1,0 +1,264 @@
+name: Build and Deploy to VM
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # ====================
+  # BUILD JOB
+  # ====================
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Verify image assets
+        run: |
+          echo "🔍 Checking image assets..."
+          echo "📁 Client directory structure:"
+          ls -la client/ || echo "No client directory"
+          echo "📁 Client public directory contents:"
+          if [ -d "client/public/" ]; then
+            ls -la client/public/ || echo "No public directory"
+            echo "📁 Client logos directory contents:"
+            if [ -d "client/public/logos/" ]; then
+              ls -la client/public/logos/ || echo "No logos directory"
+            fi
+          fi
+          echo "📁 Server uploads directory contents:"
+          ls -la server/uploads/ || echo "No uploads directory"
+          echo "✅ Image asset verification completed"
+      - name: Build images (no push)
+        run: docker compose -f docker-compose.prod.yml build
+
+  # ====================
+  # TRANSFER JOB
+  # ====================
+  transfer:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always() && needs.build.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create production environment file
+        run: |
+          cat > .env.production << 'EOF'
+          # Application Configuration
+          NODE_ENV=${{ secrets.NODE_ENV }}
+          SERVER_PORT=${{ secrets.SERVER_PORT }}
+          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+          BASE_URL=${{ secrets.BASE_URL }}
+          
+          # GKE Configuration
+          KUBERNETES_NAMESPACE=${{ secrets.KUBERNETES_NAMESPACE }}
+          GKE_CLUSTER_NAME=${{ secrets.GKE_CLUSTER_NAME }}
+          GKE_ZONE=${{ secrets.GKE_ZONE }}
+          PROJECT_ID=${{ secrets.PROJECT_ID }}
+          
+          # Nginx Configuration
+          NGINX_HTTP_PORT=${{ secrets.NGINX_HTTP_PORT }}
+          NGINX_HTTPS_PORT=${{ secrets.NGINX_HTTPS_PORT }}
+          
+          # Database Configuration
+          MONGO_ROOT_USERNAME=${{ secrets.MONGO_ROOT_USERNAME }}
+          MONGO_ROOT_PASSWORD=${{ secrets.MONGO_ROOT_PASSWORD }}
+          MONGODB_URI=${{ secrets.MONGODB_URI }}
+          
+          # Redis Configuration
+          REDIS_URL=${{ secrets.REDIS_URL }}
+          
+          # JWT Configuration
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
+          JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
+          JWT_REFRESH_EXPIRES_IN=${{ secrets.JWT_REFRESH_EXPIRES_IN }}
+          
+          # PayHero Configuration
+          PAYHERO_API_USERNAME=${{ secrets.PAYHERO_API_USERNAME }}
+          PAYHERO_API_PASSWORD=${{ secrets.PAYHERO_API_PASSWORD }}
+          PAYHERO_ACCOUNT_ID=${{ secrets.PAYHERO_ACCOUNT_ID }}
+          PAYHERO_BASIC_AUTH_TOKEN=${{ secrets.PAYHERO_BASIC_AUTH_TOKEN }}
+          PAYHERO_CHANNEL_ID=${{ secrets.PAYHERO_CHANNEL_ID }}
+          PAYHERO_CALLBACK_URL=${{ secrets.PAYHERO_CALLBACK_URL }}
+          PAYHERO_SUCCESS_URL=${{ secrets.PAYHERO_SUCCESS_URL }}
+          PAYHERO_FAILED_URL=${{ secrets.PAYHERO_FAILED_URL }}
+          
+          # MPESA Configuration
+          MPESA_BASE_URL=${{ secrets.MPESA_BASE_URL }}
+          MPESA_CONSUMER_KEY=${{ secrets.MPESA_CONSUMER_KEY }}
+          MPESA_CONSUMER_SECRET=${{ secrets.MPESA_CONSUMER_SECRET }}
+          MPESA_PASSKEY=${{ secrets.MPESA_PASSKEY }}
+          MPESA_SHORTCODE=${{ secrets.MPESA_SHORTCODE }}
+          MPESA_CALLBACK_URL=${{ secrets.MPESA_CALLBACK_URL }}
+          MPESA_TIMEOUT_URL=${{ secrets.MPESA_TIMEOUT_URL }}
+          
+          # Email Configuration
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASS=${{ secrets.SMTP_PASS }}
+          EMAIL_FROM=${{ secrets.EMAIL_FROM }}
+          
+          # Security Configuration
+          TICKET_QR_SECRET=${{ secrets.TICKET_QR_SECRET }}
+          TICKET_QR_ENC_KEY=${{ secrets.TICKET_QR_ENC_KEY }}
+          TICKET_QR_AUTO_ROTATE_MS=${{ secrets.TICKET_QR_AUTO_ROTATE_MS }}
+          
+          # Rate Limiting
+          RATE_LIMIT_WINDOW_MS=${{ secrets.RATE_LIMIT_WINDOW_MS }}
+          RATE_LIMIT_MAX_REQUESTS=${{ secrets.RATE_LIMIT_MAX_REQUESTS }}
+          
+          # Debug Configuration
+          DEBUG=${{ secrets.DEBUG }}
+          LOG_LEVEL=${{ secrets.LOG_LEVEL }}
+          
+          # Monitoring and Logging
+          SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+          LOG_TO_FILE=${{ secrets.LOG_TO_FILE }}
+          LOG_FILE_PATH=${{ secrets.LOG_FILE_PATH }}
+          EOF
+      - name: Transfer environment file to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: ".env.production"
+          target: "/tmp/.env.production"
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          timeout: 120s
+          command_timeout: 10m
+          debug: true
+
+  # ====================
+  # EXECUTE JOB
+  # ====================
+  execute:
+    needs: transfer
+    runs-on: ubuntu-latest
+    if: always() && needs.transfer.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH deploy to VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          timeout: 120s
+          command_timeout: 10m
+          debug: true
+          script: |
+            set -e
+            cat > /tmp/deploy.sh << 'DEPLOYMENT_SCRIPT'
+            set -e
+            echo "🚀 Starting deployment..."
+            
+            # Ensure git and other essential tools are installed
+            echo "📦 Checking for required tools..."
+            if ! command -v git &> /dev/null; then
+              echo "📥 Installing git..."
+              sudo apt update
+              sudo apt install -y git curl
+            fi
+            
+            # Ensure repo exists and is up to date
+            if [ -d /root/MVPEVENT_i/.git ]; then
+              echo "📁 Repository exists, updating..."
+              cd /root/MVPEVENT_i
+              git remote set-url origin https://github.com/ygyuri/MVPEVENT_i.git
+              git fetch --all
+              git reset --hard origin/main
+            else
+              echo "📁 Cloning repository..."
+              rm -rf /root/MVPEVENT_i || true
+              git clone https://github.com/ygyuri/MVPEVENT_i.git /root/MVPEVENT_i
+              cd /root/MVPEVENT_i
+            fi
+            
+            # Move and secure environment file
+            if [ -d /tmp/.env.production ]; then
+              sudo cp /tmp/.env.production/.env.production /root/MVPEVENT_i/.env.production
+              sudo rm -rf /tmp/.env.production
+            else
+              sudo mv /tmp/.env.production /root/MVPEVENT_i/.env.production
+            fi
+            
+            # Set proper permissions
+            sudo chmod 755 /root/MVPEVENT_i
+            sudo chown root:root /root/MVPEVENT_i/.env.production
+            sudo chmod 600 /root/MVPEVENT_i/.env.production
+            sudo cp /root/MVPEVENT_i/.env.production /root/MVPEVENT_i/.env
+            sudo chown root:docker /root/MVPEVENT_i/.env
+            sudo chmod 640 /root/MVPEVENT_i/.env
+            
+            # Ensure Docker is installed
+            if ! command -v docker &> /dev/null; then
+              echo "📦 Installing Docker..."
+              sudo apt update
+              sudo apt install -y ca-certificates curl gnupg lsb-release
+              sudo mkdir -p /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              sudo apt update
+              sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            fi
+            
+            # Setup SSL certificates
+            sudo mkdir -p /root/MVPEVENT_i/nginx/ssl
+            if [ -f /etc/letsencrypt/live/event-i.co.ke/fullchain.pem ]; then
+              echo "✅ Using existing SSL certificates"
+            else
+              echo "📝 Generating SSL certificates..."
+              if ! command -v certbot &> /dev/null; then
+                sudo apt update
+                sudo apt install -y certbot
+              fi
+              
+              if sudo certbot certonly --standalone --non-interactive --agree-tos --email admin@event-i.co.ke -d event-i.co.ke; then
+                sudo cp /etc/letsencrypt/live/event-i.co.ke/fullchain.pem /root/MVPEVENT_i/nginx/ssl/cert.pem
+                sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem
+              else
+                echo "⚠️ Creating self-signed certificate..."
+                sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+                  -keyout /root/MVPEVENT_i/nginx/ssl/key.pem \
+                  -out /root/MVPEVENT_i/nginx/ssl/cert.pem \
+                  -subj "/C=KE/ST=Kenya/L=Nairobi/O=Event-i/CN=event-i.co.ke"
+              fi
+            fi
+            
+            sudo chmod 644 /root/MVPEVENT_i/nginx/ssl/cert.pem
+            sudo chmod 600 /root/MVPEVENT_i/nginx/ssl/key.pem
+            
+            # Update .env with Docker service names
+            sudo cp /root/MVPEVENT_i/.env /root/MVPEVENT_i/.env.backup
+            MONGO_USER="${{ secrets.MONGO_ROOT_USERNAME }}"
+            MONGO_PASS="${{ secrets.MONGO_ROOT_PASSWORD }}"
+            MONGO_PASS_ENCODED=$(python3 -c "import urllib.parse; print(urllib.parse.quote(\"${MONGO_PASS}\"))")
+            sudo sed -i "s|MONGODB_URI=.*|MONGODB_URI=mongodb://${MONGO_USER}:${MONGO_PASS_ENCODED}@mongodb:27017/event_i_production?authSource=admin|g" /root/MVPEVENT_i/.env
+            sudo sed -i "s|REDIS_URL=.*|REDIS_URL=redis://redis:6379|g" /root/MVPEVENT_i/.env
+            
+            # Deploy with Docker Compose
+            cd /root/MVPEVENT_i
+            sudo docker compose -f docker-compose.prod.yml down --remove-orphans || true
+            sudo docker compose -f docker-compose.prod.yml build --no-cache --pull
+            sudo docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
+            
+            # Wait and verify
+            echo "⏳ Waiting for services to start..."
+            sleep 30
+            
+            echo "📋 Container Status:"
+            sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps
+            
+            echo "✅ Deployment completed successfully!"
+            DEPLOYMENT_SCRIPT
+            
+            chmod +x /tmp/deploy.sh
+            sudo bash /tmp/deploy.sh
+            rm /tmp/deploy.sh
+
