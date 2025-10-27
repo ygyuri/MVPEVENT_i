@@ -465,12 +465,59 @@ jobs:
                 sudo ls -la /root/MVPEVENT_i/scripts/ || echo "No scripts directory found"
               fi
               
-              # Test email configuration
+              # Test email configuration with diagnostics
               echo "🔍 Testing email configuration..."
+              echo ""
+              
+              # Check and fix firewall rules for SMTP
+              echo "🔒 Checking firewall rules for SMTP..."
+              if command -v ufw >/dev/null 2>&1; then
+                echo "UFW firewall detected"
+                # Allow outbound SMTP ports
+                sudo ufw allow out 587/tcp comment 'SMTP Submission' 2>/dev/null || true
+                sudo ufw allow out 465/tcp comment 'SMTP SSL' 2>/dev/null || true
+                sudo ufw --force enable 2>/dev/null || true
+                echo "✅ Firewall rules updated"
+              else
+                echo "⚠️ UFW not found, checking iptables..."
+                # Allow outbound SMTP via iptables if UFW not available
+                sudo iptables -I OUTPUT -p tcp --dport 587 -j ACCEPT 2>/dev/null || true
+                sudo iptables -I OUTPUT -p tcp --dport 465 -j ACCEPT 2>/dev/null || true
+                echo "✅ iptables rules updated"
+              fi
+              echo ""
+              
+              # Test network connectivity to SMTP server
+              echo "🌐 Testing network connectivity to SMTP server..."
+              SMTP_HOST=$(sudo grep SMTP_HOST /root/MVPEVENT_i/.env | cut -d'=' -f2)
+              SMTP_PORT=$(sudo grep SMTP_PORT /root/MVPEVENT_i/.env | cut -d'=' -f2)
+              
+              if sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec -T server nc -zv -w 5 ${SMTP_HOST} ${SMTP_PORT} 2>&1; then
+                echo "✅ Network connectivity OK"
+              else
+                echo "❌ Cannot reach SMTP server ${SMTP_HOST}:${SMTP_PORT}"
+                echo "   This indicates a firewall or network issue"
+              fi
+              echo ""
+              
+              # First run diagnostics
+              echo "Running SMTP diagnostics..."
+              if sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec -T server node scripts/test-email-debug.js 2>&1 || echo "⚠️ Diagnostic script not available, using basic test"; then
+                echo ""
+              fi
+              
+              # Then run basic test
+              echo "Running basic SMTP test..."
               if sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec -T server node scripts/test-email.js; then
                 echo "✅ Email configuration test passed"
               else
-                echo "⚠️ Email configuration test failed (check SMTP credentials)"
+                echo "⚠️ Email configuration test failed"
+                echo ""
+                echo "📋 Quick fixes to try:"
+                echo "1. Check cloud provider firewall rules (GCP/AWS firewall)"
+                echo "2. Run manual test: sudo docker exec -it event_i_server_prod node scripts/test-email-debug.js"
+                echo "3. Test connectivity: sudo docker exec -it event_i_server_prod nc -zv ${SMTP_HOST} ${SMTP_PORT}"
+                echo "4. Review troubleshooting guide: docs/SMTP_TROUBLESHOOTING.md"
               fi
               echo ""
               
