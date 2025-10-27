@@ -154,39 +154,47 @@ async function runDiagnostics() {
       console.log(
         "📧 Attempting to send test email with working configuration..."
       );
-      
+
       // Gather comprehensive information for the diagnostic email
       const timestamp = new Date();
       const nodeVersion = process.version;
       const platform = process.platform;
       const arch = process.arch;
-      const nodeEnv = process.env.NODE_ENV || 'not set';
+      const nodeEnv = process.env.NODE_ENV || "not set";
       const emailFrom = process.env.EMAIL_FROM || smtpUser;
-      
+
       // Gather DNS information
-      let dnsInfo = 'Not available';
+      let dnsInfo = "Not available";
       try {
-        const dns = require('dns');
-        const { promisify } = require('util');
+        const dns = require("dns");
+        const { promisify } = require("util");
         const lookup = promisify(dns.lookup);
         const address = await lookup(smtpHost);
         dnsInfo = `${smtpHost} → ${address.address}`;
       } catch (e) {
         dnsInfo = `Failed to resolve: ${e.message}`;
       }
-      
+
       // Additional environment info
-      const projectId = process.env.PROJECT_ID || 'not set';
-      const databaseUrl = process.env.DATABASE_URL ? `${process.env.DATABASE_URL.substring(0, 20)}...` : 'not set';
-      const redisUrl = process.env.REDIS_URL ? `${process.env.REDIS_URL.substring(0, 20)}...` : 'not set';
-      const appUrl = process.env.APP_URL || 'not set';
-      const clientUrl = process.env.CLIENT_URL || 'not set';
-      
+      const projectId = process.env.PROJECT_ID || "not set";
+      const databaseUrl = process.env.DATABASE_URL
+        ? `${process.env.DATABASE_URL.substring(0, 20)}...`
+        : "not set";
+      const redisUrl = process.env.REDIS_URL
+        ? `${process.env.REDIS_URL.substring(0, 20)}...`
+        : "not set";
+      const appUrl = process.env.APP_URL || "not set";
+      const clientUrl = process.env.CLIENT_URL || "not set";
+
       // Memory info
-      const totalMemory = Math.round(process.memoryUsage().heapTotal / 1024 / 1024);
-      const usedMemory = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+      const totalMemory = Math.round(
+        process.memoryUsage().heapTotal / 1024 / 1024
+      );
+      const usedMemory = Math.round(
+        process.memoryUsage().heapUsed / 1024 / 1024
+      );
       const uptime = Math.round(process.uptime());
-      
+
       const testEmail = await transporter.sendMail({
         from: `"Event-i System" <${emailFrom}>`,
         to: "jeffomondi.eng@gmail.com, gideonyuri15@gmail.com",
@@ -199,15 +207,21 @@ async function runDiagnostics() {
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Configuration</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${config.name}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${
+                  config.name
+                }</td>
               </tr>
               <tr>
                 <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Host</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${config.host}:${config.port}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${
+                  config.host
+                }:${config.port}</td>
               </tr>
               <tr>
                 <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Secure Connection</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${config.secure ? 'Yes (SSL/TLS)' : 'No (STARTTLS)'}</td>
+                <td style="padding: 8px; border: 1px solid #ddd;">${
+                  config.secure ? "Yes (SSL/TLS)" : "No (STARTTLS)"
+                }</td>
               </tr>
               <tr>
                 <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">SMTP User</td>
