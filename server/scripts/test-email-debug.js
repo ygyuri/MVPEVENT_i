@@ -16,20 +16,25 @@ async function runDiagnostics() {
   // 1. Environment Variables Check
   console.log("📋 Step 1: Environment Variables");
   console.log("-".repeat(50));
-  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
-  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+  
+  // Require all environment variables to be set - no fallbacks
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : null;
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
   
-  console.log(`SMTP_HOST: ${smtpHost}`);
-  console.log(`SMTP_PORT: ${smtpPort}`);
+  console.log(`SMTP_HOST: ${smtpHost || 'MISSING'}`);
+  console.log(`SMTP_PORT: ${smtpPort || 'MISSING'}`);
   console.log(`SMTP_USER: ${smtpUser ? `${smtpUser.substring(0, 3)}...` : 'MISSING'}`);
   console.log(`SMTP_PASS: ${smtpPass ? '***' : 'MISSING'}`);
   console.log();
 
-  if (!smtpUser || !smtpPass) {
-    console.error("❌ Missing SMTP credentials!");
-    return;
+  // Validate all required environment variables
+  if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
+    console.error("❌ Missing required SMTP environment variables!");
+    console.error("   Make sure SMTP_HOST, SMTP_PORT, SMTP_USER, and SMTP_PASS are set");
+    console.error("   Check .env file and ensure it's loaded correctly");
+    process.exit(1);
   }
 
   // 2. DNS Resolution Test
@@ -93,6 +98,16 @@ async function runDiagnostics() {
   
   const configurations = [
     {
+      name: `Configured Port ${smtpPort}`,
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    },
+    {
       name: "Standard TLS (port 587)",
       host: smtpHost,
       port: 587,
@@ -107,16 +122,6 @@ async function runDiagnostics() {
       host: smtpHost,
       port: 465,
       secure: true,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    },
-    {
-      name: "Plain text (port 25 - if supported)",
-      host: smtpHost,
-      port: 25,
-      secure: false,
       auth: {
         user: smtpUser,
         pass: smtpPass,
