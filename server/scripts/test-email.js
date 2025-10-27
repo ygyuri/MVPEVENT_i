@@ -39,6 +39,24 @@ async function testEmailConnection() {
     // Send test email
     console.log("📨 Sending test email...");
 
+    // Generate security headers
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const supportEmail = process.env.SMTP_USER || "noreply@event-i.com";
+    const securityHeaders = {
+      "X-Mailer": "Event-i Platform v1.0",
+      "X-Auto-Response-Suppress": "All",
+      "X-Priority": "1",
+      "X-MSMail-Priority": "High",
+      "Precedence": "bulk",
+      "List-Id": "<event-tickets.event-i.com>",
+      "List-Unsubscribe": `<${frontendUrl}/unsubscribe>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      "Return-Path": supportEmail,
+      "Sender": supportEmail,
+      "Message-ID": `<${Date.now()}@event-i.com>`,
+      "X-Entity-Ref-ID": `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    };
+
     const testEmail = await transporter.sendMail({
       from: `"Event-i Test" <${process.env.SMTP_USER}>`,
       to: "jeffomondi.eng@gmail.com, gideonyuri15@gmail.com",
@@ -48,6 +66,7 @@ async function testEmailConnection() {
         <p>This is a test email from Event-i platform.</p>
         <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
       `,
+      headers: securityHeaders
     });
 
     console.log("✅ Test email sent successfully!");

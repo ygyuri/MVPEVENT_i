@@ -1,18 +1,44 @@
-const nodemailer = require('nodemailer');
-const QRCode = require('qrcode');
-const crypto = require('crypto');
+const nodemailer = require("nodemailer");
+const QRCode = require("qrcode");
+const crypto = require("crypto");
 
 class EnhancedEmailService {
   constructor() {
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
       port: Number(process.env.SMTP_PORT) || 587,
       secure: false,
       auth: {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
+        pass: process.env.SMTP_PASS,
+      },
     });
+  }
+
+  /**
+   * Generate security headers for emails
+   * Improves deliverability and reduces spam marking
+   */
+  getSecurityHeaders() {
+    const frontendUrl = process.env.FRONTEND_URL || "https://event-i.co.ke";
+    const supportEmail = process.env.SMTP_USER || "no-reply@event-i.co.ke";
+
+    return {
+      "X-Mailer": "Event-i Platform v1.0",
+      "X-Auto-Response-Suppress": "All",
+      "X-Priority": "1",
+      "X-MSMail-Priority": "High",
+      Precedence: "bulk",
+      "List-Id": "<event-tickets.event-i.com>",
+      "List-Unsubscribe": `<${frontendUrl}/unsubscribe>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      "Return-Path": supportEmail,
+      Sender: supportEmail,
+      "Message-ID": `<${Date.now()}@event-i.com>`,
+      "X-Entity-Ref-ID": `${Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`,
+    };
   }
 
   /**
@@ -29,29 +55,31 @@ class EnhancedEmailService {
         eventTitle: order.eventId.title,
         holderName: `${order.customer.firstName} ${order.customer.lastName}`,
         issuedAt: new Date().toISOString(),
-        securityHash: crypto.createHash('sha256')
+        securityHash: crypto
+          .createHash("sha256")
           .update(ticket._id.toString() + order._id.toString())
-          .digest('hex').substring(0, 8)
+          .digest("hex")
+          .substring(0, 8),
       };
 
       // Generate QR code image
       const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrPayload), {
-        errorCorrectionLevel: 'H',
-        type: 'image/png',
+        errorCorrectionLevel: "H",
+        type: "image/png",
         width: 300,
         margin: 2,
         color: {
-          dark: '#1a202c',
-          light: '#ffffff'
-        }
+          dark: "#1a202c",
+          light: "#ffffff",
+        },
       });
 
       return {
         qrCodeDataURL,
-        qrPayload
+        qrPayload,
       };
     } catch (error) {
-      console.error('Error generating QR code:', error);
+      console.error("Error generating QR code:", error);
       throw error;
     }
   }
@@ -59,7 +87,12 @@ class EnhancedEmailService {
   /**
    * Enhanced Ticket Email Template
    */
-  async sendEnhancedTicketEmail({ order, tickets, customerEmail, customerName }) {
+  async sendEnhancedTicketEmail({
+    order,
+    tickets,
+    customerEmail,
+    customerName,
+  }) {
     try {
       // Generate QR codes for all tickets
       const ticketsWithQR = await Promise.all(
@@ -68,29 +101,31 @@ class EnhancedEmailService {
           return {
             ...ticket.toObject(),
             qrCodeDataURL: qrData.qrCodeDataURL,
-            qrPayload: qrData.qrPayload
+            qrPayload: qrData.qrPayload,
           };
         })
       );
 
       const event = order.eventId;
-      const eventDate = event?.dates?.startDate 
-        ? new Date(event.dates.startDate).toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+      const eventDate = event?.dates?.startDate
+        ? new Date(event.dates.startDate).toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
           })
-        : 'Date TBD';
+        : "Date TBD";
 
-      const venueInfo = event?.location ? 
-        `${event.location.venueName}, ${event.location.city}` : 
-        'Venue TBD';
+      const venueInfo = event?.location
+        ? `${event.location.venueName}, ${event.location.city}`
+        : "Venue TBD";
 
       // Generate ticket cards HTML
-      const ticketCards = ticketsWithQR.map((ticket, index) => `
+      const ticketCards = ticketsWithQR
+        .map(
+          (ticket, index) => `
         <div style="
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           border-radius: 16px;
@@ -166,7 +201,7 @@ class EnhancedEmailService {
             z-index: 1;
           ">
             <h4 style="margin: 0 0 15px 0; font-size: 20px; font-weight: bold;">
-              ${event?.title || 'Event'}
+              ${event?.title || "Event"}
             </h4>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -182,7 +217,9 @@ class EnhancedEmailService {
             
             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.2);">
               <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px;">👤 TICKET HOLDER</div>
-              <div style="font-size: 16px; font-weight: 600;">${ticket.holder.firstName} ${ticket.holder.lastName}</div>
+              <div style="font-size: 16px; font-weight: 600;">${
+                ticket.holder.firstName
+              } ${ticket.holder.lastName}</div>
             </div>
           </div>
           
@@ -271,7 +308,9 @@ class EnhancedEmailService {
             </p>
           </div>
         </div>
-      `).join('');
+      `
+        )
+        .join("");
 
       const html = `
       <!DOCTYPE html>
@@ -279,7 +318,7 @@ class EnhancedEmailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Your Event Tickets - ${event?.title || 'Event'}</title>
+        <title>Your Event Tickets - ${event?.title || "Event"}</title>
         <style>
           body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -396,7 +435,7 @@ class EnhancedEmailService {
                 🎫 Your Tickets Are Ready!
               </h1>
               <p style="margin: 0; font-size: 18px; opacity: 0.9;">
-                ${event?.title || 'Event'} - ${eventDate}
+                ${event?.title || "Event"} - ${eventDate}
               </p>
             </div>
           </div>
@@ -405,7 +444,9 @@ class EnhancedEmailService {
           <div class="content">
             <p style="font-size: 18px; color: #495057; margin-bottom: 30px;">
               Hi <strong>${customerName}</strong>,<br><br>
-              Great news! Your tickets for <strong>${event?.title || 'the event'}</strong> are ready. 
+              Great news! Your tickets for <strong>${
+                event?.title || "the event"
+              }</strong> are ready. 
               Each ticket includes a unique QR code for secure entry.
             </p>
             
@@ -427,7 +468,9 @@ class EnhancedEmailService {
                 </div>
                 <div class="summary-item">
                   <div class="summary-label">Total Amount</div>
-                  <div class="summary-value">${order.pricing?.currency || 'KES'} ${order.totalAmount?.toLocaleString() || '0'}</div>
+                  <div class="summary-value">${
+                    order.pricing?.currency || "KES"
+                  } ${order.totalAmount?.toLocaleString() || "0"}</div>
                 </div>
                 <div class="summary-item">
                   <div class="summary-label">Payment Status</div>
@@ -482,24 +525,26 @@ class EnhancedEmailService {
       `;
 
       const mailOptions = {
-        from: `"Event-i" <${process.env.EMAIL_USER || 'noreply@event-i.com'}>`,
+        from: `"Event-i" <${process.env.EMAIL_USER || "noreply@event-i.com"}>`,
         to: customerEmail,
-        subject: `🎫 Your Tickets - ${event?.title || 'Event'} - ${order.orderNumber}`,
+        subject: `🎫 Your Tickets - ${event?.title || "Event"} - ${
+          order.orderNumber
+        }`,
         html: html,
-        attachments: []
+        attachments: [],
+        headers: this.getSecurityHeaders(),
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Enhanced ticket email sent:', info.messageId);
-      
+      console.log("✅ Enhanced ticket email sent:", info.messageId);
+
       return {
         success: true,
         messageId: info.messageId,
-        previewUrl: nodemailer.getTestMessageUrl(info)
+        previewUrl: nodemailer.getTestMessageUrl(info),
       };
-
     } catch (error) {
-      console.error('❌ Error sending enhanced ticket email:', error);
+      console.error("❌ Error sending enhanced ticket email:", error);
       throw error;
     }
   }
@@ -507,7 +552,12 @@ class EnhancedEmailService {
   /**
    * Enhanced Receipt Email
    */
-  async sendEnhancedReceiptEmail({ order, customerEmail, customerName, event }) {
+  async sendEnhancedReceiptEmail({
+    order,
+    customerEmail,
+    customerName,
+    event,
+  }) {
     try {
       const html = `
       <!DOCTYPE html>
@@ -545,28 +595,38 @@ class EnhancedEmailService {
               
               <div class="receipt-item">
                 <span>Receipt Number:</span>
-                <span style="font-family: monospace;">${order.orderNumber}</span>
+                <span style="font-family: monospace;">${
+                  order.orderNumber
+                }</span>
               </div>
               <div class="receipt-item">
                 <span>M-PESA Receipt:</span>
-                <span style="font-family: monospace;">${order.payment?.mpesaReceiptNumber || 'N/A'}</span>
+                <span style="font-family: monospace;">${
+                  order.payment?.mpesaReceiptNumber || "N/A"
+                }</span>
               </div>
               <div class="receipt-item">
                 <span>Date:</span>
-                <span>${new Date(order.payment?.paidAt || Date.now()).toLocaleDateString()}</span>
+                <span>${new Date(
+                  order.payment?.paidAt || Date.now()
+                ).toLocaleDateString()}</span>
               </div>
               <div class="receipt-item">
                 <span>Time:</span>
-                <span>${new Date(order.payment?.paidAt || Date.now()).toLocaleTimeString()}</span>
+                <span>${new Date(
+                  order.payment?.paidAt || Date.now()
+                ).toLocaleTimeString()}</span>
               </div>
               <div class="receipt-item">
                 <span>Event:</span>
-                <span>${event?.title || 'N/A'}</span>
+                <span>${event?.title || "N/A"}</span>
               </div>
               <div class="receipt-item">
                 <span>Amount Paid:</span>
                 <span style="color: #28a745; font-weight: bold;">
-                  ${order.pricing?.currency || 'KES'} ${order.totalAmount?.toLocaleString() || '0'}
+                  ${order.pricing?.currency || "KES"} ${
+        order.totalAmount?.toLocaleString() || "0"
+      }
                 </span>
               </div>
             </div>
@@ -585,23 +645,23 @@ class EnhancedEmailService {
       `;
 
       const mailOptions = {
-        from: `"Event-i" <${process.env.EMAIL_USER || 'noreply@event-i.com'}>`,
+        from: `"Event-i" <${process.env.EMAIL_USER || "noreply@event-i.com"}>`,
         to: customerEmail,
         subject: `📄 Payment Receipt - ${order.orderNumber}`,
-        html: html
+        html: html,
+        headers: this.getSecurityHeaders(),
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Enhanced receipt email sent:', info.messageId);
-      
+      console.log("✅ Enhanced receipt email sent:", info.messageId);
+
       return {
         success: true,
         messageId: info.messageId,
-        previewUrl: nodemailer.getTestMessageUrl(info)
+        previewUrl: nodemailer.getTestMessageUrl(info),
       };
-
     } catch (error) {
-      console.error('❌ Error sending enhanced receipt email:', error);
+      console.error("❌ Error sending enhanced receipt email:", error);
       throw error;
     }
   }

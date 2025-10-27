@@ -1,14 +1,14 @@
 /**
  * Merged Ticket & Receipt Email Service
- * 
+ *
  * Combines ticket delivery with payment receipt to reduce email spam.
  * Sends one comprehensive email instead of two separate emails.
- * 
+ *
  * @module mergedTicketReceiptService
  */
 
-const nodemailer = require('nodemailer');
-const QRCode = require('qrcode');
+const nodemailer = require("nodemailer");
+const QRCode = require("qrcode");
 
 class MergedTicketReceiptService {
   constructor() {
@@ -25,44 +25,77 @@ class MergedTicketReceiptService {
     try {
       // Use environment variables directly for production
       this.transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        host: process.env.SMTP_HOST || "smtp.gmail.com",
         port: Number(process.env.SMTP_PORT) || 587,
         secure: false,
         auth: {
           user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS
-        }
+          pass: process.env.SMTP_PASS,
+        },
       });
 
-      console.log('✅ Merged email service transporter initialized');
+      console.log("✅ Merged email service transporter initialized");
     } catch (error) {
-      console.error('❌ Failed to initialize email transporter:', error);
+      console.error("❌ Failed to initialize email transporter:", error);
       throw error;
     }
+  }
+
+  /**
+   * Generate security headers for emails
+   * Improves deliverability and reduces spam marking
+   */
+  getSecurityHeaders() {
+    const frontendUrl = process.env.FRONTEND_URL || "https://event-i.co.ke";
+    const supportEmail = process.env.SMTP_USER || "no-reply@event-i.co.ke";
+
+    return {
+      "X-Mailer": "Event-i Platform v1.0",
+      "X-Auto-Response-Suppress": "All",
+      "X-Priority": "1",
+      "X-MSMail-Priority": "High",
+      Precedence: "bulk",
+      "List-Id": "<event-tickets.event-i.com>",
+      "List-Unsubscribe": `<${frontendUrl}/unsubscribe>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      "Return-Path": supportEmail,
+      Sender: supportEmail,
+      "Message-ID": `<${Date.now()}@event-i.com>`,
+      "X-Entity-Ref-ID": `${Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`,
+    };
   }
 
   /**
    * Send combined ticket + receipt email
    * Professional, concise, with all essential information
    */
-  async sendTicketAndReceipt({ order, tickets, customerEmail, customerName, event }) {
+  async sendTicketAndReceipt({
+    order,
+    tickets,
+    customerEmail,
+    customerName,
+    event,
+  }) {
     try {
       // Ensure transporter is initialized
       if (!this.transporter) {
         await this.initializeTransporter();
       }
       // Get app URL
-      const appUrl = process.env.CLIENT_URL || 'http://localhost:3000';
-      
-      // Generate ticket rows with QR codes
-      const ticketRows = tickets.map((ticket, index) => {
-        const qrCodeUrl = ticket.qrCodeUrl || '';
-        const ticketNumber = ticket.ticketNumber || 'N/A';
-        const ticketType = ticket.ticketType || 'General Admission';
-        const price = ticket.price || 0;
-        const currency = order.pricing?.currency || 'KES';
+      const appUrl = process.env.CLIENT_URL || "http://localhost:3000";
 
-        return `
+      // Generate ticket rows with QR codes
+      const ticketRows = tickets
+        .map((ticket, index) => {
+          const qrCodeUrl = ticket.qrCodeUrl || "";
+          const ticketNumber = ticket.ticketNumber || "N/A";
+          const ticketType = ticket.ticketType || "General Admission";
+          const price = ticket.price || 0;
+          const currency = order.pricing?.currency || "KES";
+
+          return `
           <tr>
             <td style="padding: 24px; border-bottom: 1px solid #E5E7EB;">
               <table width="100%" cellpadding="0" cellspacing="0">
@@ -104,14 +137,15 @@ class MergedTicketReceiptService {
             </td>
           </tr>
         `;
-      }).join('');
+        })
+        .join("");
 
       // Payment details
       const totalAmount = order.totalAmount || order.pricing?.total || 0;
-      const currency = order.pricing?.currency || 'KES';
-      const mpesaReceipt = order.payment?.mpesaReceiptNumber || 'N/A';
+      const currency = order.pricing?.currency || "KES";
+      const mpesaReceipt = order.payment?.mpesaReceiptNumber || "N/A";
       const paidAt = order.payment?.paidAt || new Date();
-      const paymentMethod = 'M-PESA';
+      const paymentMethod = "M-PESA";
 
       const html = `
       <!DOCTYPE html>
@@ -305,11 +339,16 @@ class MergedTicketReceiptService {
                 </div>
                 <div class="payment-row">
                   <span class="payment-label">Date & Time</span>
-                  <span class="payment-value">${new Date(paidAt).toLocaleString('en-KE', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                  <span class="payment-value">${new Date(paidAt).toLocaleString(
+                    "en-KE",
+                    { dateStyle: "medium", timeStyle: "short" }
+                  )}</span>
                 </div>
                 <div class="payment-row">
                   <span class="payment-label">Tickets</span>
-                  <span class="payment-value">${tickets.length} × ${tickets[0]?.ticketType}</span>
+                  <span class="payment-value">${tickets.length} × ${
+        tickets[0]?.ticketType
+      }</span>
                 </div>
                 <div class="payment-row">
                   <span class="payment-label">Total Paid</span>
@@ -346,7 +385,9 @@ class MergedTicketReceiptService {
                   <p>📱 <a href="tel:+254703328938">+254 703 328 938</a></p>
                 </div>
                 
-                <p style="margin-top: 24px; color: #6B7280; font-size: 13px;">Order #${order.orderNumber} • ${event?.title || 'Event'}</p>
+                <p style="margin-top: 24px; color: #6B7280; font-size: 13px;">Order #${
+                  order.orderNumber
+                } • ${event?.title || "Event"}</p>
                 <p style="margin-top: 8px; color: #6B7280; font-size: 13px;">Keep this email for your records</p>
                 
                 <div style="margin-top: 20px; font-weight: 600; color: #3A7DFF; font-size: 16px;">Event-i</div>
@@ -360,27 +401,30 @@ class MergedTicketReceiptService {
       `;
 
       const mailOptions = {
-        from: `"Event-i Tickets" <${process.env.EMAIL_USER || 'noreply@event-i.com'}>`,
+        from: `"Event-i Tickets" <${
+          process.env.EMAIL_USER || "noreply@event-i.com"
+        }>`,
         to: customerEmail,
-        subject: `🎫 Your Tickets & Receipt - ${event?.title || 'Event'} (Order #${order.orderNumber})`,
-        html
+        subject: `🎫 Your Tickets & Receipt - ${
+          event?.title || "Event"
+        } (Order #${order.orderNumber})`,
+        html,
+        headers: this.getSecurityHeaders(),
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Merged ticket & receipt email sent:', info.messageId);
-      
+      console.log("✅ Merged ticket & receipt email sent:", info.messageId);
+
       return {
         success: true,
         messageId: info.messageId,
-        previewUrl: nodemailer.getTestMessageUrl(info)
+        previewUrl: nodemailer.getTestMessageUrl(info),
       };
-
     } catch (error) {
-      console.error('❌ Error sending merged ticket & receipt email:', error);
+      console.error("❌ Error sending merged ticket & receipt email:", error);
       throw error;
     }
   }
 }
 
 module.exports = new MergedTicketReceiptService();
-

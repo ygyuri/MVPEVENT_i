@@ -21,6 +21,30 @@ class EmailService {
   }
 
   /**
+   * Generate security headers for emails
+   * Improves deliverability and reduces spam marking
+   */
+  getSecurityHeaders() {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const supportEmail = process.env.SMTP_USER || 'noreply@event-i.com';
+    
+    return {
+      'X-Mailer': 'Event-i Platform v1.0',
+      'X-Auto-Response-Suppress': 'All',
+      'X-Priority': '1',
+      'X-MSMail-Priority': 'High',
+      'Precedence': 'bulk',
+      'List-Id': '<event-tickets.event-i.com>',
+      'List-Unsubscribe': `<${frontendUrl}/unsubscribe>`,
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      'Return-Path': supportEmail,
+      'Sender': supportEmail,
+      'Message-ID': `<${Date.now()}@event-i.com>`,
+      'X-Entity-Ref-ID': `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    };
+  }
+
+  /**
    * Send payment receipt email
    */
   async sendPaymentReceipt(orderData, paymentData) {
@@ -32,7 +56,8 @@ class EmailService {
         from: `"Event-i" <${process.env.SMTP_USER}>`,
         to: customerInfo.email || customerInfo.phone + '@example.com', // Fallback if no email
         subject: `Payment Receipt - Order ${paymentReference}`,
-        html: this.generateReceiptHTML(orderData, paymentData)
+        html: this.generateReceiptHTML(orderData, paymentData),
+        headers: this.getSecurityHeaders()
       };
 
       const result = await this.transporter.sendMail(mailOptions);
@@ -155,7 +180,8 @@ class EmailService {
         from: `"Event-i" <${process.env.SMTP_USER}>`,
         to: customerInfo.email || customerInfo.phone + '@example.com',
         subject: `Order Confirmation - ${paymentReference}`,
-        html: this.generateOrderConfirmationHTML(orderData)
+        html: this.generateOrderConfirmationHTML(orderData),
+        headers: this.getSecurityHeaders()
       };
 
       const result = await this.transporter.sendMail(mailOptions);
@@ -291,7 +317,8 @@ class EmailService {
       to,
       subject: `Your Ticket • ${event?.title || 'Event'}`,
       html,
-      attachments
+      attachments,
+      headers: this.getSecurityHeaders()
     };
 
     // Best-effort retry (non-persistent) up to 3 attempts with backoff
@@ -410,7 +437,8 @@ class EmailService {
       from: `"Event-i" <${process.env.SMTP_USER}>`,
       to,
       subject: `🎉 Event Published: ${event.title}`,
-      html
+      html,
+      headers: this.getSecurityHeaders()
     };
 
     return this.transporter.sendMail(mailOptions);
@@ -526,7 +554,8 @@ class EmailService {
       from: `"Event-i Admin" <${process.env.SMTP_USER}>`,
       to: adminEmail,
       subject: `🔍 New Event Published: ${event.title} - Admin Review Required`,
-      html
+      html,
+      headers: this.getSecurityHeaders()
     };
 
     return this.transporter.sendMail(mailOptions);
@@ -861,7 +890,8 @@ class EmailService {
         from: `"Event-i" <${process.env.SMTP_USER}>`,
         to: email,
         subject: `Your Event-i Account - Order #${orderNumber}`,
-        html
+        html,
+        headers: this.getSecurityHeaders()
       };
 
       const result = await this.transporter.sendMail(mailOptions);
@@ -1042,7 +1072,8 @@ class EmailService {
         from: `"Event-i" <${process.env.SMTP_USER}>`,
         to: customerEmail,
         subject: `Your Tickets - Order #${order.orderNumber}`,
-        html
+        html,
+        headers: this.getSecurityHeaders()
       };
 
       const result = await this.transporter.sendMail(mailOptions);
