@@ -262,3 +262,101 @@ jobs:
             sudo bash /tmp/deploy.sh
             rm /tmp/deploy.sh
 
+  # ====================
+  # HEALTH CHECK JOB
+  # ====================
+  health-check:
+    needs: execute
+    runs-on: ubuntu-latest
+    if: always() && needs.execute.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH health check on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          timeout: 120s
+          command_timeout: 10m
+          debug: true
+          script: |
+            set -e
+            echo "🏥 Starting health checks..."
+            
+            # Wait for services to fully initialize
+            echo "⏳ Waiting for services to initialize..."
+            sleep 15
+            
+            # Check container status
+            echo "📋 Checking container status..."
+            cd /root/MVPEVENT_i
+            sudo docker compose -f docker-compose.prod.yml ps
+            
+            # Check if all containers are running
+            if ! sudo docker compose -f docker-compose.prod.yml ps | grep -q "Up"; then
+              echo "❌ Some containers are not running"
+              echo "📋 Container logs:"
+              sudo docker compose -f docker-compose.prod.yml logs --tail=50
+              exit 1
+            fi
+            echo "✅ All containers are running"
+            
+            # Test API health endpoint
+            echo "🔍 Testing API health endpoint..."
+            api_healthy=false
+            for i in {1..5}; do
+              if curl -f -s -k https://event-i.co.ke/api/health > /dev/null 2>&1; then
+                echo "✅ API health check passed (attempt $i)"
+                api_healthy=true
+                break
+              else
+                echo "⏳ API health check attempt $i failed, retrying..."
+                sleep 5
+              fi
+            done
+            
+            if [ "$api_healthy" = false ]; then
+              echo "❌ API health check failed after 5 attempts"
+              echo "📋 Server logs:"
+              sudo docker compose -f docker-compose.prod.yml logs server --tail=50
+              exit 1
+            fi
+            
+            # Test frontend accessibility
+            echo "🔍 Testing frontend accessibility..."
+            frontend_healthy=false
+            for i in {1..5}; do
+              if curl -f -s -k https://event-i.co.ke/ > /dev/null 2>&1; then
+                echo "✅ Frontend accessibility check passed (attempt $i)"
+                frontend_healthy=true
+                break
+              else
+                echo "⏳ Frontend accessibility check attempt $i failed, retrying..."
+                sleep 5
+              fi
+            done
+            
+            if [ "$frontend_healthy" = false ]; then
+              echo "❌ Frontend accessibility check failed after 5 attempts"
+              echo "📋 Client logs:"
+              sudo docker compose -f docker-compose.prod.yml logs client --tail=50
+              exit 1
+            fi
+            
+            # Summary
+            echo ""
+            echo "📊 Health Check Summary"
+            echo "===================="
+            echo "✅ All containers running"
+            echo "✅ API health endpoint responding"
+            echo "✅ Frontend accessible"
+            echo ""
+            echo "🔗 Service URLs:"
+            echo "   Frontend: https://event-i.co.ke/"
+            echo "   API:      https://event-i.co.ke/api/health"
+            echo "   Health:   https://event-i.co.ke/health"
+            echo ""
+            echo "✅ All health checks passed!"
+
