@@ -208,22 +208,56 @@ jobs:
               sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
             fi
             
-            # Setup SSL certificates
+            # Setup SSL certificates with expiry checking
             sudo mkdir -p /root/MVPEVENT_i/nginx/ssl
-            if [ -f /etc/letsencrypt/live/event-i.co.ke/fullchain.pem ]; then
-              echo "✅ Using existing SSL certificates"
-            else
-              echo "📝 Generating SSL certificates..."
-              if ! command -v certbot &> /dev/null; then
-                sudo apt update
-                sudo apt install -y certbot
-              fi
+            
+            CERT_PATH="/etc/letsencrypt/live/event-i.co.ke/fullchain.pem"
+            
+            if [ -f "$CERT_PATH" ]; then
+              # Certificate exists, check expiry date
+              echo "🔍 Checking certificate expiry..."
+              CERT_EXPIRY=$(sudo openssl x509 -enddate -noout -in "$CERT_PATH" | cut -d= -f2)
+              CERT_EXPIRY_EPOCH=$(date -d "$CERT_EXPIRY" +%s 2>/dev/null || date -j -f "%b %d %H:%M:%S %Y" "$CERT_EXPIRY" +%s 2>/dev/null || echo "0")
+              CURRENT_EPOCH=$(date +%s)
+              DAYS_UNTIL_EXPIRY=$(( (CERT_EXPIRY_EPOCH - CURRENT_EPOCH) / 86400 ))
               
-              if sudo certbot certonly --standalone --non-interactive --agree-tos --email admin@event-i.co.ke -d event-i.co.ke; then
-                sudo cp /etc/letsencrypt/live/event-i.co.ke/fullchain.pem /root/MVPEVENT_i/nginx/ssl/cert.pem
+              if [ $DAYS_UNTIL_EXPIRY -gt 30 ]; then
+                echo "✅ Using existing valid SSL certificate (expires in $DAYS_UNTIL_EXPIRY days)"
+                sudo cp "$CERT_PATH" /root/MVPEVENT_i/nginx/ssl/cert.pem
                 sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem
               else
-                echo "⚠️ Creating self-signed certificate..."
+                echo "⚠️ Certificate expiring soon ($DAYS_UNTIL_EXPIRY days), attempting renewal..."
+                # Try to renew (this is safer and avoids rate limits)
+                sudo certbot renew --cert-name event-i.co.ke --non-interactive 2>&1 || {
+                  echo "⚠️ Renewal failed or not needed, using existing certificate"
+                }
+                # Copy the certificate (renewed or existing)
+                sudo cp "$CERT_PATH" /root/MVPEVENT_i/nginx/ssl/cert.pem
+                sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem
+              fi
+            else
+              echo "📝 No existing certificates, generating new ones..."
+              # Install certbot if needed
+              if ! command -v certbot &> /dev/null; then
+                echo "📦 Installing certbot..."
+                sudo apt update
+                sudo apt install -y certbot 2>/dev/null || {
+                  # Fall back to snap if apt fails
+                  sudo apt install -y snapd
+                  sudo snap install core
+                  sudo snap refresh core
+                  sudo snap install --classic certbot
+                  sudo ln -sf /snap/bin/certbot /usr/bin/certbot
+                }
+              fi
+              
+              # Try to generate new certificate
+              if sudo certbot certonly --standalone --non-interactive --agree-tos --email admin@event-i.co.ke -d event-i.co.ke; then
+                echo "✅ Let's Encrypt certificate generated successfully"
+                sudo cp "$CERT_PATH" /root/MVPEVENT_i/nginx/ssl/cert.pem
+                sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem
+              else
+                echo "⚠️ Let's Encrypt failed (possibly rate limited), creating self-signed certificate..."
                 sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
                   -keyout /root/MVPEVENT_i/nginx/ssl/key.pem \
                   -out /root/MVPEVENT_i/nginx/ssl/cert.pem \
@@ -231,8 +265,10 @@ jobs:
               fi
             fi
             
+            # Ensure certificates have correct permissions
             sudo chmod 644 /root/MVPEVENT_i/nginx/ssl/cert.pem
             sudo chmod 600 /root/MVPEVENT_i/nginx/ssl/key.pem
+            echo "✅ SSL certificates configured"
             
             # Update .env with Docker service names
             sudo cp /root/MVPEVENT_i/.env /root/MVPEVENT_i/.env.backup
