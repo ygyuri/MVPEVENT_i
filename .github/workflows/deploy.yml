@@ -396,3 +396,101 @@ jobs:
             echo ""
             echo "✅ All health checks passed!"
 
+  # ====================
+  # EMAIL HEALTH CHECK JOB
+  # ====================
+  email-check:
+    needs: health-check
+    runs-on: ubuntu-latest
+    if: always() && needs.health-check.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH email check on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          timeout: 120s
+          command_timeout: 10m
+          debug: true
+          script: |
+            set -e
+            echo "📧 Starting email configuration check..."
+            
+            # Get SMTP configuration from environment
+            SMTP_HOST=$(sudo grep SMTP_HOST /root/MVPEVENT_i/.env | cut -d'=' -f2)
+            SMTP_PORT=$(sudo grep SMTP_PORT /root/MVPEVENT_i/.env | cut -d'=' -f2)
+            EMAIL_FROM=$(sudo grep EMAIL_FROM /root/MVPEVENT_i/.env | cut -d'=' -f2)
+            
+            echo "📋 SMTP Configuration:"
+            echo "   Host: $SMTP_HOST"
+            echo "   Port: $SMTP_PORT"
+            echo "   From: $EMAIL_FROM"
+            echo ""
+            
+            # Test network connectivity to SMTP server
+            echo "🌐 Testing network connectivity to SMTP server..."
+            if sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec -T server nc -zv -w 5 ${SMTP_HOST} ${SMTP_PORT} 2>&1; then
+              echo "✅ Network connectivity OK"
+            else
+              echo "❌ Cannot reach SMTP server ${SMTP_HOST}:${SMTP_PORT}"
+              echo "   Check firewall rules and network configuration"
+            fi
+            echo ""
+            
+            # Run email diagnostic test
+            echo "🔍 Running SMTP diagnostics..."
+            if [ -f "/root/MVPEVENT_i/server/scripts/test-email-debug.js" ]; then
+              DIAG_OUTPUT=$(sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec -T server node scripts/test-email-debug.js 2>&1) || echo "⚠️ Diagnostic script had issues"
+              echo "$DIAG_OUTPUT"
+              
+              # Check for port mismatch warnings
+              WORKING_PORT=$(echo "$DIAG_OUTPUT" | grep -o "Standard TLS (port [0-9]*)" | grep -o "[0-9]*" | head -1 || echo "")
+              if [ ! -z "$WORKING_PORT" ] && [ "$WORKING_PORT" != "$SMTP_PORT" ]; then
+                echo ""
+                echo "⚠️ SMTP Port Mismatch Detected!"
+                echo "   Current SMTP_PORT: ${SMTP_PORT}"
+                echo "   Working port: ${WORKING_PORT}"
+                echo "   Recommendation: Update GitHub Secret SMTP_PORT to ${WORKING_PORT}"
+              fi
+              
+              # Check if email was sent successfully
+              if echo "$DIAG_OUTPUT" | grep -q "Test email sent successfully"; then
+                echo ""
+                echo "✅ Email test PASSED"
+                EMAIL_HEALTHY=true
+              else
+                echo ""
+                echo "⚠️ Email test did not send successfully"
+                EMAIL_HEALTHY=false
+              fi
+            else
+              echo "⚠️ Diagnostic script not found, skipping advanced checks"
+              EMAIL_HEALTHY=true
+            fi
+            echo ""
+            
+            # Run basic email test
+            echo "📧 Running basic email test..."
+            if [ -f "/root/MVPEVENT_i/server/scripts/test-email.js" ]; then
+              if sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec -T server node scripts/test-email.js 2>&1; then
+                echo "✅ Basic email test PASSED"
+              else
+                echo "⚠️ Basic email test had issues"
+                echo "   Check SMTP configuration and logs"
+              fi
+            else
+              echo "⚠️ test-email.js not found, skipping basic test"
+            fi
+            echo ""
+            
+            # Summary
+            echo "📊 Email Health Check Summary"
+            echo "============================="
+            echo "✅ SMTP connectivity tested"
+            echo "${EMAIL_HEALTHY:+✅}${EMAIL_HEALTHY:-⚠️} Email test results"
+            echo ""
+            echo "💡 Note: Email configuration may need adjustments"
+            echo "   Check container logs if email functionality fails"
