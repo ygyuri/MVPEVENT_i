@@ -250,33 +250,59 @@ jobs:
               # Setup Let's Encrypt SSL certificates
               echo "🔐 Setting up Let's Encrypt SSL certificates..."
               
-              # Install certbot if not already installed
-              if ! command -v certbot &> /dev/null; then
-                echo "📦 Installing certbot..."
-                sudo apt update
-                sudo apt install -y certbot
-              fi
-              
-              # Stop nginx temporarily for certificate generation
-              echo "🛑 Temporarily stopping nginx for certificate generation..."
-              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml stop nginx || true
-              
-              # Generate Let's Encrypt certificate
-              echo "🔑 Generating Let's Encrypt certificate for event-i.co.ke..."
-              sudo certbot certonly --standalone \
-                --non-interactive \
-                --agree-tos \
-                --email admin@event-i.co.ke \
-                -d event-i.co.ke \
-                --force-renewal || echo "⚠️ Certificate generation failed, using existing certificates"
-              
-              # Copy certificates to nginx ssl directory
-              echo "📁 Copying certificates to nginx ssl directory..."
+              # Ensure SSL directory exists
               sudo mkdir -p /root/MVPEVENT_i/nginx/ssl
-              sudo cp /etc/letsencrypt/live/event-i.co.ke/fullchain.pem /root/MVPEVENT_i/nginx/ssl/cert.pem || echo "⚠️ Using existing cert.pem"
-              sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem || echo "⚠️ Using existing key.pem"
-              sudo chmod 644 /root/MVPEVENT_i/nginx/ssl/cert.pem
-              sudo chmod 600 /root/MVPEVENT_i/nginx/ssl/key.pem
+              
+              # Only attempt SSL certificate generation if docker is installed
+              if command -v docker &> /dev/null; then
+                # Install certbot if not already installed
+                if ! command -v certbot &> /dev/null; then
+                  echo "📦 Installing certbot..."
+                  sudo apt update
+                  sudo apt install -y certbot
+                fi
+                
+                # Check if certificates already exist
+                if [ -f /etc/letsencrypt/live/event-i.co.ke/fullchain.pem ] && [ -f /etc/letsencrypt/live/event-i.co.ke/privkey.pem ]; then
+                  echo "✅ SSL certificates already exist"
+                  CERTIFICATES_EXIST=true
+                else
+                  echo "📝 SSL certificates do not exist, generating new ones..."
+                  CERTIFICATES_EXIST=false
+                  
+                  # Stop nginx temporarily for certificate generation
+                  echo "🛑 Temporarily stopping nginx for certificate generation..."
+                  sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml stop nginx || true
+                  
+                  # Generate Let's Encrypt certificate
+                  echo "🔑 Generating Let's Encrypt certificate for event-i.co.ke..."
+                  if sudo certbot certonly --standalone \
+                    --non-interactive \
+                    --agree-tos \
+                    --email admin@event-i.co.ke \
+                    -d event-i.co.ke; then
+                    echo "✅ Certificate generation successful"
+                  else
+                    echo "⚠️ Certificate generation failed"
+                    CERTIFICATES_EXIST=false
+                  fi
+                fi
+                
+                # Copy certificates to nginx ssl directory if they exist
+                if [ -f /etc/letsencrypt/live/event-i.co.ke/fullchain.pem ]; then
+                  echo "📁 Copying certificates to nginx ssl directory..."
+                  sudo cp /etc/letsencrypt/live/event-i.co.ke/fullchain.pem /root/MVPEVENT_i/nginx/ssl/cert.pem
+                  sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem
+                  sudo chmod 644 /root/MVPEVENT_i/nginx/ssl/cert.pem
+                  sudo chmod 600 /root/MVPEVENT_i/nginx/ssl/key.pem
+                  echo "✅ SSL certificates copied and configured"
+                else
+                  echo "⚠️ Certificate files not found in expected location"
+                fi
+              else
+                echo "⚠️ Docker not installed yet, skipping SSL certificate generation"
+                echo "✅ SSL certificates will be generated after Docker installation"
+              fi
               
               echo "✅ SSL certificates setup completed"
               
