@@ -134,9 +134,9 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             set -e
-            sudo bash -lc << 'DEPLOYMENT_SCRIPT'
-              set -e
-              echo "🚀 Starting deployment..."
+            cat > /tmp/deploy.sh << 'DEPLOYMENT_SCRIPT'
+            set -e
+            echo "🚀 Starting deployment..."
               
               # Ensure repo exists and is up to date
               if [ -d /root/MVPEVENT_i/.git ]; then
@@ -481,4 +481,6 @@ jobs:
               echo ""
               echo "Deployment completed successfully!"
             DEPLOYMENT_SCRIPT
-
+            chmod +x /tmp/deploy.sh
+            sudo bash /tmp/deploy.sh
+            rm /tmp/deploy.sh
