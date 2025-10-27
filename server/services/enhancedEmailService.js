@@ -7,7 +7,7 @@ class EnhancedEmailService {
     const smtpPort = Number(process.env.SMTP_PORT) || 587;
     // Port 465 uses SSL, other ports use STARTTLS
     const isSecure = smtpPort === 465;
-
+    
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || "smtp.gmail.com",
       port: smtpPort,
