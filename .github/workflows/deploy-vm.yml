@@ -270,6 +270,12 @@ jobs:
               echo "MONGODB_URI: mongodb://${{ secrets.MONGO_ROOT_USERNAME }}:${{ secrets.MONGO_ROOT_PASSWORD }}@mongodb:27017/event_i_production?authSource=admin"
               echo "REDIS_URL: redis://redis:6379"
               echo ""
+              echo "🔍 Debug: Email configuration (masked):"
+              echo "SMTP_HOST: $(sudo grep SMTP_HOST /root/MVPEVENT_i/.env | cut -d'=' -f2)"
+              echo "SMTP_PORT: $(sudo grep SMTP_PORT /root/MVPEVENT_i/.env | cut -d'=' -f2)"
+              echo "SMTP_USER: $(sudo grep SMTP_USER /root/MVPEVENT_i/.env | cut -d'=' -f2 | cut -c1-3)..."
+              echo "EMAIL_FROM: $(sudo grep EMAIL_FROM /root/MVPEVENT_i/.env | cut -d'=' -f2)"
+              echo ""
               
               # Stop existing containers gracefully
               echo "🛑 Stopping existing containers..."
@@ -458,6 +464,15 @@ jobs:
                 echo "📁 Available scripts in /root/MVPEVENT_i/scripts/:"
                 sudo ls -la /root/MVPEVENT_i/scripts/ || echo "No scripts directory found"
               fi
+              
+              # Test email configuration
+              echo "🔍 Testing email configuration..."
+              if sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec -T server node scripts/test-email.js; then
+                echo "✅ Email configuration test passed"
+              else
+                echo "⚠️ Email configuration test failed (check SMTP credentials)"
+              fi
+              echo ""
               
               # Show deployment summary
               echo "📊 Deployment Summary"
