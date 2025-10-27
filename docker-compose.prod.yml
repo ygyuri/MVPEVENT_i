@@ -95,7 +95,12 @@ services:
     networks:
       - event_i_network_prod
     restart: unless-stopped
-    command: sh -c "sleep 15 && npm start"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # Frontend Client
   client:
@@ -126,8 +131,10 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - nginx_logs:/var/log/nginx
     depends_on:
-      - server
-      - client
+      server:
+        condition: service_healthy
+      client:
+        condition: service_started
     networks:
       - event_i_network_prod
     restart: unless-stopped

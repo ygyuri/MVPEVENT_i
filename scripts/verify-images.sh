@@ -61,7 +61,7 @@ check_file_size() {
 
 # Check static assets from frontend
 echo -e "${BLUE}📁 Frontend Static Assets:${NC}"
-check_url "$FRONTEND_URL/favicon.ico" "favicon"
+check_url "$FRONTEND_URL/favicon.png" "favicon"
 check_url "$FRONTEND_URL/logo192.png" "logo192" || echo -e "${YELLOW}⚠️  logo192.png not found (optional)${NC}"
 check_url "$FRONTEND_URL/logo512.png" "logo512" || echo -e "${YELLOW}⚠️  logo512.png not found (optional)${NC}"
 
@@ -108,7 +108,7 @@ fi
 # Check cache headers for static assets
 echo -e "${BLUE}💾 Cache Headers:${NC}"
 echo -n "   Checking cache headers for static assets... "
-cache_header=$(curl -f -s -k -I "$FRONTEND_URL/favicon.ico" 2>/dev/null | grep -i "cache-control" | head -1)
+cache_header=$(curl -f -s -k -I "$FRONTEND_URL/favicon.png" 2>/dev/null | grep -i "cache-control" | head -1)
 if echo "$cache_header" | grep -q "public\|immutable"; then
     echo -e "${GREEN}✅ OK${NC}"
 else
