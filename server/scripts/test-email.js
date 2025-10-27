@@ -41,7 +41,7 @@ async function testEmailConnection() {
 
     const testEmail = await transporter.sendMail({
       from: `"Event-i Test" <${process.env.SMTP_USER}>`,
-      to: "test@example.com",
+      to: "jeffomondi.eng@gmail.com, gideonyuri15@gmail.com",
       subject: "Test Email from Event-i",
       html: `
         <h1>✅ SMTP Test Successful!</h1>
