@@ -1,5 +1,5 @@
-const nodemailer = require('nodemailer');
-const QRCode = require('qrcode');
+const nodemailer = require("nodemailer");
+const QRCode = require("qrcode");
 
 class EmailService {
   constructor() {
@@ -10,13 +10,13 @@ class EmailService {
   initializeTransporter() {
     // Create transporter using environment variables
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
       port: Number(process.env.SMTP_PORT) || 587,
       secure: false,
       auth: {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
+        pass: process.env.SMTP_PASS,
+      },
     });
   }
 
@@ -25,22 +25,24 @@ class EmailService {
    * Improves deliverability and reduces spam marking
    */
   getSecurityHeaders() {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const supportEmail = process.env.SMTP_USER || 'noreply@event-i.com';
-    
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const supportEmail = process.env.SMTP_USER || "noreply@event-i.com";
+
     return {
-      'X-Mailer': 'Event-i Platform v1.0',
-      'X-Auto-Response-Suppress': 'All',
-      'X-Priority': '1',
-      'X-MSMail-Priority': 'High',
-      'Precedence': 'bulk',
-      'List-Id': '<event-tickets.event-i.com>',
-      'List-Unsubscribe': `<${frontendUrl}/unsubscribe>`,
-      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      'Return-Path': supportEmail,
-      'Sender': supportEmail,
-      'Message-ID': `<${Date.now()}@event-i.com>`,
-      'X-Entity-Ref-ID': `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      "X-Mailer": "Event-i Platform v1.0",
+      "X-Auto-Response-Suppress": "All",
+      "X-Priority": "1",
+      "X-MSMail-Priority": "High",
+      Precedence: "bulk",
+      "List-Id": "<event-tickets.event-i.com>",
+      "List-Unsubscribe": `<${frontendUrl}/unsubscribe>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      "Return-Path": supportEmail,
+      Sender: supportEmail,
+      "Message-ID": `<${Date.now()}@event-i.com>`,
+      "X-Entity-Ref-ID": `${Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`,
     };
   }
 
@@ -49,22 +51,28 @@ class EmailService {
    */
   async sendPaymentReceipt(orderData, paymentData) {
     try {
-      const { customerInfo, items, totalAmount, feeBreakdown, paymentReference } = orderData;
+      const {
+        customerInfo,
+        items,
+        totalAmount,
+        feeBreakdown,
+        paymentReference,
+      } = orderData;
       const { mpesaReceiptNumber, phone } = paymentData;
 
       const mailOptions = {
         from: `"Event-i" <${process.env.SMTP_USER}>`,
-        to: customerInfo.email || customerInfo.phone + '@example.com', // Fallback if no email
+        to: customerInfo.email || customerInfo.phone + "@example.com", // Fallback if no email
         subject: `Payment Receipt - Order ${paymentReference}`,
         html: this.generateReceiptHTML(orderData, paymentData),
-        headers: this.getSecurityHeaders()
+        headers: this.getSecurityHeaders(),
       };
 
       const result = await this.transporter.sendMail(mailOptions);
-      console.log('Payment receipt email sent:', result.messageId);
+      console.log("Payment receipt email sent:", result.messageId);
       return result;
     } catch (error) {
-      console.error('Error sending payment receipt:', error);
+      console.error("Error sending payment receipt:", error);
       throw error;
     }
   }
@@ -73,7 +81,14 @@ class EmailService {
    * Generate HTML receipt template
    */
   generateReceiptHTML(orderData, paymentData) {
-    const { customerInfo, items, totalAmount, feeBreakdown, paymentReference, createdAt } = orderData;
+    const {
+      customerInfo,
+      items,
+      totalAmount,
+      feeBreakdown,
+      paymentReference,
+      createdAt,
+    } = orderData;
     const { mpesaReceiptNumber, phone } = paymentData;
 
     return `
@@ -110,21 +125,33 @@ class EmailService {
             <div class="receipt-details">
               <h3>Receipt Details</h3>
               <p><strong>Receipt Number:</strong> ${paymentReference}</p>
-              <p><strong>MPESA Receipt:</strong> ${mpesaReceiptNumber || 'N/A'}</p>
-              <p><strong>Date:</strong> ${new Date(createdAt).toLocaleDateString('en-KE')}</p>
-              <p><strong>Time:</strong> ${new Date(createdAt).toLocaleTimeString('en-KE')}</p>
+              <p><strong>MPESA Receipt:</strong> ${
+                mpesaReceiptNumber || "N/A"
+              }</p>
+              <p><strong>Date:</strong> ${new Date(
+                createdAt
+              ).toLocaleDateString("en-KE")}</p>
+              <p><strong>Time:</strong> ${new Date(
+                createdAt
+              ).toLocaleTimeString("en-KE")}</p>
             </div>
             
             <div class="receipt-details">
               <h3>Customer Information</h3>
               <p><strong>Name:</strong> ${customerInfo.name}</p>
               <p><strong>Phone:</strong> ${phone}</p>
-              ${customerInfo.email ? `<p><strong>Email:</strong> ${customerInfo.email}</p>` : ''}
+              ${
+                customerInfo.email
+                  ? `<p><strong>Email:</strong> ${customerInfo.email}</p>`
+                  : ""
+              }
             </div>
             
             <div class="receipt-details">
               <h3>Order Items</h3>
-              ${items.map(item => `
+              ${items
+                .map(
+                  (item) => `
                 <div class="item">
                   <div>
                     <strong>${item.eventTitle}</strong><br>
@@ -132,25 +159,33 @@ class EmailService {
                   </div>
                   <div>KES ${item.subtotal.toFixed(2)}</div>
                 </div>
-              `).join('')}
+              `
+                )
+                .join("")}
             </div>
             
             <div class="receipt-details">
               <h3>Payment Summary</h3>
               <div class="item">
                 <span>Subtotal:</span>
-                <span>KES ${feeBreakdown?.subtotal?.toFixed(2) || '0.00'}</span>
+                <span>KES ${feeBreakdown?.subtotal?.toFixed(2) || "0.00"}</span>
               </div>
               <div class="item">
                 <span>Processing Fee:</span>
-                <span>KES ${feeBreakdown?.processingFee?.toFixed(2) || '0.00'}</span>
+                <span>KES ${
+                  feeBreakdown?.processingFee?.toFixed(2) || "0.00"
+                }</span>
               </div>
-              ${feeBreakdown?.fixedFee > 0 ? `
+              ${
+                feeBreakdown?.fixedFee > 0
+                  ? `
                 <div class="item">
                   <span>Fixed Fee:</span>
                   <span>KES ${feeBreakdown.fixedFee.toFixed(2)}</span>
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
               <div class="item total">
                 <span>Total Paid:</span>
                 <span>KES ${totalAmount.toFixed(2)}</span>
@@ -178,17 +213,17 @@ class EmailService {
 
       const mailOptions = {
         from: `"Event-i" <${process.env.SMTP_USER}>`,
-        to: customerInfo.email || customerInfo.phone + '@example.com',
+        to: customerInfo.email || customerInfo.phone + "@example.com",
         subject: `Order Confirmation - ${paymentReference}`,
         html: this.generateOrderConfirmationHTML(orderData),
-        headers: this.getSecurityHeaders()
+        headers: this.getSecurityHeaders(),
       };
 
       const result = await this.transporter.sendMail(mailOptions);
-      console.log('Order confirmation email sent:', result.messageId);
+      console.log("Order confirmation email sent:", result.messageId);
       return result;
     } catch (error) {
-      console.error('Error sending order confirmation:', error);
+      console.error("Error sending order confirmation:", error);
       throw error;
     }
   }
@@ -197,7 +232,8 @@ class EmailService {
    * Generate order confirmation HTML
    */
   generateOrderConfirmationHTML(orderData) {
-    const { customerInfo, items, totalAmount, paymentReference, createdAt } = orderData;
+    const { customerInfo, items, totalAmount, paymentReference, createdAt } =
+      orderData;
 
     return `
       <!DOCTYPE html>
@@ -227,13 +263,17 @@ class EmailService {
             <div class="order-details">
               <h3>Order Information</h3>
               <p><strong>Order Number:</strong> ${paymentReference}</p>
-              <p><strong>Date:</strong> ${new Date(createdAt).toLocaleDateString('en-KE')}</p>
+              <p><strong>Date:</strong> ${new Date(
+                createdAt
+              ).toLocaleDateString("en-KE")}</p>
               <p><strong>Customer:</strong> ${customerInfo.name}</p>
             </div>
             
             <div class="order-details">
               <h3>Event Tickets</h3>
-              ${items.map(item => `
+              ${items
+                .map(
+                  (item) => `
                 <div class="item">
                   <div>
                     <strong>${item.eventTitle}</strong><br>
@@ -241,7 +281,9 @@ class EmailService {
                   </div>
                   <div>KES ${item.subtotal.toFixed(2)}</div>
                 </div>
-              `).join('')}
+              `
+                )
+                .join("")}
               <div class="item" style="font-weight: bold; border-top: 2px solid #667eea; margin-top: 10px;">
                 <span>Total:</span>
                 <span>KES ${totalAmount.toFixed(2)}</span>
@@ -265,10 +307,10 @@ class EmailService {
   async testEmailConfiguration() {
     try {
       await this.transporter.verify();
-      console.log('Email configuration is valid');
+      console.log("Email configuration is valid");
       return true;
     } catch (error) {
-      console.error('Email configuration error:', error);
+      console.error("Email configuration error:", error);
       return false;
     }
   }
@@ -279,7 +321,7 @@ class EmailService {
   async sendTicketEmail(ticket, event) {
     const to = ticket.holder?.email;
     if (!to) return;
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
     const walletUrl = `${frontendUrl}/wallet?open=${ticket._id}`;
 
     // Simple template with CTA
@@ -292,9 +334,11 @@ class EmailService {
       .muted{color:#666;font-size:12px;margin-top:14px}
       </style></head>
       <body><div class="container">
-        <h2>Your Ticket for ${event?.title || 'Event'}</h2>
+        <h2>Your Ticket for ${event?.title || "Event"}</h2>
         <div class="card">
-          <p><strong>Holder:</strong> ${ticket.holder?.firstName} ${ticket.holder?.lastName}</p>
+          <p><strong>Holder:</strong> ${ticket.holder?.firstName} ${
+      ticket.holder?.lastName
+    }</p>
           <p><strong>Type:</strong> ${ticket.ticketType}</p>
           <p><strong>Status:</strong> ${ticket.status}</p>
           <p><a href="${walletUrl}" class="btn">View Ticket & QR</a></p>
@@ -307,18 +351,25 @@ class EmailService {
     try {
       const qrPayload = ticket?.qr?.signature ? null : null; // we don't have plaintext here; deep-link preferred
       // Generate a QR for wallet deep-link as a fallback (scanner uses app)
-      const dataUrl = await QRCode.toDataURL(walletUrl, { margin: 1, width: 240 });
-      const base64 = dataUrl.split(',')[1];
-      attachments.push({ filename: 'ticket-qr.png', content: Buffer.from(base64, 'base64'), contentType: 'image/png' });
+      const dataUrl = await QRCode.toDataURL(walletUrl, {
+        margin: 1,
+        width: 240,
+      });
+      const base64 = dataUrl.split(",")[1];
+      attachments.push({
+        filename: "ticket-qr.png",
+        content: Buffer.from(base64, "base64"),
+        contentType: "image/png",
+      });
     } catch {}
 
     const mailOptions = {
       from: `"Event-i" <${process.env.SMTP_USER}>`,
       to,
-      subject: `Your Ticket • ${event?.title || 'Event'}`,
+      subject: `Your Ticket • ${event?.title || "Event"}`,
       html,
       attachments,
-      headers: this.getSecurityHeaders()
+      headers: this.getSecurityHeaders(),
     };
 
     // Best-effort retry (non-persistent) up to 3 attempts with backoff
@@ -326,11 +377,11 @@ class EmailService {
       try {
         const res = await this.transporter.sendMail(mailOptions);
         if (res?.messageId) return res;
-        throw new Error('sendMail did not return messageId');
+        throw new Error("sendMail did not return messageId");
       } catch (err) {
         if (attempt >= 3) throw err;
         const delayMs = 500 * Math.pow(2, attempt - 1);
-        await new Promise(r => setTimeout(r, delayMs));
+        await new Promise((r) => setTimeout(r, delayMs));
         return trySend(attempt + 1);
       }
     };
@@ -344,8 +395,8 @@ class EmailService {
   async sendEventPublishedNotification(event, organizer) {
     const to = organizer.email;
     if (!to) return;
-    
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
     const eventUrl = `${frontendUrl}/events/${event.slug}`;
     const dashboardUrl = `${frontendUrl}/organizer`;
 
@@ -378,27 +429,40 @@ class EmailService {
             
             <div class="content">
               <h2>Congratulations, ${organizer.firstName}!</h2>
-              <p>Your event <strong>"${event.title}"</strong> has been successfully published and is now visible to potential attendees.</p>
+              <p>Your event <strong>"${
+                event.title
+              }"</strong> has been successfully published and is now visible to potential attendees.</p>
               
               <div class="event-card">
                 <h3>📅 Event Details</h3>
                 <p><strong>Title:</strong> ${event.title}</p>
-                <p><strong>Date:</strong> ${new Date(event.dates.startDate).toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+                <p><strong>Date:</strong> ${new Date(
+                  event.dates.startDate
+                ).toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
                 })}</p>
-                <p><strong>Time:</strong> ${new Date(event.dates.startDate).toLocaleTimeString('en-US', { 
-                  hour: 'numeric', 
-                  minute: '2-digit', 
-                  hour12: true 
-                })} - ${new Date(event.dates.endDate).toLocaleTimeString('en-US', { 
-                  hour: 'numeric', 
-                  minute: '2-digit', 
-                  hour12: true 
-                })}</p>
-                ${event.location?.venueName ? `<p><strong>Location:</strong> ${event.location.venueName}, ${event.location.city}</p>` : ''}
+                <p><strong>Time:</strong> ${new Date(
+                  event.dates.startDate
+                ).toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                  hour12: true,
+                })} - ${new Date(event.dates.endDate).toLocaleTimeString(
+      "en-US",
+      {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }
+    )}</p>
+                ${
+                  event.location?.venueName
+                    ? `<p><strong>Location:</strong> ${event.location.venueName}, ${event.location.city}</p>`
+                    : ""
+                }
                 <p><strong>Status:</strong> <span style="color: #10b981; font-weight: 600;">✅ Published & Live</span></p>
               </div>
               
@@ -438,7 +502,7 @@ class EmailService {
       to,
       subject: `🎉 Event Published: ${event.title}`,
       html,
-      headers: this.getSecurityHeaders()
+      headers: this.getSecurityHeaders(),
     };
 
     return this.transporter.sendMail(mailOptions);
@@ -448,8 +512,8 @@ class EmailService {
    * Send event published notification to admin for review
    */
   async sendEventPublishedAdminNotification(event, organizer) {
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@event-i.com';
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const adminEmail = process.env.ADMIN_EMAIL || "admin@event-i.com";
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
     const eventUrl = `${frontendUrl}/events/${event.slug}`;
     const adminUrl = `${frontendUrl}/admin`;
 
@@ -487,7 +551,9 @@ class EmailService {
               
               <div class="organizer-info">
                 <h3>👤 Organizer Information</h3>
-                <p><strong>Name:</strong> ${organizer.firstName} ${organizer.lastName}</p>
+                <p><strong>Name:</strong> ${organizer.firstName} ${
+      organizer.lastName
+    }</p>
                 <p><strong>Email:</strong> ${organizer.email}</p>
                 <p><strong>User ID:</strong> ${organizer._id}</p>
               </div>
@@ -495,25 +561,45 @@ class EmailService {
               <div class="event-card">
                 <h3>📅 Event Details</h3>
                 <p><strong>Title:</strong> ${event.title}</p>
-                <p><strong>Description:</strong> ${event.description?.substring(0, 200)}${event.description?.length > 200 ? '...' : ''}</p>
-                <p><strong>Date:</strong> ${new Date(event.dates.startDate).toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+                <p><strong>Description:</strong> ${event.description?.substring(
+                  0,
+                  200
+                )}${event.description?.length > 200 ? "..." : ""}</p>
+                <p><strong>Date:</strong> ${new Date(
+                  event.dates.startDate
+                ).toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
                 })}</p>
-                <p><strong>Time:</strong> ${new Date(event.dates.startDate).toLocaleTimeString('en-US', { 
-                  hour: 'numeric', 
-                  minute: '2-digit', 
-                  hour12: true 
-                })} - ${new Date(event.dates.endDate).toLocaleTimeString('en-US', { 
-                  hour: 'numeric', 
-                  minute: '2-digit', 
-                  hour12: true 
-                })}</p>
-                ${event.location?.venueName ? `<p><strong>Location:</strong> ${event.location.venueName}, ${event.location.city}</p>` : ''}
-                <p><strong>Capacity:</strong> ${event.capacity || 'Unlimited'}</p>
-                <p><strong>Pricing:</strong> ${event.pricing?.isFree ? 'Free' : `$${event.pricing?.price || 0}`}</p>
+                <p><strong>Time:</strong> ${new Date(
+                  event.dates.startDate
+                ).toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                  hour12: true,
+                })} - ${new Date(event.dates.endDate).toLocaleTimeString(
+      "en-US",
+      {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }
+    )}</p>
+                ${
+                  event.location?.venueName
+                    ? `<p><strong>Location:</strong> ${event.location.venueName}, ${event.location.city}</p>`
+                    : ""
+                }
+                <p><strong>Capacity:</strong> ${
+                  event.capacity || "Unlimited"
+                }</p>
+                <p><strong>Pricing:</strong> ${
+                  event.pricing?.isFree
+                    ? "Free"
+                    : `$${event.pricing?.price || 0}`
+                }</p>
                 <p><strong>Status:</strong> <span style="color: #10b981; font-weight: 600;">✅ Published</span></p>
                 <p><strong>Event ID:</strong> ${event._id}</p>
               </div>
@@ -555,7 +641,7 @@ class EmailService {
       to: adminEmail,
       subject: `🔍 New Event Published: ${event.title} - Admin Review Required`,
       html,
-      headers: this.getSecurityHeaders()
+      headers: this.getSecurityHeaders(),
     };
 
     return this.transporter.sendMail(mailOptions);
@@ -565,12 +651,21 @@ class EmailService {
    * Send account creation email with temporary credentials
    * For auto-created accounts during direct checkout
    */
-  async sendAccountCreationEmail({ email, firstName, tempPassword, orderNumber }) {
+  async sendAccountCreationEmail({
+    email,
+    firstName,
+    tempPassword,
+    orderNumber,
+  }) {
     try {
       // Get app URL from environment (matches production config)
-      const appUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || process.env.BASE_URL || 'http://localhost:3001';
+      const appUrl =
+        process.env.FRONTEND_URL ||
+        process.env.CLIENT_URL ||
+        process.env.BASE_URL ||
+        "http://localhost:3001";
       const loginUrl = `${appUrl}/login`;
-      
+
       const html = `
       <!DOCTYPE html>
       <html lang="en">
@@ -891,14 +986,14 @@ class EmailService {
         to: email,
         subject: `Your Event-i Account - Order #${orderNumber}`,
         html,
-        headers: this.getSecurityHeaders()
+        headers: this.getSecurityHeaders(),
       };
 
       const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Account creation email sent:', result.messageId);
+      console.log("✅ Account creation email sent:", result.messageId);
       return result;
     } catch (error) {
-      console.error('❌ Error sending account creation email:', error);
+      console.error("❌ Error sending account creation email:", error);
       throw error;
     }
   }
@@ -909,27 +1004,28 @@ class EmailService {
   async sendTicketEmail({ order, tickets, customerEmail, customerName }) {
     try {
       // Generate ticket HTML rows
-      const ticketRows = tickets.map((ticket, index) => {
-        const event = ticket.eventId;
-        const eventDate = event?.dates?.startDate 
-          ? new Date(event.dates.startDate).toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })
-          : 'Date TBD';
+      const ticketRows = tickets
+        .map((ticket, index) => {
+          const event = ticket.eventId;
+          const eventDate = event?.dates?.startDate
+            ? new Date(event.dates.startDate).toLocaleDateString("en-US", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "Date TBD";
 
-        return `
+          return `
           <div style="background: white; border: 1px solid #667eea; border-radius: 6px; padding: 16px; margin: 12px 0;">
             <div style="margin-bottom: 12px;">
               <h3 style="margin: 0 0 4px 0; color: #333; font-size: 14px;">
                 ${ticket.ticketNumber}
               </h3>
               <p style="margin: 0; font-size: 14px; font-weight: 600; color: #667eea;">
-                ${event?.title || 'Event'}
+                ${event?.title || "Event"}
               </p>
               <p style="margin: 3px 0; color: #666; font-size: 12px;">
                 ${ticket.ticketType}
@@ -938,15 +1034,20 @@ class EmailService {
             
             <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 12px;">
               <p style="margin: 3px 0; color: #666; font-size: 12px;"><strong>Date:</strong> ${eventDate}</p>
-              <p style="margin: 3px 0; color: #666; font-size: 12px;"><strong>Venue:</strong> ${event?.location?.venueName || 'TBD'}</p>
-              <p style="margin: 3px 0; color: #666; font-size: 12px;"><strong>Attendee:</strong> ${ticket.holder.firstName} ${ticket.holder.lastName}</p>
+              <p style="margin: 3px 0; color: #666; font-size: 12px;"><strong>Venue:</strong> ${
+                event?.location?.venueName || "TBD"
+              }</p>
+              <p style="margin: 3px 0; color: #666; font-size: 12px;"><strong>Attendee:</strong> ${
+                ticket.holder.firstName
+              } ${ticket.holder.lastName}</p>
             </div>
             
             <div style="text-align: center; background: #fafafa; padding: 12px; border-radius: 4px;">
               <p style="margin: 0 0 8px 0; font-weight: 600; color: #333; font-size: 12px;">Entry QR Code</p>
-              ${ticket.qrCodeUrl 
-                ? `<img src="${ticket.qrCodeUrl}" alt="QR Code" style="max-width: 160px; border: 1px solid #667eea; border-radius: 4px;" />`
-                : '<p style="color: #666; font-size: 12px;">QR Code pending</p>'
+              ${
+                ticket.qrCodeUrl
+                  ? `<img src="${ticket.qrCodeUrl}" alt="QR Code" style="max-width: 160px; border: 1px solid #667eea; border-radius: 4px;" />`
+                  : '<p style="color: #666; font-size: 12px;">QR Code pending</p>'
               }
               <p style="margin: 8px 0 0 0; font-size: 11px; color: #888;">
                 Show this code at the entrance
@@ -954,7 +1055,8 @@ class EmailService {
             </div>
           </div>
         `;
-      }).join('');
+        })
+        .join("");
 
       const html = `
       <!DOCTYPE html>
@@ -1016,7 +1118,9 @@ class EmailService {
         <div class="container">
           <div class="header">
             <h1 style="margin: 0; font-size: 22px;">Event Tickets</h1>
-            <p style="margin: 6px 0; font-size: 13px;">Order #${order.orderNumber}</p>
+            <p style="margin: 6px 0; font-size: 13px;">Order #${
+              order.orderNumber
+            }</p>
           </div>
           
           <div class="content">
@@ -1025,10 +1129,20 @@ class EmailService {
             <p style="font-size: 14px; margin: 0 0 16px 0;">Your tickets are attached below. Present the QR code at the event entrance.</p>
             
             <div class="info-box" style="font-size: 12px;">
-              <p style="margin: 0; font-weight: 600;">Order #${order.orderNumber}</p>
-              ${order.payment?.mpesaReceiptNumber ? `<p style="margin: 4px 0 0 0;">M-PESA Receipt: ${order.payment.mpesaReceiptNumber}</p>` : ''}
-              <p style="margin: 4px 0 0 0;">Amount: ${order.pricing?.currency || 'KES'} ${order.totalAmount || order.pricing?.total}</p>
-              <p style="margin: 4px 0 0 0;">Tickets: ${tickets.length} × ${tickets[0]?.ticketType}</p>
+              <p style="margin: 0; font-weight: 600;">Order #${
+                order.orderNumber
+              }</p>
+              ${
+                order.payment?.mpesaReceiptNumber
+                  ? `<p style="margin: 4px 0 0 0;">M-PESA Receipt: ${order.payment.mpesaReceiptNumber}</p>`
+                  : ""
+              }
+              <p style="margin: 4px 0 0 0;">Amount: ${
+                order.pricing?.currency || "KES"
+              } ${order.totalAmount || order.pricing?.total}</p>
+              <p style="margin: 4px 0 0 0;">Tickets: ${tickets.length} × ${
+        tickets[0]?.ticketType
+      }</p>
             </div>
             
             <h2 style="color: #667eea; margin: 20px 0 12px 0; font-size: 16px;">Tickets</h2>
@@ -1045,7 +1159,12 @@ class EmailService {
             </div>
             
             <div style="text-align: center; margin: 20px 0;">
-              <a href="${process.env.FRONTEND_URL || process.env.CLIENT_URL || process.env.BASE_URL || 'http://localhost:3001'}/wallet" class="btn">
+              <a href="${
+                process.env.FRONTEND_URL ||
+                process.env.CLIENT_URL ||
+                process.env.BASE_URL ||
+                "http://localhost:3001"
+              }/wallet" class="btn">
                 View Tickets Online
               </a>
             </div>
@@ -1060,7 +1179,9 @@ class EmailService {
               <p style="margin: 3px 0; font-size: 11px;"><a href="mailto:gideonyuri15@gmail.com" style="color: #3A7DFF; text-decoration: none;">gideonyuri15@gmail.com</a></p>
               <p style="margin: 3px 0; font-size: 11px;"><a href="tel:+254703328938" style="color: #3A7DFF; text-decoration: none;">+254 703 328 938</a></p>
             </div>
-            <p style="margin-top: 12px; font-size: 11px;">Order #${order.orderNumber}</p>
+            <p style="margin-top: 12px; font-size: 11px;">Order #${
+              order.orderNumber
+            }</p>
             <p style="font-size: 11px;">© ${new Date().getFullYear()} Event-i</p>
           </div>
         </div>
@@ -1073,14 +1194,14 @@ class EmailService {
         to: customerEmail,
         subject: `Your Tickets - Order #${order.orderNumber}`,
         html,
-        headers: this.getSecurityHeaders()
+        headers: this.getSecurityHeaders(),
       };
 
       const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Ticket email sent:', result.messageId);
+      console.log("✅ Ticket email sent:", result.messageId);
       return result;
     } catch (error) {
-      console.error('❌ Error sending ticket email:', error);
+      console.error("❌ Error sending ticket email:", error);
       throw error;
     }
   }
