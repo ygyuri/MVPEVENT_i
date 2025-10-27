@@ -24,11 +24,31 @@
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    /* Smooth theme transitions */
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  html.theme-transitioning * {
+    transition: background-color 0.3s ease,
+                color 0.3s ease,
+                border-color 0.3s ease,
+                box-shadow 0.3s ease !important;
   }
   
   body {
-    @apply bg-gray-50 text-gray-900;
+    min-height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    /* Default background color for initial load - matches ModernBackground */
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    color: #111827;
   }
+  
+  /* Dark mode body transitions */
+  .dark body {
+    background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+    color: #f9fafb;
+  }
+  
 }
 
 @layer components {
@@ -56,9 +76,15 @@
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    z-index: 9999 !important;
+    z-index: 10000 !important;
     margin: 0 !important;
     padding: 0 !important;
+  }
+  
+  /* Ensure modal content is visible */
+  .modal-overlay > * {
+    position: relative;
+    z-index: 10001 !important;
   }
   
   /* User dropdown styling */
@@ -113,6 +139,36 @@
   }
   
   .dark .user-dropdown-logout:hover {
-    background: rgba(220, 38, 38, 0.1);
+    background: rgba(220, 38, 38 technical, 0.1);
   }
+}
+
+/* ===== THEME PERSISTENCE ENHANCEMENTS ===== */
+html {
+  color-scheme: light dark; /* Tell browser about theme */
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* Prevent flash of unstyled content on theme change */
+html.theme-transitioning {
+  transition: background-color 0.3s ease, color 0.3s ease !important;
+}
+
+/* Force smooth theme transitions on all elements */
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 0.3s ease !important;
+  transition: color 0.3s ease !important;
+  transition: border-color 0.3s ease !important;
+}
+
+/* Skip transitions for certain elements */
+html.theme-transitioning img,
+html.theme-transitioning svg,
+html.theme-transitioning video {
+  transition: none !important;
 } 

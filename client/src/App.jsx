@@ -1,34 +1,39 @@
-import React, { useEffect, useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { ThemeProvider } from './contexts/ThemeContext';
-import Navbar from './components/Navbar';
-import AuthModal from './components/AuthModal';
-import Home from './pages/Home';
-import Events from './pages/Events';
-import DirectCheckout from './pages/DirectCheckout';
-import PaymentStatus from './pages/PaymentStatus';
-import AuthTest from './pages/AuthTest';
-import UserProfile from './pages/UserProfile';
-import TicketWallet from './pages/TicketWallet';
-import Scanner from './pages/Scanner';
-import AdminScans from './pages/AdminScans';
-import EventQRSettings from './pages/EventQRSettings';
-import OrganizerDashboard from './pages/OrganizerDashboard';
-import EventCreate from './pages/EventCreate';
-import EventManagement from './pages/EventManagement';
-import AnalyticsDashboard from './pages/AnalyticsDashboard';
-import OrganizerCommissionSetup from './pages/OrganizerCommissionSetup';
-import AffiliateAnalytics from './pages/AffiliateAnalytics';
-import ReferralLinksManager from './pages/ReferralLinksManager';
-import UserPreferences from './pages/UserPreferences';
-import ReminderHistory from './pages/ReminderHistory';
-import PollsPage from './pages/PollsPage';
-import PollsTest from './pages/PollsTest';
-import { OrganizerUpdatesDashboard, AttendeeUpdatesView } from './pages/EventUpdates';
-import { getCurrentUser } from './store/slices/authSlice';
-import ErrorBoundary from './components/shared/ErrorBoundary';
-import { ToastProvider } from './components/shared/Toast';
+import React, { useEffect, useState } from "react";
+import { Routes, Route } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import AuthModal from "./components/AuthModal";
+import ModernBackground from "./components/common/ModernBackground";
+import Home from "./pages/Home";
+import Events from "./pages/Events";
+import DirectCheckout from "./pages/DirectCheckout";
+import PaymentStatus from "./pages/PaymentStatus";
+import AuthTest from "./pages/AuthTest";
+import UserProfile from "./pages/UserProfile";
+import TicketWallet from "./pages/TicketWallet";
+import Scanner from "./pages/Scanner";
+import AdminScans from "./pages/AdminScans";
+import EventQRSettings from "./pages/EventQRSettings";
+import OrganizerDashboard from "./pages/OrganizerDashboard";
+import EventCreate from "./pages/EventCreate";
+import EventManagement from "./pages/EventManagement";
+import AnalyticsDashboard from "./pages/AnalyticsDashboard";
+import OrganizerCommissionSetup from "./pages/OrganizerCommissionSetup";
+import AffiliateAnalytics from "./pages/AffiliateAnalytics";
+import ReferralLinksManager from "./pages/ReferralLinksManager";
+import UserPreferences from "./pages/UserPreferences";
+import ReminderHistory from "./pages/ReminderHistory";
+import PollsPage from "./pages/PollsPage";
+import PollsTest from "./pages/PollsTest";
+import {
+  OrganizerUpdatesDashboard,
+  AttendeeUpdatesView,
+} from "./pages/EventUpdates";
+import { getCurrentUser } from "./store/slices/authSlice";
+import ErrorBoundary from "./components/shared/ErrorBoundary";
+import { ToastProvider } from "./components/shared/Toast";
 
 function App() {
   const dispatch = useDispatch();
@@ -36,7 +41,7 @@ function App() {
 
   useEffect(() => {
     // Check if user is authenticated and load user data
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem("authToken");
     if (token) {
       dispatch(getCurrentUser());
     }
@@ -46,43 +51,77 @@ function App() {
     <ErrorBoundary>
       <ToastProvider>
         <ThemeProvider>
-          <div className="min-h-screen bg-web3-primary theme-transition">
-            <Navbar onOpenAuthModal={() => setIsAuthModalOpen(true)} />
-            <main>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/events" element={<Events />} />
-                <Route path="/events/:slug/checkout" element={<DirectCheckout />} />
-                <Route path="/payment/:orderId" element={<PaymentStatus />} />
-                <Route path="/auth-test" element={<AuthTest />} />
-                <Route path="/profile" element={<UserProfile />} />
-                <Route path="/wallet" element={<TicketWallet />} />
-                <Route path="/scanner" element={<Scanner />} />
-                <Route path="/admin/scans" element={<AdminScans />} />
-                <Route path="/organizer" element={<OrganizerDashboard />} />
-                <Route path="/organizer/dashboard" element={<OrganizerDashboard />} />
-                <Route path="/organizer/events" element={<EventManagement />} />
-                <Route path="/organizer/events/create" element={<EventCreate />} />
-                <Route path="/organizer/events/:eventId/edit" element={<EventCreate />} />
-                <Route path="/organizer/events/:eventId/qr-settings" element={<EventQRSettings />} />
-                <Route path="/organizer/events/:eventId/commission-setup" element={<OrganizerCommissionSetup />} />
-                {/* Analytics feature - temporarily hidden for production */}
-                {/* <Route path="/organizer/analytics" element={<AnalyticsDashboard />} /> */}
-                {/* Affiliate features - temporarily hidden for production */}
-                {/* <Route path="/affiliate-analytics" element={<AffiliateAnalytics />} /> */}
-                {/* <Route path="/affiliate/referral-links" element={<ReferralLinksManager />} /> */}
-                <Route path="/preferences/reminders" element={<UserPreferences />} />
-                <Route path="/reminders/history" element={<ReminderHistory />} />
-                {/* Updates features - temporarily hidden for production */}
-                {/* <Route path="/organizer/events/:eventId/updates" element={<OrganizerUpdatesDashboard />} /> */}
-                {/* <Route path="/events/:eventId/updates" element={<AttendeeUpdatesView />} /> */}
-                <Route path="/events/:eventId/polls" element={<PollsPage />} />
-                <Route path="/polls-test" element={<PollsTest />} />
-              </Routes>
-            </main>
-            <AuthModal 
-              isOpen={isAuthModalOpen} 
-              onClose={() => setIsAuthModalOpen(false)} 
+          <ModernBackground />
+          <div className="min-h-screen theme-transition relative">
+            <div className="relative z-10">
+              <Navbar onOpenAuthModal={() => setIsAuthModalOpen(true)} />
+              <main className="relative">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/events" element={<Events />} />
+                  <Route
+                    path="/events/:slug/checkout"
+                    element={<DirectCheckout />}
+                  />
+                  <Route path="/payment/:orderId" element={<PaymentStatus />} />
+                  <Route path="/auth-test" element={<AuthTest />} />
+                  <Route path="/profile" element={<UserProfile />} />
+                  <Route path="/wallet" element={<TicketWallet />} />
+                  <Route path="/scanner" element={<Scanner />} />
+                  <Route path="/admin/scans" element={<AdminScans />} />
+                  <Route path="/organizer" element={<OrganizerDashboard />} />
+                  <Route
+                    path="/organizer/dashboard"
+                    element={<OrganizerDashboard />}
+                  />
+                  <Route
+                    path="/organizer/events"
+                    element={<EventManagement />}
+                  />
+                  <Route
+                    path="/organizer/events/create"
+                    element={<EventCreate />}
+                  />
+                  <Route
+                    path="/organizer/events/:eventId/edit"
+                    element={<EventCreate />}
+                  />
+                  <Route
+                    path="/organizer/events/:eventId/qr-settings"
+                    element={<EventQRSettings />}
+                  />
+                  <Route
+                    path="/organizer/events/:eventId/commission-setup"
+                    element={<OrganizerCommissionSetup />}
+                  />
+                  {/* Analytics feature - temporarily hidden for production */}
+                  {/* <Route path="/organizer/analytics" element={<AnalyticsDashboard />} /> */}
+                  {/* Affiliate features - temporarily hidden for production */}
+                  {/* <Route path="/affiliate-analytics" element={<AffiliateAnalytics />} /> */}
+                  {/* <Route path="/affiliate/referral-links" element={<ReferralLinksManager />} /> */}
+                  <Route
+                    path="/preferences/reminders"
+                    element={<UserPreferences />}
+                  />
+                  <Route
+                    path="/reminders/history"
+                    element={<ReminderHistory />}
+                  />
+                  {/* Updates features - temporarily hidden for production */}
+                  {/* <Route path="/organizer/events/:eventId/updates" element={<OrganizerUpdatesDashboard />} /> */}
+                  {/* <Route path="/events/:eventId/updates" element={<AttendeeUpdatesView />} /> */}
+                  <Route
+                    path="/events/:eventId/polls"
+                    element={<PollsPage />}
+                  />
+                  <Route path="/polls-test" element={<PollsTest />} />
+                </Routes>
+              </main>
+              <Footer />
+            </div>
+            <AuthModal
+              isOpen={isAuthModalOpen}
+              onClose={() => setIsAuthModalOpen(false)}
             />
           </div>
         </ThemeProvider>

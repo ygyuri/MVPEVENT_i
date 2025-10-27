@@ -349,7 +349,7 @@ const DirectCheckout = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
+        <Loader2 className="w-12 h-12 animate-spin text-[#4f0f69]" />
       </div>
     );
   }
@@ -384,8 +384,9 @@ const DirectCheckout = () => {
   }
 
   return (
-    <div className={`min-h-screen py-8 px-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="max-w-4xl mx-auto">
+    <div className="relative min-h-screen">
+      <div className="section-modern">
+        <div className="container-modern max-w-5xl">
         
         {/* Success Message */}
         {success && (
@@ -431,22 +432,26 @@ const DirectCheckout = () => {
           </div>
 
           {/* Event Details */}
-          <div className="p-6 grid md:grid-cols-2 gap-4">
+          <div className="p-6 grid md:grid-cols-2 gap-6">
             <div className="flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-blue-500" />
+              <div className={`p-3 rounded-xl ${isDarkMode ? 'bg-[#4f0f69]/20' : 'bg-[#4f0f69]/10'}`}>
+                <Calendar className="w-6 h-6 text-[#4f0f69] dark:text-[#8A4FFF]" />
+              </div>
               <div>
-                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Date</p>
-                <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <p className={`text-xs font-semibold uppercase tracking-wide ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Date & Time</p>
+                <p className={`font-semibold text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   {formatDate(event?.dates?.startDate)}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <MapPin className="w-5 h-5 text-blue-500" />
+              <div className={`p-3 rounded-xl ${isDarkMode ? 'bg-[#4f0f69]/20' : 'bg-[#4f0f69]/10'}`}>
+                <MapPin className="w-6 h-6 text-[#4f0f69] dark:text-[#8A4FFF]" />
+              </div>
               <div>
-                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Venue</p>
-                <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <p className={`text-xs font-semibold uppercase tracking-wide ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Venue</p>
+                <p className={`font-semibold text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   {event?.location?.venueName || 'TBD'}
                 </p>
               </div>
@@ -463,9 +468,11 @@ const DirectCheckout = () => {
             isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
           }`}
         >
-          <div className="flex items-center gap-3 mb-6">
-            <Ticket className="w-6 h-6 text-blue-500" />
-            <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+          <div className="flex items-center gap-3 mb-8">
+            <div className={`p-3 rounded-xl ${isDarkMode ? 'bg-[#4f0f69]/20' : 'bg-[#4f0f69]/10'}`}>
+              <Ticket className="w-7 h-7 text-[#4f0f69] dark:text-[#8A4FFF]" />
+            </div>
+            <h2 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
               Complete Your Purchase
             </h2>
           </div>
@@ -497,10 +504,10 @@ const DirectCheckout = () => {
                       className={`w-full px-4 py-3 rounded-lg border appearance-none ${
                         touchedFields.ticketType && validationErrors.ticketType
                           ? 'border-red-500 focus:ring-red-500'
-                          : isDarkMode 
-                            ? 'bg-gray-900 border-gray-600 text-white focus:ring-blue-500' 
-                            : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
-                      } focus:ring-2 focus:border-transparent transition-all pr-10`}
+                          : isDarkMode
+                            ? 'bg-gray-900 border-gray-600 text-white focus:ring-[#4f0f69]/50'
+                            : 'bg-white border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20'
+                      } focus:ring-2 focus:border-[#4f0f69] transition-all pr-10`}
                     >
                       {event.ticketTypes.map((ticket, index) => (
                         <option key={ticket.name || index} value={ticket.name}>
@@ -546,10 +553,10 @@ const DirectCheckout = () => {
                   className={`p-3 rounded-lg border transition-all ${
                     formData.quantity <= 1
                       ? 'opacity-50 cursor-not-allowed'
-                      : 'hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                      : 'hover:bg-[#4f0f69]/10 dark:hover:bg-[#4f0f69]/20'
                   } ${
-                    isDarkMode 
-                      ? 'bg-gray-900 border-gray-600 text-white' 
+                    isDarkMode
+                      ? 'bg-gray-900 border-gray-600 text-white'
                       : 'bg-white border-gray-300 text-gray-900'
                   }`}
                 >
@@ -567,10 +574,10 @@ const DirectCheckout = () => {
                   className={`p-3 rounded-lg border transition-all ${
                     formData.quantity >= 20
                       ? 'opacity-50 cursor-not-allowed'
-                      : 'hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                      : 'hover:bg-[#4f0f69]/10 dark:hover:bg-[#4f0f69]/20'
                   } ${
-                    isDarkMode 
-                      ? 'bg-gray-900 border-gray-600 text-white' 
+                    isDarkMode
+                      ? 'bg-gray-900 border-gray-600 text-white'
                       : 'bg-white border-gray-300 text-gray-900'
                   }`}
                 >
@@ -607,10 +614,10 @@ const DirectCheckout = () => {
                 className={`w-full px-4 py-3 rounded-lg border ${
                   touchedFields.fullName && validationErrors.fullName
                     ? 'border-red-500 focus:ring-red-500'
-                    : isDarkMode 
-                      ? 'bg-gray-900 border-gray-600 text-white focus:ring-blue-500' 
-                      : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
-                } focus:ring-2 focus:border-transparent transition-all`}
+                    : isDarkMode
+                      ? 'bg-gray-900 border-gray-600 text-white focus:ring-[#4f0f69]/50'
+                      : 'bg-white border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20'
+                } focus:ring-2 focus:border-[#4f0f69] transition-all`}
               />
               <AnimatePresence>
                 {touchedFields.fullName && validationErrors.fullName && (
@@ -644,10 +651,10 @@ const DirectCheckout = () => {
                 className={`w-full px-4 py-3 rounded-lg border ${
                   touchedFields.email && validationErrors.email
                     ? 'border-red-500 focus:ring-red-500'
-                    : isDarkMode 
-                      ? 'bg-gray-900 border-gray-600 text-white focus:ring-blue-500' 
-                      : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
-                } focus:ring-2 focus:border-transparent transition-all`}
+                    : isDarkMode
+                      ? 'bg-gray-900 border-gray-600 text-white focus:ring-[#4f0f69]/50'
+                      : 'bg-white border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20'
+                } focus:ring-2 focus:border-[#4f0f69] transition-all`}
               />
               <AnimatePresence>
                 {touchedFields.email && validationErrors.email && (
@@ -675,10 +682,10 @@ const DirectCheckout = () => {
                     value={countryCode}
                     onChange={(e) => setCountryCode(e.target.value)}
                     className={`w-full px-3 py-3 rounded-lg border appearance-none ${
-                      isDarkMode 
-                        ? 'bg-gray-900 border-gray-600 text-white focus:ring-blue-500' 
-                        : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
-                    } focus:ring-2 focus:border-transparent transition-all pr-8`}
+                      isDarkMode
+                        ? 'bg-gray-900 border-gray-600 text-white focus:ring-[#4f0f69]/50'
+                        : 'bg-white border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20'
+                    } focus:ring-2 focus:border-[#4f0f69] transition-all pr-8`}
                   >
                     {countryCodes.map((item) => (
                       <option key={item.code} value={item.code}>
@@ -703,10 +710,10 @@ const DirectCheckout = () => {
                     className={`w-full px-4 py-3 rounded-lg border ${
                       touchedFields.phone && validationErrors.phone
                         ? 'border-red-500 focus:ring-red-500'
-                        : isDarkMode 
-                          ? 'bg-gray-900 border-gray-600 text-white focus:ring-blue-500' 
-                          : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500'
-                    } focus:ring-2 focus:border-transparent transition-all`}
+                        : isDarkMode
+                          ? 'bg-gray-900 border-gray-600 text-white focus:ring-[#4f0f69]/50'
+                          : 'bg-white border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20'
+                    } focus:ring-2 focus:border-[#4f0f69] transition-all`}
                   />
                 </div>
               </div>
@@ -732,21 +739,23 @@ const DirectCheckout = () => {
             </div>
 
             {/* Price Summary */}
-            <div className={`p-4 rounded-lg ${
-              isDarkMode ? 'bg-blue-900/20 border border-blue-500/30' : 'bg-blue-50 border border-blue-200'
+            <div className={`p-6 rounded-xl border-2 ${
+              isDarkMode ? 'bg-[#4f0f69]/10 border-[#4f0f69]/30' : 'bg-[#4f0f69]/5 border-[#4f0f69]/20'
             }`}>
               <div className="flex justify-between items-center">
                 <div>
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Amount</p>
-                  <p className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <p className={`text-sm font-semibold uppercase tracking-wide ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Amount</p>
+                  <p className={`text-4xl font-bold mt-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                     {getCurrency()} {getTotalPrice().toLocaleString()}
                   </p>
+                  <p className={`text-sm mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {formData.quantity} ticket{formData.quantity > 1 ? 's' : ''} × {getCurrency()} {getSelectedTicketPrice().toLocaleString()}
+                  </p>
                 </div>
-                <ShoppingCart className="w-8 h-8 text-blue-500" />
+                <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-[#4f0f69]/20' : 'bg-[#4f0f69]/10'}`}>
+                  <ShoppingCart className="w-10 h-10 text-[#4f0f69] dark:text-[#8A4FFF]" />
+                </div>
               </div>
-              <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                {formData.quantity} ticket{formData.quantity > 1 ? 's' : ''} × {getCurrency()} {getSelectedTicketPrice().toLocaleString()}
-              </p>
             </div>
 
             {/* Error Message */}
@@ -767,10 +776,10 @@ const DirectCheckout = () => {
             <button
               type="submit"
               disabled={submitting || success}
-              className={`w-full py-4 rounded-lg font-semibold flex items-center justify-center gap-3 transition-all ${
+              className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-lg ${
                 submitting || success
                   ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transform hover:scale-105'
+                  : 'bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] hover:from-[#6b1a8a] hover:to-[#8A4FFF] text-white transform hover:scale-[1.02] hover:shadow-xl'
               }`}
             >
               {submitting ? (
@@ -792,6 +801,7 @@ const DirectCheckout = () => {
             </button>
           </form>
         </motion.div>
+        </div>
       </div>
     </div>
   );

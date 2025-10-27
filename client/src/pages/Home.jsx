@@ -1,8 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { motion } from 'framer-motion'
-import { fetchFeaturedEvents, fetchTrendingEvents, fetchSuggestedEvents } from '../store/slices/eventsSlice'
-import EventCard from '../components/EventCard'
+import { useEffect, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { motion } from "framer-motion";
+import {
+  fetchFeaturedEvents,
+  fetchTrendingEvents,
+  fetchSuggestedEvents,
+} from "../store/slices/eventsSlice";
+import EventCard from "../components/EventCard";
+import ViewMoreButton from "../components/common/ViewMoreButton";
 
 const EmptyList = ({ loading, text }) => {
   if (loading) {
@@ -16,50 +21,51 @@ const EmptyList = ({ loading, text }) => {
           <span>Loading…</span>
         </div>
       </div>
-    )
+    );
   }
   return (
     <div className="min-h-[20vh] grid place-items-center">
       <p className="text-web3-secondary">{text}</p>
     </div>
-  )
-}
+  );
+};
 
 const Home = () => {
-  const dispatch = useDispatch()
-  const { featuredEvents, trendingEvents, suggestedEvents, loading, featuredMeta, suggestedMeta } = useSelector(state => state.events)
-  const didFetchRef = useRef(false)
-  const [featuredPage, setFeaturedPage] = useState(1)
-  const [suggestedPage, setSuggestedPage] = useState(1)
+  const dispatch = useDispatch();
+  const {
+    featuredEvents,
+    trendingEvents,
+    suggestedEvents,
+    loading,
+    featuredMeta,
+    suggestedMeta,
+  } = useSelector((state) => state.events);
+  const didFetchRef = useRef(false);
+  const [featuredPage, setFeaturedPage] = useState(1);
+  const [suggestedPage, setSuggestedPage] = useState(1);
 
   useEffect(() => {
-    if (didFetchRef.current) return
-    didFetchRef.current = true
-    dispatch(fetchFeaturedEvents({ page: 1, pageSize: 12 }))
-    dispatch(fetchTrendingEvents())
-    dispatch(fetchSuggestedEvents({ page: 1, pageSize: 12 }))
-  }, [dispatch])
+    if (didFetchRef.current) return;
+    didFetchRef.current = true;
+    dispatch(fetchFeaturedEvents({ page: 1, pageSize: 12 }));
+    dispatch(fetchTrendingEvents());
+    dispatch(fetchSuggestedEvents({ page: 1, pageSize: 12 }));
+  }, [dispatch]);
 
   const loadMoreFeatured = () => {
-    const nextPage = featuredPage + 1
-    setFeaturedPage(nextPage)
-    dispatch(fetchFeaturedEvents({ page: nextPage, pageSize: 12 }))
-  }
+    const nextPage = featuredPage + 1;
+    setFeaturedPage(nextPage);
+    dispatch(fetchFeaturedEvents({ page: nextPage, pageSize: 12 }));
+  };
 
   const loadMoreSuggested = () => {
-    const nextPage = suggestedPage + 1
-    setSuggestedPage(nextPage)
-    dispatch(fetchSuggestedEvents({ page: nextPage, pageSize: 12 }))
-  }
+    const nextPage = suggestedPage + 1;
+    setSuggestedPage(nextPage);
+    dispatch(fetchSuggestedEvents({ page: nextPage, pageSize: 12 }));
+  };
 
   return (
     <div className="relative">
-      {/* Background Accents */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 h-64 w-64 rounded-full bg-blob-primary blur-3xl blob-glow" />
-        <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-blob-secondary blur-3xl blob-glow" />
-      </div>
-
       {/* Hero */}
       <section className="hero-modern relative">
         <div className="container-modern">
@@ -78,7 +84,8 @@ const Home = () => {
               transition={{ delay: 0.15, duration: 0.4 }}
               className="mt-4 text-lg md:text-xl text-web3-secondary"
             >
-              A modern web3 way to explore events you love so much — curated feeds, real-time trends, and more.
+              A modern web3 way to explore events you love so much — curated
+              feeds, real-time trends, and more.
             </motion.p>
           </div>
         </div>
@@ -90,7 +97,9 @@ const Home = () => {
           {/* Featured */}
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-web3-primary">Recently Published</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-web3-primary">
+                Recently Published
+              </h2>
             </div>
             {featuredEvents?.length ? (
               <>
@@ -99,17 +108,12 @@ const Home = () => {
                     <EventCard key={e.id || idx} event={e} index={idx % 9} />
                   ))}
                 </div>
-                {featuredMeta?.hasMore && (
-                  <div className="flex justify-center mt-8">
-                    <button
-                      onClick={loadMoreFeatured}
-                      disabled={loading}
-                      className="px-6 py-3 bg-web3-accent text-white rounded-lg font-medium hover:bg-web3-accent/90 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loading ? 'Loading...' : 'Load More Events'}
-                    </button>
-                  </div>
-                )}
+                <ViewMoreButton
+                  onClick={loadMoreFeatured}
+                  isLoading={loading}
+                  hasMore={featuredMeta?.hasMore}
+                  text="Load More Events"
+                />
               </>
             ) : (
               <EmptyList loading={loading} text="No recent events right now" />
@@ -119,7 +123,9 @@ const Home = () => {
           {/* Trending */}
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-web3-primary">Trending Now</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-web3-primary">
+                Trending Now
+              </h2>
             </div>
             {trendingEvents?.length ? (
               <div className="grid-modern">
@@ -128,14 +134,19 @@ const Home = () => {
                 ))}
               </div>
             ) : (
-              <EmptyList loading={loading} text="No trending events right now" />
+              <EmptyList
+                loading={loading}
+                text="No trending events right now"
+              />
             )}
           </div>
 
           {/* Suggested */}
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-web3-primary">Suggested For You</h2>
+              <h2 className="text-2xl md:text-3xl font-bold text-web3-primary">
+                Suggested For You
+              </h2>
             </div>
             {suggestedEvents?.length ? (
               <>
@@ -144,26 +155,24 @@ const Home = () => {
                     <EventCard key={e.id || idx} event={e} index={idx % 9} />
                   ))}
                 </div>
-                {suggestedMeta?.hasMore && (
-                  <div className="flex justify-center mt-8">
-                    <button
-                      onClick={loadMoreSuggested}
-                      disabled={loading}
-                      className="px-6 py-3 bg-web3-accent text-white rounded-lg font-medium hover:bg-web3-accent/90 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loading ? 'Loading...' : 'Load More Suggestions'}
-                    </button>
-                  </div>
-                )}
+                <ViewMoreButton
+                  onClick={loadMoreSuggested}
+                  isLoading={loading}
+                  hasMore={suggestedMeta?.hasMore}
+                  text="Load More Suggestions"
+                />
               </>
             ) : (
-              <EmptyList loading={loading} text="Sign up to get personalized event suggestions" />
+              <EmptyList
+                loading={loading}
+                text="Sign up to get personalized event suggestions"
+              />
             )}
           </div>
         </div>
       </section>
     </div>
-  )
-}
+  );
+};
 
-export default Home 
+export default Home;

@@ -14,12 +14,20 @@ export const useTheme = () => {
 
 export const ThemeProvider = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check localStorage first, then system preference
+    // Check localStorage first
     const saved = localStorage.getItem("theme");
-    if (saved) {
-      return saved === "dark";
+    if (saved === "dark") return true;
+    if (saved === "light") return false;
+
+    // If no saved preference, detect system preference
+    if (saved === "auto" || !saved) {
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      return prefersDark;
     }
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+    return false; // Default to light
   });
 
   const [isAutoMode, setIsAutoMode] = useState(() => {
@@ -45,15 +53,26 @@ export const ThemeProvider = ({ children }) => {
   const effectiveDarkMode = getEffectiveTheme();
 
   useEffect(() => {
-    // Save theme preference to localStorage
+    // Save theme preference to localStorage IMMEDIATELY
     if (isAutoMode) {
       localStorage.setItem("theme", "auto");
     } else {
       localStorage.setItem("theme", isDarkMode ? "dark" : "light");
     }
 
-    // Apply theme to document
-    document.documentElement.classList.toggle("dark", effectiveDarkMode);
+    // Apply theme class with transition
+    const html = document.documentElement;
+    const wasDark = html.classList.contains("dark");
+
+    if (wasDark !== effectiveDarkMode) {
+      // Add transition class temporarily for smooth theme switch
+      html.classList.add("theme-transitioning");
+      setTimeout(() => {
+        html.classList.remove("theme-transitioning");
+      }, 300);
+    }
+
+    html.classList.toggle("dark", effectiveDarkMode);
 
     // Update CSS custom properties
     updateThemeColors(effectiveDarkMode);
@@ -76,41 +95,31 @@ export const ThemeProvider = ({ children }) => {
 
   const updateThemeColors = (darkMode) => {
     const root = document.documentElement;
+    const body = document.body;
 
     if (darkMode) {
-      // Dark mode - Blue Web3 feel
-      root.style.setProperty(
-        "--bg-primary",
-        "linear-gradient(135deg, #111827 0%, #1E3A8A 50%, #111827 100%)"
-      );
-      root.style.setProperty(
-        "--bg-secondary",
-        "linear-gradient(135deg, #111827 0%, #1E40AF 50%, #111827 100%)"
-      );
-      root.style.setProperty("--bg-card", "rgba(255, 255, 255, 0.05)");
-      root.style.setProperty("--bg-card-hover", "rgba(255, 255, 255, 0.08)");
-      root.style.setProperty("--text-primary", "#FFFFFF");
-      root.style.setProperty("--text-secondary", "#E5E7EB");
-      root.style.setProperty("--text-muted", "#9CA3AF");
-      root.style.setProperty("--card-border", "rgba(255, 255, 255, 0.1)");
-      root.style.setProperty("--card-hover-border", "rgba(59, 130, 246, 0.2)");
+      // Dark mode - Rich dark with blue accents
+      root.style.setProperty("--text-primary", "#f9fafb"); // Almost white
+      root.style.setProperty("--text-secondary", "#e5e7eb"); // Light gray
+      root.style.setProperty("--text-muted", "#9ca3af"); // Medium gray
+      body.style.color = "#f9fafb";
     } else {
-      // Light mode - White Web3 feel
-      root.style.setProperty(
-        "--bg-primary",
-        "linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 50%, #FFFFFF 100%)"
-      );
-      root.style.setProperty(
-        "--bg-secondary",
-        "linear-gradient(135deg, #FFFFFF 0%, #F1F5F9 50%, #FFFFFF 100%)"
-      );
-      root.style.setProperty("--bg-card", "rgba(255, 255, 255, 0.8)");
-      root.style.setProperty("--bg-card-hover", "rgba(255, 255, 255, 0.9)");
-      root.style.setProperty("--text-primary", "#1E293B");
-      root.style.setProperty("--text-secondary", "#475569");
-      root.style.setProperty("--text-muted", "#64748B");
-      root.style.setProperty("--card-border", "rgba(59, 130, 246, 0.1)");
-      root.style.setProperty("--card-hover-border", "rgba(59, 130, 246, 0.2)");
+      // Light mode - Dark text on light background
+      root.style.setProperty("--text-primary", "#111827"); // Near black
+      root.style.setProperty("--text-secondary", "#374151"); // Dark gray
+      root.style.setProperty("--text-muted", "#6b7280"); // Medium gray
+      body.style.color = "#111827";
+    }
+
+    // Set theme color for meta tag
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute("content", darkMode ? "#0f172a" : "#ffffff");
+    } else {
+      const meta = document.createElement("meta");
+      meta.name = "theme-color";
+      meta.content = darkMode ? "#0f172a" : "#ffffff";
+      document.head.appendChild(meta);
     }
   };
 

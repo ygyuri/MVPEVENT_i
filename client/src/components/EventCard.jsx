@@ -86,14 +86,14 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
       onClick={openDetails}
     >
       {/* Premium Background Effects */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 dark:from-blue-900/20 dark:via-transparent dark:to-purple-900/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#4f0f69]/10 via-transparent to-[#8A4FFF]/10 dark:from-[#4f0f69]/20 dark:via-transparent dark:to-[#8A4FFF]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
       {/* Floating Particles Effect */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(6)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-1 h-1 bg-blue-400/30 rounded-full"
+            className="absolute w-1 h-1 bg-[#8A4FFF]/30 rounded-full"
             initial={{
               x: Math.random() * 300,
               y: Math.random() * 200,
@@ -173,7 +173,7 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
           }}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          className="p-2.5 rounded-full bg-white/90 dark:bg-gray-800/90 text-gray-600 dark:text-gray-300 hover:bg-blue-500 hover:text-white backdrop-blur-md shadow-lg transition-all duration-300"
+          className="p-2.5 rounded-full bg-white/90 dark:bg-gray-800/90 text-gray-600 dark:text-gray-300 hover:bg-[#4f0f69] hover:text-white backdrop-blur-md shadow-lg transition-all duration-300"
         >
           <Share2 className="w-4 h-4" />
         </motion.button>
@@ -210,7 +210,7 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
         {/* Image Overlay Effects */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#4f0f69]/10 via-transparent to-[#8A4FFF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
         {/* Bottom Left - Category */}
         <div className="absolute bottom-4 left-4">
@@ -262,7 +262,7 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300 leading-tight"
+          className="text-xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-2 group-hover:text-[#4f0f69] dark:group-hover:text-[#8A4FFF] transition-colors duration-300 leading-tight"
         >
           {event.title}
         </motion.h3>
@@ -286,20 +286,20 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
         >
           <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
             <div className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4 text-blue-500" />
+              <Calendar className="w-4 h-4 text-[#4f0f69] dark:text-[#8A4FFF]" />
               <span className="font-semibold">
                 {formatDate(event.startDate)}
               </span>
             </div>
             <span className="mx-2 text-gray-400">•</span>
             <div className="flex items-center space-x-1">
-              <Clock className="w-4 h-4 text-blue-500" />
+              <Clock className="w-4 h-4 text-[#4f0f69] dark:text-[#8A4FFF]" />
               <span>{formatTime(event.startDate)}</span>
             </div>
           </div>
 
           <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-            <MapPin className="w-4 h-4 text-blue-500 mr-2" />
+            <MapPin className="w-4 h-4 text-[#4f0f69] dark:text-[#8A4FFF] mr-2" />
             <span className="truncate font-medium">
               {event.venueName}, {event.city}
             </span>
@@ -307,7 +307,7 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
 
           {event.attendees && (
             <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-              <Users className="w-4 h-4 text-blue-500 mr-2" />
+              <Users className="w-4 h-4 text-[#4f0f69] dark:text-[#8A4FFF] mr-2" />
               <span className="font-medium">
                 {event.attendees.length} attending
               </span>
@@ -371,7 +371,7 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
             }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2"
+            className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] hover:from-[#6b1a8a] hover:to-[#8A4FFF] rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2"
           >
             <Eye className="w-4 h-4" />
             <span>View Details</span>
@@ -380,7 +380,7 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
       </div>
 
       {/* Premium Hover Glow Effect */}
-      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-[#4f0f69]/20 via-[#8A4FFF]/20 to-[#6b1a8a]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
     </motion.div>
   );
 };

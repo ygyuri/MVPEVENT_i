@@ -84,14 +84,14 @@ const getAllowedOrigins = () => {
     "http://localhost:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001"
+    "http://127.0.0.1:3001",
   ];
 
   // Add production domains from environment
   if (process.env.FRONTEND_URL) {
     baseOrigins.push(process.env.FRONTEND_URL);
   }
-  
+
   if (process.env.BASE_URL) {
     baseOrigins.push(process.env.BASE_URL);
   }
@@ -101,7 +101,7 @@ const getAllowedOrigins = () => {
     "https://event-i.co.ke",
     "https://www.event-i.co.ke",
     "https://eventi.co.ke",
-    "https://www.eventi.co.ke"
+    "https://www.eventi.co.ke",
   ];
 
   // Only add production domains if we're in production
@@ -125,19 +125,19 @@ if (process.env.NODE_ENV !== "production") {
 } else {
   // In production, use strict allowlist with environment-aware domains
   const allowedOrigins = getAllowedOrigins();
-  
+
   console.log("🔒 CORS Configuration - Allowed Origins:", allowedOrigins);
-  
+
   app.use(
     cors({
       origin: (origin, callback) => {
         // Allow requests with no origin (mobile apps, Postman, etc.)
         if (!origin) return callback(null, true);
-        
+
         if (allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
-        
+
         console.warn(`🚫 CORS blocked request from origin: ${origin}`);
         return callback(new Error(`Origin ${origin} not allowed by CORS`));
       },
@@ -153,7 +153,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 // Request logging middleware (production-safe)
 app.use((req, res, next) => {
   const startTime = Date.now();
-  
+
   // Log incoming request
   if (process.env.NODE_ENV === "production") {
     // Minimal logging in production
@@ -161,25 +161,29 @@ app.use((req, res, next) => {
   } else {
     // Detailed logging in development
     console.log(`📥 [REQUEST] ${req.method} ${req.path}`, {
-      origin: req.get('origin'),
-      userAgent: req.get('user-agent')?.substring(0, 50)
+      origin: req.get("origin"),
+      userAgent: req.get("user-agent")?.substring(0, 50),
     });
   }
-  
+
   // Log response when finished
   const originalSend = res.send;
-  res.send = function(data) {
+  res.send = function (data) {
     const responseTime = Date.now() - startTime;
-    
+
     if (res.statusCode >= 400) {
-      console.error(`📤 [RESPONSE] ${req.method} ${req.path} - ${res.statusCode} (${responseTime}ms)`);
+      console.error(
+        `📤 [RESPONSE] ${req.method} ${req.path} - ${res.statusCode} (${responseTime}ms)`
+      );
     } else if (process.env.NODE_ENV !== "production") {
-      console.log(`📤 [RESPONSE] ${req.method} ${req.path} - ${res.statusCode} (${responseTime}ms)`);
+      console.log(
+        `📤 [RESPONSE] ${req.method} ${req.path} - ${res.statusCode} (${responseTime}ms)`
+      );
     }
-    
+
     return originalSend.call(this, data);
   };
-  
+
   next();
 });
 
@@ -218,17 +222,23 @@ if (process.env.NODE_ENV !== "production") {
 // Database connections
 const { connectMongoDB, connectRedis } = require("./config/database");
 const databaseIndexes = require("./services/databaseIndexes");
-const { seedProductionData, shouldSeed } = require("./scripts/productionSeeder");
+const {
+  seedProductionData,
+  shouldSeed,
+} = require("./scripts/productionSeeder");
 
 // Connect to databases with enhanced logging
 const initializeDatabases = async () => {
   console.log("💾 [DATABASE] Initializing database connections...");
-  
+
   // Log sanitized MongoDB URI with more details
   const mongoUri = process.env.MONGODB_URI || "not set";
-  const sanitizedMongoUri = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, "//***:***@");
+  const sanitizedMongoUri = mongoUri.replace(
+    /\/\/([^:]+):([^@]+)@/,
+    "//***:***@"
+  );
   console.log("💾 [DATABASE] MongoDB URI:", sanitizedMongoUri);
-  
+
   // Log MongoDB connection details for debugging
   if (mongoUri !== "not set") {
     try {
@@ -237,13 +247,13 @@ const initializeDatabases = async () => {
         host: url.hostname,
         port: url.port,
         database: url.pathname.substring(1),
-        authSource: url.searchParams.get('authSource') || 'default'
+        authSource: url.searchParams.get("authSource") || "default",
       });
     } catch (e) {
       console.warn("⚠️ [DATABASE] Could not parse MongoDB URI:", e.message);
     }
   }
-  
+
   try {
     await connectMongoDB();
     console.log("✅ [DATABASE] MongoDB connected successfully");
@@ -251,7 +261,7 @@ const initializeDatabases = async () => {
     console.error("❌ [DATABASE] MongoDB connection failed:", {
       message: error.message,
       code: error.code,
-      name: error.name
+      name: error.name,
     });
     throw error;
   }
@@ -262,7 +272,7 @@ const initializeDatabases = async () => {
   } catch (error) {
     console.warn("⚠️ [DATABASE] Redis connection failed:", {
       message: error.message,
-      code: error.code
+      code: error.code,
     });
     // Don't throw - Redis is optional
   }
@@ -272,7 +282,10 @@ const initializeDatabases = async () => {
     await databaseIndexes.createAnalyticsIndexes();
     console.log("✅ [DATABASE] Analytics indexes created");
   } catch (error) {
-    console.warn("⚠️ [DATABASE] Failed to create analytics indexes:", error.message);
+    console.warn(
+      "⚠️ [DATABASE] Failed to create analytics indexes:",
+      error.message
+    );
   }
 
   // Seed production data (event categories, etc.)
@@ -283,7 +296,10 @@ const initializeDatabases = async () => {
       if (seedResult.success) {
         console.log("✅ [DATABASE] Production data seeded successfully");
       } else {
-        console.warn("⚠️ [DATABASE] Production seeding failed:", seedResult.error);
+        console.warn(
+          "⚠️ [DATABASE] Production seeding failed:",
+          seedResult.error
+        );
       }
     }
   } catch (error) {
@@ -302,16 +318,16 @@ if (process.env.NODE_ENV !== "test") {
 app.get("/api/health", async (req, res) => {
   const mongoose = require("mongoose");
   const startTime = Date.now();
-  
+
   // Check MongoDB connection with detailed status
   const mongoStatus = mongoose.connection.readyState;
   const mongoStatusMap = {
     0: "disconnected",
     1: "connected",
     2: "connecting",
-    3: "disconnecting"
+    3: "disconnecting",
   };
-  
+
   // Get MongoDB connection details
   const mongoDetails = {
     readyState: mongoStatus,
@@ -319,9 +335,9 @@ app.get("/api/health", async (req, res) => {
     host: mongoose.connection.host || "unknown",
     port: mongoose.connection.port || "unknown",
     name: mongoose.connection.name || "unknown",
-    user: mongoose.connection.user || "unknown"
+    user: mongoose.connection.user || "unknown",
   };
-  
+
   // Check Redis connection
   let redisStatus = "unknown";
   try {
@@ -330,9 +346,9 @@ app.get("/api/health", async (req, res) => {
   } catch (error) {
     redisStatus = "error";
   }
-  
+
   const responseTime = Date.now() - startTime;
-  
+
   const health = {
     status: mongoStatus === 1 ? "ok" : "degraded",
     message: "Event-i API Health Check",
@@ -344,20 +360,22 @@ app.get("/api/health", async (req, res) => {
     services: {
       mongodb: mongoDetails,
       redis: {
-        status: redisStatus
-      }
+        status: redisStatus,
+      },
     },
     memory: {
-      heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + " MB",
-      heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + " MB",
-      rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + " MB"
+      heapUsed:
+        Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + " MB",
+      heapTotal:
+        Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + " MB",
+      rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + " MB",
     },
-    responseTime: responseTime + "ms"
+    responseTime: responseTime + "ms",
   };
-  
+
   // Return 503 if MongoDB is not connected
   const statusCode = mongoStatus === 1 ? 200 : 503;
-  
+
   res.status(statusCode).json(health);
 });
 
@@ -367,18 +385,18 @@ if (process.env.NODE_ENV === "production") {
     try {
       console.log("🌱 [ADMIN] Manual seeding triggered via API");
       const seedResult = await seedProductionData();
-      
+
       if (seedResult.success) {
         res.json({
           success: true,
           message: "Production data seeded successfully",
-          data: seedResult
+          data: seedResult,
         });
       } else {
         res.status(500).json({
           success: false,
           message: "Seeding failed",
-          error: seedResult.error
+          error: seedResult.error,
         });
       }
     } catch (error) {
@@ -386,7 +404,7 @@ if (process.env.NODE_ENV === "production") {
       res.status(500).json({
         success: false,
         message: "Seeding error",
-        error: error.message
+        error: error.message,
       });
     }
   });
@@ -475,7 +493,6 @@ app.use("/api/events", eventRoutes);
 const commissionConfigRoutes = require("./routes/commission-config");
 app.use("/api", commissionConfigRoutes);
 
-
 // Initialize Socket.io server with Redis adapter (skip in tests)
 let httpServer;
 if (process.env.NODE_ENV !== "test") {
@@ -500,23 +517,23 @@ app.use((error, req, res, next) => {
     stack: error.stack,
     url: req.url,
     method: req.method,
-    origin: req.get('origin'),
-    userAgent: req.get('user-agent'),
-    timestamp: new Date().toISOString()
+    origin: req.get("origin"),
+    userAgent: req.get("user-agent"),
+    timestamp: new Date().toISOString(),
   });
 
   // Don't leak error details in production
   if (process.env.NODE_ENV === "production") {
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Internal server error",
-      message: "Something went wrong. Please try again later."
+      message: "Something went wrong. Please try again later.",
     });
   } else {
-    res.status(500).json({ 
+    res.status(500).json({
       error: error.message,
       stack: error.stack,
       url: req.url,
-      method: req.method
+      method: req.method,
     });
   }
 });
@@ -534,27 +551,41 @@ if (process.env.NODE_ENV !== "test") {
     console.log("\n" + "=".repeat(60));
     console.log("🚀 [SERVER] Event-i Server Started Successfully!");
     console.log("=".repeat(60));
-    console.log(`📋 [INFO] Environment: ${process.env.NODE_ENV || "development"}`);
+    console.log(
+      `📋 [INFO] Environment: ${process.env.NODE_ENV || "development"}`
+    );
     console.log(`📋 [INFO] Port: ${PORT}`);
     console.log(`📋 [INFO] Node Version: ${process.version}`);
     console.log(`📋 [INFO] Process PID: ${process.pid}`);
     console.log(`📋 [INFO] Server Time: ${new Date().toISOString()}`);
-    console.log(`📊 [ENDPOINT] Health Check: http://localhost:${PORT}/api/health`);
-    
+    console.log(
+      `📊 [ENDPOINT] Health Check: http://localhost:${PORT}/api/health`
+    );
+
     if (httpServer) {
-      console.log(`🔌 [ENDPOINT] WebSocket: http://localhost:${PORT}/socket.io/`);
+      console.log(
+        `🔌 [ENDPOINT] WebSocket: http://localhost:${PORT}/socket.io/`
+      );
     }
-    
+
     console.log("=".repeat(60) + "\n");
 
     // Initialize Redis connection
+    // Add error handler to prevent unhandled error crashes
+    redisManager.on("error", (error) => {
+      console.warn("⚠️ [REDIS] Redis error (handled):", error.message);
+    });
+
     try {
       await redisManager.connect();
       console.log("✅ [REDIS] Redis connection initialized successfully");
     } catch (error) {
-      console.warn("⚠️ [REDIS] Redis initialization failed, continuing without Redis:", error.message);
+      console.warn(
+        "⚠️ [REDIS] Redis initialization failed, continuing without Redis:",
+        error.message
+      );
     }
-    
+
     console.log("\n✅ [SERVER] All systems ready - accepting requests\n");
   });
 }

@@ -36,7 +36,7 @@ const RecoveryModal = ({
       return {
         title: 'Saved Draft Found',
         message: `You have a saved draft from ${formatTimeAgo(lastSavedTime)}. Would you like to recover it?`,
-        icon: <CheckCircle className="w-8 h-8 text-blue-500" />,
+        icon: <CheckCircle className="w-8 h-8 text-[#4f0f69]" />,
         primaryAction: 'Recover Draft',
         secondaryAction: 'Start Fresh'
       };
@@ -82,7 +82,7 @@ const RecoveryModal = ({
           onClick={onClose}
           className={cn(
             "absolute top-4 right-4 p-2 rounded-full transition-colors",
-            "hover:bg-opacity-10 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+            "hover:bg-opacity-10 focus:outline-none focus:ring-2 focus:ring-[#4f0f69]/20",
             isDarkMode
               ? "text-gray-400 hover:bg-white/10"
               : "text-gray-500 hover:bg-gray-100"
@@ -124,7 +124,7 @@ const RecoveryModal = ({
             )}>
               <Clock className={cn(
                 "w-4 h-4",
-                isDarkMode ? "text-blue-400" : "text-blue-500"
+                isDarkMode ? "text-[#8A4FFF]" : "text-[#4f0f69]"
               )} />
               <span className={cn(
                 "text-xs font-medium",
@@ -141,9 +141,9 @@ const RecoveryModal = ({
               onClick={onRecover}
               className={cn(
                 "flex-1 px-4 py-2.5 rounded-lg font-medium transition-all duration-200",
-                "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
+                "bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] hover:from-[#6b1a8a] hover:to-[#8A4FFF]",
                 "text-white shadow-lg hover:shadow-xl",
-                "focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                "focus:outline-none focus:ring-2 focus:ring-[#4f0f69]/20",
                 "transform hover:scale-[1.02] active:scale-[0.98]"
               )}
             >
