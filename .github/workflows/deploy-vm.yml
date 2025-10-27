@@ -502,7 +502,21 @@ jobs:
               
               # First run diagnostics
               echo "Running SMTP diagnostics..."
-              if sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec -T server node scripts/test-email-debug.js 2>&1 || echo "⚠️ Diagnostic script not available, using basic test"; then
+              DIAG_OUTPUT=$(sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml exec -T server node scripts/test-email-debug.js 2>&1) || echo "⚠️ Diagnostic script not available"
+              echo "$DIAG_OUTPUT"
+              echo ""
+              
+              # Check if diagnostic found a working port
+              WORKING_PORT=$(echo "$DIAG_OUTPUT" | grep -o "Standard TLS (port [0-9]*)" | grep -o "[0-9]*" | head -1 || echo "587")
+              
+              if [ ! -z "$WORKING_PORT" ] && [ "$WORKING_PORT" != "$SMTP_PORT" ]; then
+                echo "⚠️ Port mismatch detected!"
+                echo "   GitHub Secret SMTP_PORT: ${SMTP_PORT}"
+                echo "   Working port from diagnostics: ${WORKING_PORT}"
+                echo ""
+                echo "💡 ACTION REQUIRED: Update GitHub Secret SMTP_PORT to ${WORKING_PORT}"
+                echo "   Go to: Settings → Secrets and variables → Actions"
+                echo "   Update SMTP_PORT to: ${WORKING_PORT}"
                 echo ""
               fi
               
@@ -513,11 +527,22 @@ jobs:
               else
                 echo "⚠️ Email configuration test failed"
                 echo ""
-                echo "📋 Quick fixes to try:"
-                echo "1. Check cloud provider firewall rules (GCP/AWS firewall)"
-                echo "2. Run manual test: sudo docker exec -it event_i_server_prod node scripts/test-email-debug.js"
-                echo "3. Test connectivity: sudo docker exec -it event_i_server_prod nc -zv ${SMTP_HOST} ${SMTP_PORT}"
-                echo "4. Review troubleshooting guide: docs/SMTP_TROUBLESHOOTING.md"
+                if echo "$DIAG_OUTPUT" | grep -q "Test email sent successfully"; then
+                  echo "✅ Diagnostic test successfully sent email, but basic test failed."
+                  echo "   This indicates SMTP_PORT in GitHub Secrets is incorrect."
+                  echo ""
+                  echo "💡 FIX: Update GitHub Secret SMTP_PORT to ${WORKING_PORT}"
+                  echo "   1. Go to GitHub repository Settings → Secrets"
+                  echo "   2. Edit SMTP_PORT secret"
+                  echo "   3. Set value to: ${WORKING_PORT}"
+                  echo "   4. Redeploy"
+                else
+                  echo "📋 Other troubleshooting steps:"
+                  echo "1. Check cloud provider firewall rules (GCP/AWS firewall)"
+                  echo "2. Run manual test: sudo docker exec -it event_i_server_prod node scripts/test-email-debug.js"
+                  echo "3. Test connectivity: sudo docker exec -it event_i_server_prod nc -zv ${SMTP_HOST} ${SMTP_PORT}"
+                  echo "4. Review troubleshooting guide: docs/SMTP_TROUBLESHOOTING.md"
+                fi
               fi
               echo ""
               

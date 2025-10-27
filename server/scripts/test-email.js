@@ -11,15 +11,27 @@ async function testEmailConnection() {
   try {
     console.log("🧪 Testing SMTP Connection...\n");
 
-    // Create transporter
+    // Create transporter with smart port handling
+    const smtpHost = process.env.SMTP_HOST || "smtp.ethereal.email";
+    const smtpPort = Number(process.env.SMTP_PORT) || 587;
+    
+    // Port 465 uses SSL, other ports use STARTTLS
+    const isSecure = smtpPort === 465;
+    
+    console.log(`Configuration: ${smtpHost}:${smtpPort} (secure: ${isSecure})`);
+    
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.ethereal.email",
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: false,
+      host: smtpHost,
+      port: smtpPort,
+      secure: isSecure,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      // Add timeout settings to catch "greeting never received" faster
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
 
     // Verify connection
