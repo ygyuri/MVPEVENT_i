@@ -327,14 +327,14 @@ jobs:
             
             # Check container status
             echo "📋 Checking container status..."
-            cd /root/MVPEVENT_i
-            sudo docker compose -f docker-compose.prod.yml ps
+            cd /root/MVPEVENT_i || sudo chmod 755 /root && cd /root/MVPEVENT_i
+            sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps
             
             # Check if all containers are running
-            if ! sudo docker compose -f docker-compose.prod.yml ps | grep -q "Up"; then
+            if ! sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps | grep -q "Up"; then
               echo "❌ Some containers are not running"
               echo "📋 Container logs:"
-              sudo docker compose -f docker-compose.prod.yml logs --tail=50
+              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs --tail=50
               exit 1
             fi
             echo "✅ All containers are running"
@@ -356,7 +356,7 @@ jobs:
             if [ "$api_healthy" = false ]; then
               echo "❌ API health check failed after 5 attempts"
               echo "📋 Server logs:"
-              sudo docker compose -f docker-compose.prod.yml logs server --tail=50
+              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs server --tail=50
               exit 1
             fi
             
@@ -377,7 +377,7 @@ jobs:
             if [ "$frontend_healthy" = false ]; then
               echo "❌ Frontend accessibility check failed after 5 attempts"
               echo "📋 Client logs:"
-              sudo docker compose -f docker-compose.prod.yml logs client --tail=50
+              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs client --tail=50
               exit 1
             fi
             
