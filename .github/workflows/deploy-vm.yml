@@ -354,6 +354,62 @@ jobs:
               sudo docker --version
               sudo docker compose version
               
+              # Setup Let's Encrypt SSL certificates now that Docker is installed
+              echo "🔐 Setting up Let's Encrypt SSL certificates..."
+              
+              # Ensure SSL directory exists
+              sudo mkdir -p /root/MVPEVENT_i/nginx/ssl
+              
+              # Check if certificates already exist
+              if [ -f /etc/letsencrypt/live/event-i.co.ke/fullchain.pem ] && [ -f /etc/letsencrypt/live/event-i.co.ke/privkey.pem ]; then
+                echo "✅ SSL certificates already exist"
+              else
+                echo "📝 SSL certificates do not exist, generating new ones..."
+                
+                # Install certbot if not already installed
+                if ! command -v certbot &> /dev/null; then
+                  echo "📦 Installing certbot..."
+                  sudo apt update
+                  sudo apt install -y certbot
+                fi
+                
+                # Generate Let's Encrypt certificate (standalone mode works before containers start)
+                echo "🔑 Generating Let's Encrypt certificate for event-i.co.ke..."
+                if sudo certbot certonly --standalone \
+                  --non-interactive \
+                  --agree-tos \
+                  --email admin@event-i.co.ke \
+                  -d event-i.co.ke; then
+                  echo "✅ Let's Encrypt certificate generation successful"
+                else
+                  echo "⚠️ Let's Encrypt certificate generation failed, creating self-signed certificate..."
+                  # Generate self-signed certificate as fallback
+                  sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+                    -keyout /root/MVPEVENT_i/nginx/ssl/key.pem \
+                    -out /root/MVPEVENT_i/nginx/ssl/cert.pem \
+                    -subj "/C=KE/ST=Kenya/L=Nairobi/O=Event-i/CN=event-i.co.ke"
+                  echo "✅ Self-signed certificate created"
+                fi
+              fi
+              
+              # Copy certificates to nginx ssl directory if they exist
+              if [ -f /etc/letsencrypt/live/event-i.co.ke/fullchain.pem ]; then
+                echo "📁 Copying Let's Encrypt certificates to nginx ssl directory..."
+                sudo cp /etc/letsencrypt/live/event-i.co.ke/fullchain.pem /root/MVPEVENT_i/nginx/ssl/cert.pem
+                sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem
+              elif [ ! -f /root/MVPEVENT_i/nginx/ssl/cert.pem ]; then
+                echo "⚠️ No certificates available, creating temporary self-signed certificate..."
+                sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+                  -keyout /root/MVPEVENT_i/nginx/ssl/key.pem \
+                  -out /root/MVPEVENT_i/nginx/ssl/cert.pem \
+                  -subj "/C=KE/ST=Kenya/L=Nairobi/O=Event-i/CN=event-i.co.ke"
+              fi
+              
+              # Set proper permissions for SSL certificates
+              sudo chmod 644 /root/MVPEVENT_i/nginx/ssl/cert.pem
+              sudo chmod 600 /root/MVPEVENT_i/nginx/ssl/key.pem
+              echo "✅ SSL certificates configured"
+              
               # Stop existing containers gracefully
               echo "🛑 Stopping existing containers..."
               sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml down --remove-orphans || true
