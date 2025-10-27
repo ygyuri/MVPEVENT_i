@@ -145,9 +145,19 @@ jobs:
             cat > /tmp/deploy.sh << 'DEPLOYMENT_SCRIPT'
             set -e
             echo "🚀 Starting deployment..."
-              
-              # Ensure repo exists and is up to date
-              if [ -d /root/MVPEVENT_i/.git ]; then
+            
+            # Ensure git and other essential tools are installed
+            echo "📦 Checking for required tools..."
+            if ! command -v git &> /dev/null; then
+              echo "📥 Installing git..."
+              sudo apt update
+              sudo apt install -y git curl
+            else
+              echo "✅ Git is already installed"
+            fi
+            
+            # Ensure repo exists and is up to date
+            if [ -d /root/MVPEVENT_i/.git ]; then
                 echo "📁 Repository exists, updating..."
                 cd /root/MVPEVENT_i
                 git remote set-url origin https://github.com/ygyuri/MVPEVENT_i.git
