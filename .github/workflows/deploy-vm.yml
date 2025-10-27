@@ -126,12 +126,20 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           source: ".env.production"
           target: "/tmp/.env.production"
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          timeout: 120s
+          command_timeout: 10m
+          debug: true
       - name: SSH deploy to VM
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          timeout: 120s
+          command_timeout: 10m
+          debug: true
           script: |
             set -e
             cat > /tmp/deploy.sh << 'DEPLOYMENT_SCRIPT'
