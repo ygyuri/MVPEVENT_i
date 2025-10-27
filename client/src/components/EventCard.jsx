@@ -327,14 +327,7 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
         >
           {/* Premium Pricing */}
           <div className="flex flex-col">
-            {event.isFree ? (
-              <div className="flex items-center space-x-2">
-                <Award className="w-4 h-4 text-green-500" />
-                <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                  Free Event
-                </span>
-              </div>
-            ) : event.ticketTypes && event.ticketTypes.length > 0 ? (
+            {event.ticketTypes && event.ticketTypes.length > 0 ? (
               <>
                 <div className="flex items-baseline gap-2">
                   <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
@@ -354,6 +347,13 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
                   </span>
                 )}
               </>
+            ) : event.isFree ? (
+              <div className="flex items-center space-x-2">
+                <Award className="w-4 h-4 text-green-500" />
+                <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                  Free Event
+                </span>
+              </div>
             ) : (
               <PriceDisplay
                 amount={event.price || 0}
