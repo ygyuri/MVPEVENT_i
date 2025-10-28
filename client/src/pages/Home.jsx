@@ -70,64 +70,71 @@ const Home = () => {
       <section className="hero-modern relative overflow-hidden">
         {/* Background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900" />
-        
+
         {/* Decorative elements */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />
-        <div className="absolute top-40 right-10 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
-        <div className="absolute bottom-20 left-1/2 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
-        
+        <div className="absolute top-20 left-10 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-blue-200 dark:bg-blue-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob" />
+        <div className="absolute top-40 right-10 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-purple-200 dark:bg-purple-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob animation-delay-2000" />
+        <div className="absolute bottom-20 left-1/2 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-pink-200 dark:bg-pink-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-bl darker animation-delay-4000" />
+
         <div className="container-modern relative z-10">
-          <div className="text-center-modern py-20 md:py-32">
+          <div className="text-center-modern py-12 sm:py-16 md:py-20 lg:py-32 px-4">
             {/* Badge */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3 }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-full mb-8"
+              className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-full mb-4 sm:mb-6 md:mb-8"
             >
-              <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+              <span className="text-xs sm:text-sm font-semibold text-blue-700 dark:text-blue-300">
                 ✨ The event platform for the modern age
               </span>
             </motion.div>
-            
+
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="text-5xl md:text-7xl font-extrabold text-web3-primary tracking-tight mb-6"
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-web3-primary tracking-tight mb-4 sm:mb-5 md:mb-6"
             >
               The Modern Way to
               <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Manage Events
               </span>
             </motion.h1>
-            
+
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.15, duration: 0.4 }}
-              className="text-xl md:text-2xl text-web3-secondary leading-relaxed max-w-3xl mx-auto mb-12"
+              className="text-base sm:text-lg md:text-xl lg:text-2xl text-web3-secondary leading-relaxed max-w-3xl mx-auto mb-6 sm:mb-8 md:mb-12 px-2"
             >
-              Effortless event management for organizers. Seamless discovery for attendees.
+              Effortless event management for organizers. Seamless discovery for
+              attendees.
             </motion.p>
-            
+
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.4 }}
-              className="flex flex-nowrap justify-center items-center gap-4 md:gap-6 mb-12 overflow-x-auto pb-2 scrollbar-hide"
+              className="flex flex-nowrap justify-start sm:justify-center items-center gap-3 sm:gap-4 md:gap-6 mb-8 sm:mb-10 md:mb-12 overflow-x-auto pb-2 scrollbar-hide"
             >
               <span className="inline-flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
                 <span className="text-xl md:text-2xl text-green-500">✓</span>
-                <span className="text-xs md:text-sm font-medium text-web3-primary">Interactive polls & feedback</span>
+                <span className="text-xs md:text-sm font-medium text-web3-primary">
+                  Interactive polls & feedback
+                </span>
               </span>
               <span className="inline-flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
                 <span className="text-xl md:text-2xl text-green-500">✓</span>
-                <span className="text-xs md:text-sm font-medium text-web3-primary">Easy fund access</span>
+                <span className="text-xs md:text-sm font-medium text-web3-primary">
+                  Easy fund access
+                </span>
               </span>
               <span className="inline-flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
                 <span className="text-xl md:text-2xl text-green-500">✓</span>
-                <span className="text-xs md:text-sm font-medium text-web3-primary">Affordable pricing</span>
+                <span className="text-xs md:text-sm font-medium text-web3-primary">
+                  Affordable pricing
+                </span>
               </span>
             </motion.div>
           </div>

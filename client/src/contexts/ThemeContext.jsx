@@ -36,19 +36,29 @@ export const ThemeProvider = ({ children }) => {
     return saved === "auto" || !saved;
   });
 
-  // Function to determine if it's night time (6 PM to 6 AM)
-  const isNightTime = () => {
-    const hour = new Date().getHours();
-    return hour >= 18 || hour < 6;
-  };
-
-  // Function to get the appropriate theme based on auto mode and time
+  // Function to get the appropriate theme based on auto mode and system preference
   const getEffectiveTheme = () => {
     if (isAutoMode) {
-      return isNightTime();
+      // Use system preference instead of time
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
     }
     return isDarkMode;
   };
+  
+  // Listen to system preference changes in auto mode
+  useEffect(() => {
+    if (!isAutoMode) return;
+    
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => {
+      const newEffectiveTheme = getEffectiveTheme();
+      document.documentElement.classList.toggle("dark", newEffectiveTheme);
+      updateThemeColors(newEffectiveTheme);
+    };
+    
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [isAutoMode]);
 
   const effectiveDarkMode = getEffectiveTheme();
 
@@ -78,20 +88,6 @@ export const ThemeProvider = ({ children }) => {
     updateThemeColors(effectiveDarkMode);
   }, [isDarkMode, isAutoMode, effectiveDarkMode]);
 
-  // Check time every minute to update theme if in auto mode
-  useEffect(() => {
-    if (!isAutoMode) return;
-
-    const interval = setInterval(() => {
-      const newEffectiveTheme = getEffectiveTheme();
-      if (newEffectiveTheme !== effectiveDarkMode) {
-        document.documentElement.classList.toggle("dark", newEffectiveTheme);
-        updateThemeColors(newEffectiveTheme);
-      }
-    }, 60000); // Check every minute
-
-    return () => clearInterval(interval);
-  }, [isAutoMode, effectiveDarkMode]);
 
   const updateThemeColors = (darkMode) => {
     const root = document.documentElement;
