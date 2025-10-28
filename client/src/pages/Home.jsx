@@ -118,22 +118,25 @@ const Home = () => {
               transition={{ delay: 0.3, duration: 0.4 }}
               className="flex flex-nowrap justify-start sm:justify-center items-center gap-3 sm:gap-4 md:gap-6 mb-8 sm:mb-10 md:mb-12 overflow-x-auto pb-2 scrollbar-hide"
             >
-              <span className="inline-flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
-                <span className="text-xl md:text-2xl text-green-500">✓</span>
-                <span className="text-xs md:text-sm font-medium text-web3-primary">
-                  Interactive polls & feedback
+              <span className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
+                <span className="text-base sm:text-lg md:text-xl lg:text-2xl text-green-500">✓</span>
+                <span className="text-xs sm:text-sm font-medium text-web3-primary">
+                  <span className="hidden sm:inline">Interactive polls & feedback</span>
+                  <span className="sm:hidden">Interactive polls</span>
                 </span>
               </span>
-              <span className="inline-flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
-                <span className="text-xl md:text-2xl text-green-500">✓</span>
-                <span className="text-xs md:text-sm font-medium text-web3-primary">
-                  Easy fund access
+              <span className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
+                <span className="text-base sm:text-lg md:text-xl lg:text-2xl text-green-500">✓</span>
+                <span className="text-xs sm:text-sm font-medium text-web3-primary">
+                  <span className="hidden sm:inline">Easy fund access</span>
+                  <span className="sm:hidden">Easy access</span>
                 </span>
               </span>
-              <span className="inline-flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
-                <span className="text-xl md:text-2xl text-green-500">✓</span>
-                <span className="text-xs md:text-sm font-medium text-web3-primary">
-                  Affordable pricing
+              <span className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
+                <span className="text-base sm:text-lg md:text-xl lg:text-2xl text-green-500">✓</span>
+                <span className="text-xs sm:text-sm font-medium text-web3-primary">
+                  <span className="hidden sm:inline">Affordable pricing</span>
+                  <span className="sm:hidden">Affordable</span>
                 </span>
               </span>
             </motion.div>
