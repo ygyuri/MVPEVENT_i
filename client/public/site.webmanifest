@@ -1,0 +1,19 @@
+{
+  "name": "Event-i - Modern Event Management Platform",
+  "short_name": "Event-i",
+  "description": "The all-in-one event management platform for organizers and attendees",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

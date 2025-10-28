@@ -84,8 +84,10 @@ const Home = () => {
               transition={{ delay: 0.15, duration: 0.4 }}
               className="mt-4 text-lg md:text-xl text-web3-secondary"
             >
-              A modern web3 way to explore events you love so much — curated
-              feeds, real-time trends, and more.
+              The all-in-one event management platform that makes organizing events effortless 
+              for organizers and discovering amazing experiences seamless for attendees. Create 
+              interactive polls, get real-time attendee feedback, and access your funds easily 
+              with our affordable, feature-rich solution.
             </motion.p>
           </div>
         </div>
