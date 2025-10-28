@@ -74,7 +74,7 @@ const Home = () => {
         {/* Decorative elements */}
         <div className="absolute top-20 left-10 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-blue-200 dark:bg-blue-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob" />
         <div className="absolute top-40 right-10 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-purple-200 dark:bg-purple-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob animation-delay-2000" />
-        <div className="absolute bottom-20 left-1/2 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-pink-200 dark:bg-pink-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-bl darker animation-delay-4000" />
+        <div className="absolute bottom-20 left-1/2 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-pink-200 dark:bg-pink-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob animation-delay-4000" />
 
         <div className="container-modern relative z-10">
           <div className="text-center-modern py-12 sm:py-16 md:py-20 lg:py-32 px-4">
