@@ -134,12 +134,62 @@ jobs:
           debug: true
 
   # ====================
-  # EXECUTE JOB
+  # DOCKER CLEANUP JOB
   # ====================
-  execute:
+  docker-cleanup:
     needs: transfer
     runs-on: ubuntu-latest
     if: always() && needs.transfer.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker cleanup on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          timeout: 120s
+          command_timeout: 10m
+          debug: true
+          script: |
+            set -e
+            echo "🧹 Starting Docker cleanup..."
+            
+            # Check disk usage before cleanup
+            echo "📊 Disk Usage Before Cleanup:"
+            df -h / || true
+            echo ""
+            echo "🐳 Docker Disk Usage Before Cleanup:"
+            sudo docker system df || true
+            echo ""
+            
+            # Clean up Docker resources
+            echo "🧹 Cleaning up Docker resources..."
+            sudo docker container prune -f || true
+            sudo docker image prune -f || true
+            sudo docker volume prune -f || true
+            sudo docker network prune -f || true
+            sudo docker builder prune -af || true
+            sudo docker image prune -af || true
+            
+            # Check disk usage after cleanup
+            echo ""
+            echo "📊 Disk Usage After Cleanup:"
+            df -h / || true
+            echo ""
+            echo "🐳 Docker Disk Usage After Cleanup:"
+            sudo docker system df || true
+            echo ""
+            echo "✅ Docker cleanup completed!"
+
+  # ====================
+  # EXECUTE JOB
+  # ====================
+  execute:
+    needs: [transfer, docker-cleanup]
+    runs-on: ubuntu-latest
+    if: always() && needs.transfer.result == 'success' && needs.docker-cleanup.result == 'success'
     steps:
       - uses: actions/checkout@v4
       - name: SSH deploy to VM
