@@ -328,54 +328,25 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
           {/* Premium Pricing */}
           <div className="flex flex-col">
             {event.ticketTypes && event.ticketTypes.length > 0 ? (
-              (() => {
-                // Filter out ticket types with invalid prices (null, undefined, or 0)
-                const validPricedTickets = event.ticketTypes.filter(
-                  (t) => t.price != null && t.price > 0
-                );
-
-                // If we have valid priced tickets, show the minimum
-                if (validPricedTickets.length > 0) {
-                  const minPrice = Math.min(
-                    ...validPricedTickets.map((t) => t.price)
-                  );
-                  return (
-                    <>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
-                          From
-                        </span>
-                        <PriceDisplay
-                          amount={minPrice}
-                          originalCurrency="KES"
-                          className="text-xl font-bold text-gray-900 dark:text-white"
-                        />
-                      </div>
-                      {event.ticketTypes.length > 1 && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                          {event.ticketTypes.length} ticket options
-                        </span>
-                      )}
-                    </>
-                  );
-                }
-
-                // No valid priced tickets - check if event is free
-                return event.isFree ? (
-                  <div className="flex items-center space-x-2">
-                    <Award className="w-4 h-4 text-green-500" />
-                    <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                      Free Event
-                    </span>
-                  </div>
-                ) : (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
+                    From
+                  </span>
                   <PriceDisplay
-                    amount={event.price || 0}
+                    amount={Math.min(
+                      ...event.ticketTypes.map((t) => t.price || 0)
+                    )}
                     originalCurrency="KES"
                     className="text-xl font-bold text-gray-900 dark:text-white"
                   />
-                );
-              })()
+                </div>
+                {event.ticketTypes.length > 1 && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    {event.ticketTypes.length} ticket options
+                  </span>
+                )}
+              </>
             ) : event.isFree ? (
               <div className="flex items-center space-x-2">
                 <Award className="w-4 h-4 text-green-500" />
