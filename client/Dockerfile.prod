@@ -5,55 +5,50 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (clean, reproducible)
-RUN npm ci
+# Install dependencies
+RUN npm install
 
-# Copy only necessary source files (avoid node_modules and large context)
-COPY src ./src
-COPY public ./public
-COPY index.html ./
-COPY vite.config.js ./
-COPY tailwind.config.js ./
-COPY postcss.config.js ./
+# Copy source code and static assets
+COPY . .
 
 # Verify static assets are present
 RUN echo "🔍 Verifying static assets..." && \
-    echo "📁 Current directory structure:" && \
-    ls -la && \
-    if [ -d "public/" ]; then \
-    echo "📁 Public directory found:" && \
-    ls -la public/ && \
-    if [ -d "public/logos/" ]; then \
-    echo "🎨 Logos directory found:" && \
-    ls -la public/logos/; \
-    else \
-    echo "⚠️ No logos directory in public/"; \
-    fi; \
-    else \
-    echo "⚠️ No public directory found"; \
-    fi && \
-    echo "✅ Static assets verification completed"
+  echo "📁 Current directory structure:" && \
+  ls -la && \
+  if [ -d "public/" ]; then \
+  echo "📁 Public directory found:" && \
+  ls -la public/ && \
+  if [ -d "public/logos/" ]; then \
+  echo "🎨 Logos directory found:" && \
+  ls -la public/logos/; \
+  else \
+  echo "⚠️ No logos directory in public/"; \
+  fi; \
+  else \
+  echo "⚠️ No public directory found"; \
+  fi && \
+  echo "✅ Static assets verification completed"
 
 # Build the application
 RUN npm run build
 
 # Verify build output includes static assets
 RUN echo "🔍 Verifying build output..." && \
-    echo "📁 Build output directory:" && \
-    ls -la dist/ && \
-    if [ -d "dist/assets/" ]; then \
-    echo "📦 Assets directory found:" && \
-    ls -la dist/assets/; \
-    else \
-    echo "⚠️ No assets directory in dist/"; \
-    fi && \
-    if [ -d "dist/logos/" ]; then \
-    echo "🎨 Logos in dist found:" && \
-    ls -la dist/logos/; \
-    else \
-    echo "ℹ️ Logos will be served from public/"; \
-    fi && \
-    echo "✅ Build output verified"
+  echo "📁 Build output directory:" && \
+  ls -la dist/ && \
+  if [ -d "dist/assets/" ]; then \
+  echo "📦 Assets directory found:" && \
+  ls -la dist/assets/; \
+  else \
+  echo "⚠️ No assets directory in dist/"; \
+  fi && \
+  if [ -d "dist/logos/" ]; then \
+  echo "🎨 Logos in dist found:" && \
+  ls -la dist/logos/; \
+  else \
+  echo "ℹ️ Logos will be served from public/"; \
+  fi && \
+  echo "✅ Build output verified"
 
 # Production stage
 FROM nginx:alpine AS production
@@ -69,7 +64,7 @@ EXPOSE 80
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost/ || exit 1
+  CMD curl -f http://localhost/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
