@@ -327,40 +327,72 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
         >
           {/* Premium Pricing */}
           <div className="flex flex-col">
-            {event.ticketTypes && event.ticketTypes.length > 0 ? (
-              <>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
-                    From
-                  </span>
-                  <PriceDisplay
-                    amount={Math.min(
-                      ...event.ticketTypes.map((t) => t.price || 0)
+            {(() => {
+              // Check if event has ticket types
+              if (event.ticketTypes && event.ticketTypes.length > 0) {
+                // Get all ticket prices (treating null/undefined as 0)
+                const ticketPrices = event.ticketTypes.map((t) => t.price ?? 0);
+                const minPrice = Math.min(...ticketPrices);
+                const hasPaidTickets = ticketPrices.some((p) => p > 0);
+
+                // Only show "Free Event" if ALL tickets are free
+                if (!hasPaidTickets && minPrice === 0) {
+                  return (
+                    <div className="flex items-center space-x-2">
+                      <Award className="w-4 h-4 text-green-500" />
+                      <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                        Free Event
+                      </span>
+                    </div>
+                  );
+                }
+
+                // Show price from ticket types (at least one ticket has a price > 0)
+                return (
+                  <>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
+                        From
+                      </span>
+                      <PriceDisplay
+                        amount={minPrice}
+                        originalCurrency="KES"
+                        className="text-xl font-bold text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    {event.ticketTypes.length > 1 && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                        {event.ticketTypes.length} ticket options
+                      </span>
                     )}
-                    originalCurrency="KES"
-                    className="text-xl font-bold text-gray-900 dark:text-white"
-                  />
-                </div>
-                {event.ticketTypes.length > 1 && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                    {event.ticketTypes.length} ticket options
-                  </span>
-                )}
-              </>
-            ) : event.isFree ? (
-              <div className="flex items-center space-x-2">
-                <Award className="w-4 h-4 text-green-500" />
-                <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                  Free Event
-                </span>
-              </div>
-            ) : (
-              <PriceDisplay
-                amount={event.price || 0}
-                originalCurrency="KES"
-                className="text-xl font-bold text-gray-900 dark:text-white"
-              />
-            )}
+                  </>
+                );
+              }
+
+              // No ticket types - check if event has a price
+              const hasPrice = event.price != null && event.price > 0;
+
+              // Only show "Free Event" if there's no price AND isFree is true
+              if (!hasPrice && event.isFree === true) {
+                return (
+                  <div className="flex items-center space-x-2">
+                    <Award className="w-4 h-4 text-green-500" />
+                    <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                      Free Event
+                    </span>
+                  </div>
+                );
+              }
+
+              // Show regular price (even if 0, don't show as "Free" unless explicitly marked)
+              return (
+                <PriceDisplay
+                  amount={event.price || 0}
+                  originalCurrency="KES"
+                  className="text-xl font-bold text-gray-900 dark:text-white"
+                />
+              );
+            })()}
           </div>
 
           {/* Premium Action Button */}
