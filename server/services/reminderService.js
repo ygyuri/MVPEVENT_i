@@ -3,6 +3,12 @@ const ReminderTemplate = require("../models/ReminderTemplate");
 const Ticket = require("../models/Ticket");
 const Event = require("../models/Event");
 const { enqueueReminder } = require("./queue/reminderQueue");
+const {
+  getBrandColors,
+  getEmailHeader,
+  getEmailFooter,
+  wrapEmailTemplate,
+} = require("./emailBranding");
 
 class ReminderService {
   async scheduleForTickets(order, { timezone } = {}) {
@@ -231,29 +237,105 @@ class ReminderService {
     const eventDate = new Date(event.dates.startDate);
     const customerName =
       ticket.holder?.firstName || order.customerInfo?.firstName || "Guest";
+    const colors = getBrandColors();
+    const frontendUrl = process.env.FRONTEND_URL || "https://event-i.co.ke";
 
-    return `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #4f0f69;">Event Reminder: ${event.title}</h2>
-        <p>Hi ${customerName},</p>
-        <p>This is a friendly reminder about your upcoming event:</p>
-        <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="margin-top: 0;">${event.title}</h3>
-          <p><strong>Date:</strong> ${eventDate.toLocaleDateString()}</p>
-          <p><strong>Time:</strong> ${eventDate.toLocaleTimeString()}</p>
-          ${
-            event.location
-              ? `<p><strong>Location:</strong> ${
-                  event.location.address || event.location
-                }</p>`
-              : ""
-          }
+    const content = `
+      ${getEmailHeader("⏰ Event Reminder", "Your event is coming up soon!")}
+      
+      <div class="content">
+        <div class="greeting">Hi ${customerName},</div>
+        
+        <p class="intro-text">
+          This is a friendly reminder about your upcoming event. Make sure you're all set!
+        </p>
+        
+        <div class="card">
+          <h3 style="margin-top: 0; color: ${colors.primary};">
+            ${event.title}
+          </h3>
+          <table class="table" style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Date:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">
+                ${eventDate.toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Time:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">
+                ${eventDate.toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </td>
+            </tr>
+            ${
+              event.location
+                ? `
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Location:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">
+                ${
+                  event.location.address ||
+                  event.location.venueName ||
+                  event.location
+                }
+              </td>
+            </tr>
+            `
+                : ""
+            }
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Ticket Type:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">
+                ${ticket.ticketType || "Standard"}
+              </td>
+            </tr>
+          </table>
         </div>
-        <p>Please make sure to bring your ticket with you to the event.</p>
-        <p>We look forward to seeing you there!</p>
-        <p>Best regards,<br>The Event-i Team</p>
+        
+        <div class="highlight-box">
+          <h4>📋 Reminder Checklist</h4>
+          <ul style="margin: 0; padding-left: 20px; color: ${
+            colors.textSecondary
+          };">
+            <li>Bring your ticket (digital or printed)</li>
+            <li>Arrive 15-30 minutes early</li>
+            <li>Have your ID ready if required</li>
+            <li>Check the event location beforehand</li>
+          </ul>
+        </div>
+        
+        <div class="btn-container">
+          <a href="${frontendUrl}/wallet" class="btn" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #4f0f69 0%, #6b1a8a 100%); color: #FFFFFF; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+            View Your Ticket
+          </a>
+        </div>
+        
+        <p class="intro-text" style="margin-top: 24px;">
+          We look forward to seeing you there! If you have any questions, please don't hesitate to contact us.
+        </p>
       </div>
+      
+      ${getEmailFooter()}
     `;
+
+    return wrapEmailTemplate(content, `Event Reminder: ${event.title}`);
   }
 }
 

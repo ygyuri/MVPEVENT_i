@@ -1,5 +1,11 @@
 const nodemailer = require("nodemailer");
 const QRCode = require("qrcode");
+const {
+  getBrandColors,
+  getEmailHeader,
+  getEmailFooter,
+  wrapEmailTemplate,
+} = require("./emailBranding");
 
 class EmailService {
   constructor() {
@@ -12,7 +18,7 @@ class EmailService {
     const smtpPort = Number(process.env.SMTP_PORT) || 587;
     // Port 465 uses SSL, other ports use STARTTLS
     const isSecure = smtpPort === 465;
-    
+
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || "smtp.gmail.com",
       port: smtpPort,
@@ -97,118 +103,170 @@ class EmailService {
       createdAt,
     } = orderData;
     const { mpesaReceiptNumber, phone } = paymentData;
+    const colors = getBrandColors();
 
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Payment Receipt - Event-i</title>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-          .receipt-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-          .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-          .total { font-weight: bold; font-size: 18px; color: #667eea; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-          .success-badge { background: #4CAF50; color: white; padding: 10px 20px; border-radius: 20px; display: inline-block; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>🎉 Payment Successful!</h1>
-            <p>Thank you for your purchase</p>
-          </div>
+    const content = `
+      ${getEmailHeader("🎉 Payment Successful!", "Thank you for your purchase")}
           
           <div class="content">
-            <div class="success-badge">
+        <div class="badge badge-success" style="display: inline-block; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; margin: 20px 0;">
               ✅ Payment Completed Successfully
             </div>
             
-            <div class="receipt-details">
+        <div class="card">
               <h3>Receipt Details</h3>
-              <p><strong>Receipt Number:</strong> ${paymentReference}</p>
-              <p><strong>MPESA Receipt:</strong> ${
-                mpesaReceiptNumber || "N/A"
-              }</p>
-              <p><strong>Date:</strong> ${new Date(
-                createdAt
-              ).toLocaleDateString("en-KE")}</p>
-              <p><strong>Time:</strong> ${new Date(
-                createdAt
-              ).toLocaleTimeString("en-KE")}</p>
+          <table class="table" style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Receipt Number:</td>
+              <td style="padding: 8px 0; color: ${
+                colors.text
+              };">${paymentReference}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">MPESA Receipt:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">${
+      mpesaReceiptNumber || "N/A"
+    }</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Date:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">${new Date(
+      createdAt
+    ).toLocaleDateString("en-KE")}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Time:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">${new Date(
+      createdAt
+    ).toLocaleTimeString("en-KE")}</td>
+            </tr>
+          </table>
             </div>
             
-            <div class="receipt-details">
+        <div class="card">
               <h3>Customer Information</h3>
-              <p><strong>Name:</strong> ${customerInfo.name}</p>
-              <p><strong>Phone:</strong> ${phone}</p>
-              ${
-                customerInfo.email
-                  ? `<p><strong>Email:</strong> ${customerInfo.email}</p>`
-                  : ""
-              }
+          <table class="table" style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Name:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">${
+      customerInfo.name
+    }</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Phone:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">${phone}</td>
+            </tr>
+            ${
+              customerInfo.email
+                ? `
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${colors.textMuted};">Email:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">${customerInfo.email}</td>
+            </tr>
+            `
+                : ""
+            }
+          </table>
             </div>
             
-            <div class="receipt-details">
+        <div class="card">
               <h3>Order Items</h3>
-              ${items
-                .map(
-                  (item) => `
-                <div class="item">
-                  <div>
-                    <strong>${item.eventTitle}</strong><br>
-                    <small>${item.ticketType} x ${item.quantity}</small>
-                  </div>
-                  <div>KES ${item.subtotal.toFixed(2)}</div>
-                </div>
-              `
-                )
-                .join("")}
+          <table class="table" style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            ${items
+              .map(
+                (item) => `
+              <tr>
+                <td style="padding: 12px 0;">
+                  <strong style="color: ${colors.text};">${
+                  item.eventTitle
+                }</strong><br>
+                  <small style="color: ${colors.textMuted};">${
+                  item.ticketType
+                } x ${item.quantity}</small>
+                </td>
+                <td style="padding: 12px 0; text-align: right; font-weight: 600; color: ${
+                  colors.text
+                };">
+                  KES ${item.subtotal.toFixed(2)}
+                </td>
+              </tr>
+            `
+              )
+              .join("")}
+          </table>
             </div>
             
-            <div class="receipt-details">
+        <div class="card">
               <h3>Payment Summary</h3>
-              <div class="item">
-                <span>Subtotal:</span>
-                <span>KES ${feeBreakdown?.subtotal?.toFixed(2) || "0.00"}</span>
-              </div>
-              <div class="item">
-                <span>Processing Fee:</span>
-                <span>KES ${
-                  feeBreakdown?.processingFee?.toFixed(2) || "0.00"
-                }</span>
-              </div>
-              ${
-                feeBreakdown?.fixedFee > 0
-                  ? `
-                <div class="item">
-                  <span>Fixed Fee:</span>
-                  <span>KES ${feeBreakdown.fixedFee.toFixed(2)}</span>
-                </div>
-              `
-                  : ""
-              }
-              <div class="item total">
-                <span>Total Paid:</span>
-                <span>KES ${totalAmount.toFixed(2)}</span>
+          <table class="table" style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr>
+              <td style="padding: 12px 0; color: ${
+                colors.textSecondary
+              };">Subtotal:</td>
+              <td style="padding: 12px 0; text-align: right; color: ${
+                colors.textSecondary
+              };">
+                KES ${feeBreakdown?.subtotal?.toFixed(2) || "0.00"}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 0; color: ${
+                colors.textSecondary
+              };">Processing Fee:</td>
+              <td style="padding: 12px 0; text-align: right; color: ${
+                colors.textSecondary
+              };">
+                KES ${feeBreakdown?.processingFee?.toFixed(2) || "0.00"}
+              </td>
+            </tr>
+            ${
+              feeBreakdown?.fixedFee > 0
+                ? `
+            <tr>
+              <td style="padding: 12px 0; color: ${
+                colors.textSecondary
+              };">Fixed Fee:</td>
+              <td style="padding: 12px 0; text-align: right; color: ${
+                colors.textSecondary
+              };">
+                KES ${feeBreakdown.fixedFee.toFixed(2)}
+              </td>
+            </tr>
+            `
+                : ""
+            }
+            <tr style="border-top: 2px solid ${colors.primary};">
+              <td style="padding: 16px 0; font-weight: 700; font-size: 18px; color: ${
+                colors.primary
+              };">
+                Total Paid:
+              </td>
+              <td style="padding: 16px 0; text-align: right; font-weight: 700; font-size: 18px; color: ${
+                colors.primary
+              };">
+                KES ${totalAmount.toFixed(2)}
+              </td>
+            </tr>
+          </table>
               </div>
             </div>
             
-            <div class="footer">
-              <p>Thank you for choosing Event-i!</p>
-              <p>For any inquiries, please contact our support team.</p>
-              <p><small>This is an automated receipt. Please keep it for your records.</small></p>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
+      ${getEmailFooter()}
     `;
+
+    return wrapEmailTemplate(content, "Payment Receipt - Event-i");
   }
 
   /**
@@ -241,71 +299,92 @@ class EmailService {
   generateOrderConfirmationHTML(orderData) {
     const { customerInfo, items, totalAmount, paymentReference, createdAt } =
       orderData;
+    const colors = getBrandColors();
 
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Order Confirmation - Event-i</title>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-          .order-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-          .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>🎫 Order Confirmed!</h1>
-            <p>Your tickets are ready</p>
-          </div>
+    const content = `
+      ${getEmailHeader("🎫 Order Confirmed!", "Your tickets are ready")}
           
           <div class="content">
-            <div class="order-details">
+        <div class="card">
               <h3>Order Information</h3>
-              <p><strong>Order Number:</strong> ${paymentReference}</p>
-              <p><strong>Date:</strong> ${new Date(
-                createdAt
-              ).toLocaleDateString("en-KE")}</p>
-              <p><strong>Customer:</strong> ${customerInfo.name}</p>
+          <table class="table" style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Order Number:</td>
+              <td style="padding: 8px 0; color: ${
+                colors.text
+              };">${paymentReference}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Date:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">${new Date(
+      createdAt
+    ).toLocaleDateString("en-KE")}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Customer:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">${
+      customerInfo.name
+    }</td>
+            </tr>
+          </table>
             </div>
             
-            <div class="order-details">
+        <div class="card">
               <h3>Event Tickets</h3>
-              ${items
-                .map(
-                  (item) => `
-                <div class="item">
-                  <div>
-                    <strong>${item.eventTitle}</strong><br>
-                    <small>${item.ticketType} x ${item.quantity}</small>
-                  </div>
-                  <div>KES ${item.subtotal.toFixed(2)}</div>
-                </div>
-              `
-                )
-                .join("")}
-              <div class="item" style="font-weight: bold; border-top: 2px solid #667eea; margin-top: 10px;">
-                <span>Total:</span>
-                <span>KES ${totalAmount.toFixed(2)}</span>
-              </div>
+          <table class="table" style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            ${items
+              .map(
+                (item) => `
+              <tr>
+                <td style="padding: 12px 0;">
+                  <strong style="color: ${colors.text};">${
+                  item.eventTitle
+                }</strong><br>
+                  <small style="color: ${colors.textMuted};">${
+                  item.ticketType
+                } x ${item.quantity}</small>
+                </td>
+                <td style="padding: 12px 0; text-align: right; font-weight: 600; color: ${
+                  colors.text
+                };">
+                  KES ${item.subtotal.toFixed(2)}
+                </td>
+              </tr>
+            `
+              )
+              .join("")}
+            <tr style="border-top: 2px solid ${colors.primary};">
+              <td style="padding: 16px 0; font-weight: 700; font-size: 18px; color: ${
+                colors.primary
+              };">
+                Total:
+              </td>
+              <td style="padding: 16px 0; text-align: right; font-weight: 700; font-size: 18px; color: ${
+                colors.primary
+              };">
+                KES ${totalAmount.toFixed(2)}
+              </td>
+            </tr>
+          </table>
             </div>
             
-            <div class="footer">
-              <p>Your tickets will be sent to your email shortly.</p>
-              <p>Thank you for choosing Event-i!</p>
+        <div class="highlight-box">
+          <p style="margin: 0; color: ${colors.textSecondary};">
+            Your tickets will be sent to your email shortly. Keep an eye on your inbox!
+          </p>
             </div>
           </div>
-        </div>
-      </body>
-      </html>
+      
+      ${getEmailFooter()}
     `;
+
+    return wrapEmailTemplate(content, "Order Confirmation - Event-i");
   }
 
   /**
@@ -406,54 +485,53 @@ class EmailService {
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
     const eventUrl = `${frontendUrl}/events/${event.slug}`;
     const dashboardUrl = `${frontendUrl}/organizer`;
+    const colors = getBrandColors();
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width,initial-scale=1" />
-          <title>Event Published Successfully</title>
-          <style>
-            body { font-family: Arial, sans-serif; color: #222; line-height: 1.6; }
-            .container { max-width: 600px; margin: 0 auto; padding: 24px; }
-            .header { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; padding: 32px; border-radius: 12px; text-align: center; margin-bottom: 24px; }
-            .content { background: #f7f7fb; border-radius: 12px; padding: 24px; border: 1px solid #eaeaf2; }
-            .event-card { background: white; border-radius: 8px; padding: 20px; margin: 16px 0; border: 1px solid #e5e7eb; }
-            .btn { display: inline-block; background: #4f46e5; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 8px 4px; }
-            .btn-secondary { background: #6b7280; }
-            .muted { color: #666; font-size: 14px; margin-top: 16px; }
-            .highlight { background: #fef3c7; padding: 12px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 16px 0; }
-            .footer { text-align: center; margin-top: 32px; color: #666; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🎉 Event Published Successfully!</h1>
-              <p>Your event is now live and ready for attendees</p>
-            </div>
+    const content = `
+      ${getEmailHeader(
+        "🎉 Event Published Successfully!",
+        "Your event is now live and ready for attendees"
+      )}
             
             <div class="content">
-              <h2>Congratulations, ${organizer.firstName}!</h2>
-              <p>Your event <strong>"${
-                event.title
-              }"</strong> has been successfully published and is now visible to potential attendees.</p>
-              
-              <div class="event-card">
+        <div class="greeting">Congratulations, ${organizer.firstName}!</div>
+        
+        <p class="intro-text">
+          Your event <strong>"${
+            event.title
+          }"</strong> has been successfully published and is now visible to potential attendees.
+        </p>
+        
+        <div class="card">
                 <h3>📅 Event Details</h3>
-                <p><strong>Title:</strong> ${event.title}</p>
-                <p><strong>Date:</strong> ${new Date(
-                  event.dates.startDate
-                ).toLocaleDateString("en-US", {
+          <table class="table" style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Title:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">${
+      event.title
+    }</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Date:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">
+                ${new Date(event.dates.startDate).toLocaleDateString("en-US", {
                   weekday: "long",
                   year: "numeric",
                   month: "long",
                   day: "numeric",
-                })}</p>
-                <p><strong>Time:</strong> ${new Date(
-                  event.dates.startDate
-                ).toLocaleTimeString("en-US", {
+                })}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Time:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">
+                ${new Date(event.dates.startDate).toLocaleTimeString("en-US", {
                   hour: "numeric",
                   minute: "2-digit",
                   hour12: true,
@@ -464,18 +542,43 @@ class EmailService {
         minute: "2-digit",
         hour12: true,
       }
-    )}</p>
-                ${
-                  event.location?.venueName
-                    ? `<p><strong>Location:</strong> ${event.location.venueName}, ${event.location.city}</p>`
-                    : ""
-                }
-                <p><strong>Status:</strong> <span style="color: #10b981; font-weight: 600;">✅ Published & Live</span></p>
+    )}
+              </td>
+            </tr>
+            ${
+              event.location?.venueName
+                ? `
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Location:</td>
+              <td style="padding: 8px 0; color: ${colors.text};">
+                ${event.location.venueName}${
+                    event.location.city ? `, ${event.location.city}` : ""
+                  }
+              </td>
+            </tr>
+            `
+                : ""
+            }
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: ${
+                colors.textMuted
+              };">Status:</td>
+              <td style="padding: 8px 0; color: ${
+                colors.success
+              }; font-weight: 600;">
+                ✅ Published & Live
+              </td>
+            </tr>
+          </table>
               </div>
               
-              <div class="highlight">
+        <div class="highlight-box">
                 <h4>🚀 What's Next?</h4>
-                <ul>
+          <ul style="margin: 0; padding-left: 20px; color: ${
+            colors.textSecondary
+          };">
                   <li>Share your event link with potential attendees</li>
                   <li>Monitor registrations in your organizer dashboard</li>
                   <li>Prepare for your event day</li>
@@ -483,26 +586,16 @@ class EmailService {
                 </ul>
               </div>
               
-              <div style="text-align: center; margin: 24px 0;">
+        <div class="btn-container">
                 <a href="${eventUrl}" class="btn">View Your Event</a>
                 <a href="${dashboardUrl}" class="btn btn-secondary">Go to Dashboard</a>
               </div>
-              
-              <div class="muted">
-                <p><strong>Need Help?</strong></p>
-                <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
-                <p>Thank you for using Event-i to create amazing experiences!</p>
-              </div>
             </div>
             
-            <div class="footer">
-              <p>This email was sent because you published an event on Event-i.</p>
-              <p>© 2024 Event-i. All rights reserved.</p>
-            </div>
-          </div>
-        </body>
-      </html>
+      ${getEmailFooter()}
     `;
+
+    const html = wrapEmailTemplate(content, `Event Published: ${event.title}`);
 
     const mailOptions = {
       from: `"Event-i" <${process.env.SMTP_USER}>`,
@@ -652,6 +745,97 @@ class EmailService {
     };
 
     return this.transporter.sendMail(mailOptions);
+  }
+
+  /**
+   * Send welcome email to new users on registration
+   */
+  async sendWelcomeEmail({ email, firstName, name, role = "customer" }) {
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || "https://event-i.co.ke";
+      const colors = getBrandColors();
+      const userName = firstName || name?.split(" ")[0] || "there";
+
+      const content = `
+        ${getEmailHeader(
+          "🎉 Welcome to Event-i!",
+          "We're excited to have you join us!"
+        )}
+        
+        <div class="content">
+          <div class="greeting">Hi ${userName},</div>
+          
+          <p class="intro-text">
+            Thank you for joining Event-i! We're thrilled to have you as part of our community. 
+            You're now ready to discover amazing events and create unforgettable experiences.
+          </p>
+          
+          <div class="card">
+            <h3>🚀 Get Started</h3>
+            <p style="margin: 0 0 12px 0; color: ${colors.textSecondary};">
+              Here's what you can do with your new account:
+            </p>
+            <ul style="margin: 0; padding-left: 20px; color: ${
+              colors.textSecondary
+            };">
+              <li>Browse and discover events near you</li>
+              <li>Purchase tickets for your favorite events</li>
+              <li>Manage your tickets in your wallet</li>
+              <li>Receive event reminders and updates</li>
+              ${
+                role === "organizer"
+                  ? "<li>Create and manage your own events</li>"
+                  : ""
+              }
+            </ul>
+          </div>
+          
+          <div class="highlight-box">
+            <h4>✨ What Makes Event-i Special?</h4>
+            <ul style="margin: 0; padding-left: 20px; color: ${
+              colors.textSecondary
+            };">
+              <li>Secure payment processing</li>
+              <li>Digital tickets with QR codes</li>
+              <li>Event reminders so you never miss out</li>
+              <li>Easy event discovery and booking</li>
+            </ul>
+          </div>
+          
+          <div class="btn-container">
+            <a href="${frontendUrl}/events" class="btn">Browse Events</a>
+            ${
+              role === "organizer"
+                ? `<a href="${frontendUrl}/organizer" class="btn btn-secondary">Create Event</a>`
+                : ""
+            }
+          </div>
+          
+          <p class="intro-text" style="margin-top: 24px;">
+            Need help? Our support team is here for you. Don't hesitate to reach out if you have any questions.
+          </p>
+        </div>
+        
+        ${getEmailFooter()}
+      `;
+
+      const html = wrapEmailTemplate(content, "Welcome to Event-i");
+
+      const mailOptions = {
+        from: `"Event-i" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: "🎉 Welcome to Event-i!",
+        html,
+        headers: this.getSecurityHeaders(),
+      };
+
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log("✅ Welcome email sent:", result.messageId);
+      return result;
+    } catch (error) {
+      console.error("❌ Error sending welcome email:", error);
+      throw error;
+    }
   }
 
   /**

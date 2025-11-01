@@ -5,6 +5,7 @@ const { body, validationResult } = require("express-validator");
 const crypto = require("crypto");
 const User = require("../models/User");
 const Session = require("../models/Session");
+const emailService = require("../services/emailService");
 const {
   verifyToken,
   requireRole,
@@ -155,6 +156,19 @@ router.post(
       // Set password (bcrypt 12 rounds)
       await user.setPassword(password);
       await user.save();
+
+      // Send welcome email (best-effort, don't fail registration if email fails)
+      try {
+        await emailService.sendWelcomeEmail({
+          email: user.email,
+          firstName: user.firstName,
+          name: user.name,
+          role: user.role,
+        });
+      } catch (emailError) {
+        console.error("Failed to send welcome email:", emailError);
+        // Continue with registration even if email fails
+      }
 
       // Generate tokens
       const { accessToken, refreshToken } = generateTokens(user._id);
