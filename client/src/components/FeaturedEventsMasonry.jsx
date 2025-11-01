@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchFeaturedEvents } from "../store/slices/eventsSlice";
 import { cn } from "../utils/cn";
 
-const FeaturedEventsMasonry = () => {
+const FeaturedEventsMasonry = ({ baseOpacity = 0.65, subtleAnimations = false }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { featuredEvents } = useSelector((state) => state.events);
@@ -99,22 +99,22 @@ const FeaturedEventsMasonry = () => {
             return (
               <motion.div
                 key={event._masonryId || `${event.id || event._id}-${index}`}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 0.65, scale: 1 }}
+                initial={{ opacity: 0, scale: subtleAnimations ? 0.98 : 0.9 }}
+                animate={{ opacity: baseOpacity, scale: 1 }}
                 transition={{
                   delay,
-                  duration: 0.6,
-                  ease: "easeOut",
+                  duration: subtleAnimations ? 0.8 : 0.6,
+                  ease: subtleAnimations ? [0.25, 0.46, 0.45, 0.94] : "easeOut",
                 }}
                 whileHover={{
-                  opacity: 0.95,
-                  scale: 1.08,
+                  opacity: subtleAnimations ? baseOpacity + 0.1 : baseOpacity + 0.2,
+                  scale: subtleAnimations ? 1.03 : 1.08,
                   zIndex: 10,
                   transition: {
                     type: "spring",
-                    stiffness: 300,
-                    damping: 25,
-                    mass: 0.8,
+                    stiffness: subtleAnimations ? 200 : 300,
+                    damping: subtleAnimations ? 30 : 25,
+                    mass: subtleAnimations ? 1 : 0.8,
                   },
                 }}
                 className={cn(
@@ -153,12 +153,15 @@ const FeaturedEventsMasonry = () => {
                         transformOrigin: "center",
                       }}
                       whileHover={{
-                        scale: 1.25,
-                        filter: "brightness(1.35) contrast(1.3)",
+                        scale: subtleAnimations ? 1.08 : 1.25,
+                        filter: subtleAnimations 
+                          ? "brightness(1.15) contrast(1.1)" 
+                          : "brightness(1.35) contrast(1.3)",
                         transition: {
                           type: "spring",
-                          stiffness: 200,
-                          damping: 20,
+                          stiffness: subtleAnimations ? 150 : 200,
+                          damping: subtleAnimations ? 25 : 20,
+                          mass: subtleAnimations ? 1.2 : 1,
                         },
                       }}
                     />
@@ -166,9 +169,9 @@ const FeaturedEventsMasonry = () => {
                     <motion.div
                       className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent opacity-40 pointer-events-none"
                       whileHover={{
-                        opacity: 0.2,
+                        opacity: subtleAnimations ? 0.35 : 0.2,
                         transition: {
-                          duration: 0.4,
+                          duration: subtleAnimations ? 0.6 : 0.4,
                           ease: [0.4, 0, 0.2, 1],
                         },
                       }}
@@ -179,11 +182,15 @@ const FeaturedEventsMasonry = () => {
                       className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none"
                       initial={{ opacity: 0, x: "-150%" }}
                       whileHover={{
-                        opacity: [0, 1, 1, 0],
+                        opacity: subtleAnimations 
+                          ? [0, 0.6, 0.6, 0] 
+                          : [0, 1, 1, 0],
                         x: ["-150%", "250%", "250%", "250%"],
                         transition: {
-                          duration: 0.8,
-                          ease: [0.25, 0.46, 0.45, 0.94],
+                          duration: subtleAnimations ? 1.2 : 0.8,
+                          ease: subtleAnimations 
+                            ? [0.25, 0.46, 0.45, 0.94] 
+                            : [0.25, 0.46, 0.45, 0.94],
                           times: [0, 0.3, 0.7, 1],
                         },
                       }}
@@ -204,8 +211,9 @@ const FeaturedEventsMasonry = () => {
                     y: 0,
                     transition: {
                       type: "spring",
-                      stiffness: 250,
-                      damping: 30,
+                      stiffness: subtleAnimations ? 180 : 250,
+                      damping: subtleAnimations ? 35 : 30,
+                      mass: subtleAnimations ? 1.2 : 1,
                     },
                   }}
                 >
@@ -245,9 +253,9 @@ const FeaturedEventsMasonry = () => {
                   className="absolute inset-0 bg-gradient-to-br from-[#4f0f69]/0 via-transparent to-[#8A4FFF]/0 pointer-events-none rounded-lg"
                   initial={{ opacity: 0 }}
                   whileHover={{
-                    opacity: 0.3,
+                    opacity: subtleAnimations ? 0.15 : 0.3,
                     transition: {
-                      duration: 0.5,
+                      duration: subtleAnimations ? 0.7 : 0.5,
                       ease: [0.4, 0, 0.2, 1],
                     },
                   }}
@@ -264,11 +272,15 @@ const FeaturedEventsMasonry = () => {
                     boxShadow: "0 0 0px rgba(79, 15, 105, 0)",
                   }}
                   whileHover={{
-                    borderColor: "rgba(79, 15, 105, 0.4)",
-                    boxShadow: "0 0 20px rgba(79, 15, 105, 0.3)",
+                    borderColor: subtleAnimations 
+                      ? "rgba(79, 15, 105, 0.25)" 
+                      : "rgba(79, 15, 105, 0.4)",
+                    boxShadow: subtleAnimations
+                      ? "0 0 12px rgba(79, 15, 105, 0.2)"
+                      : "0 0 20px rgba(79, 15, 105, 0.3)",
                   }}
                   transition={{
-                    duration: 0.4,
+                    duration: subtleAnimations ? 0.6 : 0.4,
                     ease: [0.4, 0, 0.2, 1],
                   }}
                 />

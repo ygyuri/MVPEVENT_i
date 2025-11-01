@@ -9,6 +9,7 @@ import {
 } from "../store/slices/eventsSlice";
 import EventCard from "../components/EventCard";
 import ViewMoreButton from "../components/common/ViewMoreButton";
+import FeaturedEventsMasonry from "../components/FeaturedEventsMasonry";
 
 const EmptyList = ({ loading, text }) => {
   if (loading) {
@@ -70,14 +71,17 @@ const Home = () => {
       {/* Hero */}
       <section className="hero-modern relative overflow-hidden">
         {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900" />
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/80 via-white/60 to-purple-50/80 dark:from-gray-900/80 dark:via-gray-800/60 dark:to-gray-900/80 backdrop-blur-sm" />
+
+        {/* Featured Events Masonry Background - Lower Opacity with Subtle Animations */}
+        <FeaturedEventsMasonry baseOpacity={0.25} subtleAnimations={true} />
 
         {/* Decorative elements */}
-        <div className="absolute top-20 left-10 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-blue-200 dark:bg-blue-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob" />
-        <div className="absolute top-40 right-10 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-purple-200 dark:bg-purple-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob animation-delay-2000" />
-        <div className="absolute bottom-20 left-1/2 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-pink-200 dark:bg-pink-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob animation-delay-4000" />
+        <div className="absolute top-20 left-10 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-blue-200 dark:bg-blue-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob pointer-events-none z-0" />
+        <div className="absolute top-40 right-10 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-purple-200 dark:bg-purple-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob animation-delay-2000 pointer-events-none z-0" />
+        <div className="absolute bottom-20 left-1/2 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-pink-200 dark:bg-pink-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob animation-delay-4000 pointer-events-none z-0" />
 
-        <div className="container-modern relative z-10">
+        <div className="container-modern relative z-30 pointer-events-none">
           <div className="text-center py-8 sm:py-12 md:py-16 lg:py-24 px-4 sm:px-6">
             {/* Badge with Globe Icon */}
             <motion.div

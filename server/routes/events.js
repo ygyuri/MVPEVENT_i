@@ -402,6 +402,7 @@ router.get("/trending", optionalAuth, async (req, res) => {
       price: event.pricing?.price,
       isFree: event.pricing?.isFree,
       coverImageUrl: event.media?.coverImageUrl,
+      ticketTypes: event.ticketTypes || [],
       category: event.category
         ? {
             name: event.category.name,

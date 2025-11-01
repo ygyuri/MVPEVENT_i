@@ -15,6 +15,10 @@ import UserProfile from "./pages/UserProfile";
 import TicketWallet from "./pages/TicketWallet";
 import Scanner from "./pages/Scanner";
 import AdminScans from "./pages/AdminScans";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminUsers from "./pages/AdminUsers";
+import AdminEvents from "./pages/AdminEvents";
+import AdminOrders from "./pages/AdminOrders";
 import EventQRSettings from "./pages/EventQRSettings";
 import OrganizerDashboard from "./pages/OrganizerDashboard";
 import EventCreate from "./pages/EventCreate";
@@ -68,6 +72,10 @@ function App() {
                   <Route path="/profile" element={<UserProfile />} />
                   <Route path="/wallet" element={<TicketWallet />} />
                   <Route path="/scanner" element={<Scanner />} />
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/users" element={<AdminUsers />} />
+                  <Route path="/admin/events" element={<AdminEvents />} />
+                  <Route path="/admin/orders" element={<AdminOrders />} />
                   <Route path="/admin/scans" element={<AdminScans />} />
                   <Route path="/organizer" element={<OrganizerDashboard />} />
                   <Route

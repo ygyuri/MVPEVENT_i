@@ -1,5 +1,5 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../utils/api';
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import api from "../../utils/api";
 
 // Helper to build query string safely
 const buildQuery = (params = {}) => {
@@ -10,7 +10,7 @@ const buildQuery = (params = {}) => {
   // Strip empty/void values
   Object.keys(safe).forEach((key) => {
     const value = safe[key];
-    const isEmptyString = typeof value === 'string' && value.trim() === '';
+    const isEmptyString = typeof value === "string" && value.trim() === "";
     const isVoid = value === undefined || value === null;
     if (isVoid || isEmptyString) {
       delete safe[key];
@@ -21,128 +21,146 @@ const buildQuery = (params = {}) => {
 
 // Async thunks
 export const fetchEvents = createAsyncThunk(
-  'events/fetchEvents',
+  "events/fetchEvents",
   async (arg = {}, { rejectWithValue, signal }) => {
     try {
-      const params = Array.isArray(arg) || typeof arg === 'string' ? {} : arg;
+      const params = Array.isArray(arg) || typeof arg === "string" ? {} : arg;
       const queryParams = buildQuery(params);
       const response = await api.get(`/api/events?${queryParams}`, { signal });
       return response.data;
     } catch (error) {
-      if (error?.name === 'CanceledError') {
-        return rejectWithValue('cancelled');
+      if (error?.name === "CanceledError") {
+        return rejectWithValue("cancelled");
       }
-      return rejectWithValue(error.response?.data?.error || 'Failed to fetch events');
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to fetch events"
+      );
     }
   }
 );
 
 export const fetchFeaturedEvents = createAsyncThunk(
-  'events/fetchFeaturedEvents',
+  "events/fetchFeaturedEvents",
   async (params = {}, { rejectWithValue, signal }) => {
     try {
       const { page = 1, pageSize = 12 } = params;
       const queryParams = new URLSearchParams({ page, pageSize }).toString();
-      const response = await api.get(`/api/events/featured?${queryParams}`, { signal });
+      const response = await api.get(`/api/events/featured?${queryParams}`, {
+        signal,
+      });
       return response.data;
     } catch (error) {
-      if (error?.name === 'CanceledError') {
-        return rejectWithValue('cancelled');
+      if (error?.name === "CanceledError") {
+        return rejectWithValue("cancelled");
       }
-      return rejectWithValue(error.response?.data?.error || 'Failed to fetch featured events');
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to fetch featured events"
+      );
     }
   }
 );
 
 export const fetchTrendingEvents = createAsyncThunk(
-  'events/fetchTrendingEvents',
+  "events/fetchTrendingEvents",
   async (_, { rejectWithValue, signal }) => {
     try {
-      const response = await api.get('/api/events/trending', { signal });
+      const response = await api.get("/api/events/trending", { signal });
       return response.data.events;
     } catch (error) {
-      if (error?.name === 'CanceledError') {
-        return rejectWithValue('cancelled');
+      if (error?.name === "CanceledError") {
+        return rejectWithValue("cancelled");
       }
-      return rejectWithValue(error.response?.data?.error || 'Failed to fetch trending events');
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to fetch trending events"
+      );
     }
   }
 );
 
 export const fetchSuggestedEvents = createAsyncThunk(
-  'events/fetchSuggestedEvents',
+  "events/fetchSuggestedEvents",
   async (params = {}, { rejectWithValue, signal }) => {
     try {
       const { page = 1, pageSize = 12 } = params;
       const queryParams = new URLSearchParams({ page, pageSize }).toString();
-      const response = await api.get(`/api/events/suggested?${queryParams}`, { signal });
+      const response = await api.get(`/api/events/suggested?${queryParams}`, {
+        signal,
+      });
       return response.data;
     } catch (error) {
-      if (error?.name === 'CanceledError') {
-        return rejectWithValue('cancelled');
+      if (error?.name === "CanceledError") {
+        return rejectWithValue("cancelled");
       }
-      return rejectWithValue(error.response?.data?.error || 'Failed to fetch suggested events');
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to fetch suggested events"
+      );
     }
   }
 );
 
 export const fetchCategories = createAsyncThunk(
-  'events/fetchCategories',
+  "events/fetchCategories",
   async (_, { rejectWithValue, signal }) => {
     try {
-      const response = await api.get('/api/events/categories', { signal });
+      const response = await api.get("/api/events/categories", { signal });
       return response.data.categories;
     } catch (error) {
-      if (error?.name === 'CanceledError') {
-        return rejectWithValue('cancelled');
+      if (error?.name === "CanceledError") {
+        return rejectWithValue("cancelled");
       }
-      return rejectWithValue(error.response?.data?.error || 'Failed to fetch categories');
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to fetch categories"
+      );
     }
   }
 );
 
 export const fetchEventDetails = createAsyncThunk(
-  'events/fetchEventDetails',
+  "events/fetchEventDetails",
   async (slug, { rejectWithValue, signal }) => {
     try {
       const response = await api.get(`/api/events/${slug}`, { signal });
       return response.data.event;
     } catch (error) {
-      if (error?.name === 'CanceledError') {
-        return rejectWithValue('cancelled');
+      if (error?.name === "CanceledError") {
+        return rejectWithValue("cancelled");
       }
-      return rejectWithValue(error.response?.data?.error || 'Failed to fetch event details');
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to fetch event details"
+      );
     }
   }
 );
 
 export const fetchEventTickets = createAsyncThunk(
-  'events/fetchEventTickets',
+  "events/fetchEventTickets",
   async (slug, { rejectWithValue, signal }) => {
     try {
       const response = await api.get(`/api/events/${slug}/tickets`, { signal });
       return { slug, tickets: response.data.ticketTypes };
     } catch (error) {
-      if (error?.name === 'CanceledError') {
-        return rejectWithValue('cancelled');
+      if (error?.name === "CanceledError") {
+        return rejectWithValue("cancelled");
       }
-      return rejectWithValue(error.response?.data?.error || 'Failed to fetch tickets');
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to fetch tickets"
+      );
     }
   }
 );
 
 export const purchaseTickets = createAsyncThunk(
-  'events/purchaseTickets',
+  "events/purchaseTickets",
   async ({ slug, ticketTypeName, quantity }, { rejectWithValue }) => {
     try {
       const response = await api.post(`/api/events/${slug}/purchase`, {
-        userId: '000000000000000000000001', // MVP: dummy user ID
+        userId: "000000000000000000000001", // MVP: dummy user ID
         ticketTypeName,
-        quantity
+        quantity,
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || 'Purchase failed');
+      return rejectWithValue(error.response?.data?.error || "Purchase failed");
     }
   }
 );
@@ -156,32 +174,35 @@ const initialState = {
   currentEvent: null,
   tickets: [],
   loading: false,
+  featuredLoading: false,
+  trendingLoading: false,
+  suggestedLoading: false,
   error: null,
   meta: {
     page: 1,
     pageSize: 12,
     total: 0,
     totalPages: 1,
-    hasMore: false
+    hasMore: false,
   },
   featuredMeta: {
     page: 1,
     pageSize: 12,
     total: 0,
     totalPages: 1,
-    hasMore: false
+    hasMore: false,
   },
   suggestedMeta: {
     page: 1,
     pageSize: 12,
     total: 0,
     totalPages: 1,
-    hasMore: false
-  }
+    hasMore: false,
+  },
 };
 
 const eventsSlice = createSlice({
-  name: 'events',
+  name: "events",
   initialState,
   reducers: {
     clearError: (state) => {
@@ -190,7 +211,7 @@ const eventsSlice = createSlice({
     resetEvents: (state) => {
       state.events = [];
       state.meta = initialState.meta;
-    }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -209,21 +230,21 @@ const eventsSlice = createSlice({
           pageSize: meta.pageSize ?? 12,
           total: meta.total ?? 0,
           totalPages: meta.totalPages ?? 1,
-          hasMore: meta.hasMore ?? Boolean(meta.page < meta.totalPages)
+          hasMore: meta.hasMore ?? Boolean(meta.page < meta.totalPages),
         };
       })
       .addCase(fetchEvents.rejected, (state, action) => {
-        if (action.payload === 'cancelled') return; // ignore cancellations
+        if (action.payload === "cancelled") return; // ignore cancellations
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Fetch Featured Events
       .addCase(fetchFeaturedEvents.pending, (state) => {
-        state.loading = true;
+        state.featuredLoading = true;
       })
       .addCase(fetchFeaturedEvents.fulfilled, (state, action) => {
-        state.loading = false;
+        state.featuredLoading = false;
         state.featuredEvents = action.payload.events;
         // Update featured pagination metadata
         const meta = action.payload.meta || {};
@@ -232,26 +253,26 @@ const eventsSlice = createSlice({
           pageSize: meta.pageSize ?? 12,
           total: meta.total ?? 0,
           totalPages: meta.totalPages ?? 1,
-          hasMore: meta.hasMore ?? Boolean(meta.page < meta.totalPages)
+          hasMore: meta.hasMore ?? Boolean(meta.page < meta.totalPages),
         };
       })
       .addCase(fetchFeaturedEvents.rejected, (state, action) => {
-        if (action.payload === 'cancelled') return;
-        state.loading = false;
+        if (action.payload === "cancelled") return;
+        state.featuredLoading = false;
         state.error = action.payload;
       })
-      
+
       // Fetch Trending Events
       .addCase(fetchTrendingEvents.pending, (state) => {
-        state.loading = true;
+        state.trendingLoading = true;
       })
       .addCase(fetchTrendingEvents.fulfilled, (state, action) => {
-        state.loading = false;
+        state.trendingLoading = false;
         state.trendingEvents = action.payload;
       })
       .addCase(fetchTrendingEvents.rejected, (state, action) => {
-        if (action.payload === 'cancelled') return;
-        state.loading = false;
+        if (action.payload === "cancelled") return;
+        state.trendingLoading = false;
         state.error = action.payload;
       })
 
@@ -269,15 +290,15 @@ const eventsSlice = createSlice({
           pageSize: meta.pageSize ?? 12,
           total: meta.total ?? 0,
           totalPages: meta.totalPages ?? 1,
-          hasMore: meta.hasMore ?? Boolean(meta.page < meta.totalPages)
+          hasMore: meta.hasMore ?? Boolean(meta.page < meta.totalPages),
         };
       })
       .addCase(fetchSuggestedEvents.rejected, (state, action) => {
-        if (action.payload === 'cancelled') return;
+        if (action.payload === "cancelled") return;
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Fetch Categories
       .addCase(fetchCategories.pending, (state) => {
         state.loading = true;
@@ -287,7 +308,7 @@ const eventsSlice = createSlice({
         state.categories = action.payload;
       })
       .addCase(fetchCategories.rejected, (state, action) => {
-        if (action.payload === 'cancelled') return;
+        if (action.payload === "cancelled") return;
         state.loading = false;
         state.error = action.payload;
       })
@@ -303,7 +324,7 @@ const eventsSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchEventDetails.rejected, (state, action) => {
-        if (action.payload === 'cancelled') return;
+        if (action.payload === "cancelled") return;
         state.loading = false;
         state.error = action.payload;
       })
@@ -317,7 +338,7 @@ const eventsSlice = createSlice({
         state.tickets = action.payload.tickets;
       })
       .addCase(fetchEventTickets.rejected, (state, action) => {
-        if (action.payload === 'cancelled') return;
+        if (action.payload === "cancelled") return;
         state.loading = false;
         state.error = action.payload;
       })
@@ -334,7 +355,7 @@ const eventsSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       });
-  }
+  },
 });
 
 export const { clearError, resetEvents } = eventsSlice.actions;

@@ -213,6 +213,38 @@ const Navbar = ({ onOpenAuthModal }) => {
                 )}
               </Link>
             </motion.div>
+            {isAuthenticated && user?.role === "admin" && (
+              <motion.div
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Link
+                  to="/admin"
+                  className={`relative px-6 lg:px-8 py-3 lg:py-4 transition-all duration-300 font-semibold text-sm lg:text-base ${
+                    isActive("/admin")
+                      ? isDarkMode
+                        ? "text-white"
+                        : "text-[#4f0f69]"
+                      : isDarkMode
+                      ? "text-gray-300 hover:text-white hover:bg-[#4f0f69]/20"
+                      : "text-gray-600 hover:text-[#4f0f69] hover:bg-gray-50"
+                  }`}
+                >
+                  Admin
+                  {isActive("/admin") && (
+                    <motion.div
+                      layoutId="activeIndicator"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full"
+                      transition={{
+                        type: "spring",
+                        stiffness: 380,
+                        damping: 30,
+                      }}
+                    />
+                  )}
+                </Link>
+              </motion.div>
+            )}
             {isAuthenticated &&
               (user?.role === "admin" || user?.role === "organizer") && (
                 <motion.div
@@ -678,6 +710,33 @@ const Navbar = ({ onOpenAuthModal }) => {
                     </Link>
                   </motion.div>
 
+                  {isAuthenticated && user?.role === "admin" && (
+                    <>
+                      <div
+                        className={`h-px my-2 ${
+                          isDarkMode ? "bg-gray-700" : "bg-gray-200"
+                        }`}
+                      />
+                      <motion.div
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.2, duration: 0.3 }}
+                      >
+                        <Link
+                          to="/admin"
+                          className={`flex items-center px-4 py-4 rounded-xl transition-all duration-200 font-semibold text-base min-h-[48px] ${
+                            isDarkMode
+                              ? "text-gray-200 active:bg-[#4f0f69]/40 hover:bg-[#4f0f69]/30"
+                              : "text-gray-700 active:bg-gray-100 hover:bg-gray-50"
+                          }`}
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <Shield className="w-5 h-5 mr-3" />
+                          Admin Dashboard
+                        </Link>
+                      </motion.div>
+                    </>
+                  )}
                   {isAuthenticated &&
                     (user?.role === "admin" || user?.role === "organizer") && (
                       <>
