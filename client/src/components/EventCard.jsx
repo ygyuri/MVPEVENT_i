@@ -327,40 +327,65 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
         >
           {/* Premium Pricing */}
           <div className="flex flex-col">
-            {event.ticketTypes && event.ticketTypes.length > 0 ? (
-              <>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
-                    From
-                  </span>
-                  <PriceDisplay
-                    amount={Math.min(
-                      ...event.ticketTypes.map((t) => t.price || 0)
+            {(() => {
+              // Determine if event has paid ticket types
+              const hasTicketTypes =
+                event.ticketTypes && event.ticketTypes.length > 0;
+              const hasPaidTicketTypes =
+                hasTicketTypes &&
+                event.ticketTypes.some((t) => t.price && t.price > 0);
+              const minTicketPrice = hasTicketTypes
+                ? Math.min(...event.ticketTypes.map((t) => t.price || 0))
+                : null;
+
+              // If there are ticket types with prices > 0, show the minimum price
+              if (hasPaidTicketTypes) {
+                return (
+                  <>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
+                        From
+                      </span>
+                      <PriceDisplay
+                        amount={minTicketPrice}
+                        originalCurrency="KES"
+                        className="text-xl font-bold text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    {event.ticketTypes.length > 1 && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                        {event.ticketTypes.length} ticket options
+                      </span>
                     )}
-                    originalCurrency="KES"
-                    className="text-xl font-bold text-gray-900 dark:text-white"
-                  />
-                </div>
-                {event.ticketTypes.length > 1 && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                    {event.ticketTypes.length} ticket options
-                  </span>
-                )}
-              </>
-            ) : event.isFree ? (
-              <div className="flex items-center space-x-2">
-                <Award className="w-4 h-4 text-green-500" />
-                <span className="text-xl font-bold text-green-600 dark:text-green-400">
-                  Free Event
-                </span>
-              </div>
-            ) : (
-              <PriceDisplay
-                amount={event.price || 0}
-                originalCurrency="KES"
-                className="text-xl font-bold text-gray-900 dark:text-white"
-              />
-            )}
+                  </>
+                );
+              }
+
+              // If all ticket types are free or no ticket types, check isFree flag or price
+              const isActuallyFree = hasTicketTypes
+                ? minTicketPrice === 0 || minTicketPrice === null
+                : event.isFree || !event.price || event.price === 0;
+
+              if (isActuallyFree) {
+                return (
+                  <div className="flex items-center space-x-2">
+                    <Award className="w-4 h-4 text-green-500" />
+                    <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                      Free Event
+                    </span>
+                  </div>
+                );
+              }
+
+              // Show regular price if event has a price but no ticket types
+              return (
+                <PriceDisplay
+                  amount={event.price || 0}
+                  originalCurrency="KES"
+                  className="text-xl font-bold text-gray-900 dark:text-white"
+                />
+              );
+            })()}
           </div>
 
           {/* Premium Action Button */}
