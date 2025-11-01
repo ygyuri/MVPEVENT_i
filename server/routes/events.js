@@ -327,6 +327,7 @@ router.get("/featured", optionalAuth, async (req, res) => {
       isFeatured: event.flags?.isFeatured,
       isTrending: event.flags?.isTrending,
       coverImageUrl: event.media?.coverImageUrl,
+      ticketTypes: event.ticketTypes || [],
       category: event.category
         ? {
             name: event.category.name,
@@ -474,6 +475,7 @@ router.get("/suggested", optionalAuth, async (req, res) => {
         isFeatured: event.flags?.isFeatured,
         isTrending: event.flags?.isTrending,
         coverImageUrl: event.media?.coverImageUrl,
+        ticketTypes: event.ticketTypes || [],
         category: event.category
           ? {
               name: event.category.name,
@@ -597,6 +599,7 @@ router.get("/suggested", optionalAuth, async (req, res) => {
       isFeatured: event.flags?.isFeatured,
       isTrending: event.flags?.isTrending,
       coverImageUrl: event.media?.coverImageUrl,
+      ticketTypes: event.ticketTypes || [],
       category: event.category
         ? {
             name: event.category.name,

@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import CategoryBadge from "./CategoryBadge";
 import { PriceDisplay } from "./CurrencyConverter";
 import { useState } from "react";
+import toast from "react-hot-toast";
 
 const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
   const navigate = useNavigate();
@@ -62,6 +63,64 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
   const openDetails = () => {
     if (onView) onView(event.slug);
     else navigate(`/events/${event.slug}/checkout`);
+  };
+
+  const handleShare = async (e) => {
+    e.stopPropagation();
+
+    const eventUrl = `${window.location.origin}/events/${event.slug}/checkout`;
+    const shareData = {
+      title: event.title || "Event",
+      text: event.shortDescription || `Check out this event: ${event.title}`,
+      url: eventUrl,
+    };
+
+    // Try Web Share API first (works on mobile and modern browsers)
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        toast.success("Event shared successfully!", {
+          icon: "📤",
+        });
+        return;
+      } catch (error) {
+        // User cancelled or error occurred
+        if (error.name !== "AbortError") {
+          console.error("Error sharing:", error);
+        }
+        // Fall through to clipboard fallback
+      }
+    }
+
+    // Fallback: Copy to clipboard
+    try {
+      await navigator.clipboard.writeText(eventUrl);
+      toast.success("Event link copied to clipboard!", {
+        icon: "📋",
+      });
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = eventUrl;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-999999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      try {
+        document.execCommand("copy");
+        toast.success("Event link copied to clipboard!", {
+          icon: "📋",
+        });
+      } catch (fallbackErr) {
+        toast.error("Failed to share event. Please copy the link manually.", {
+          icon: "❌",
+        });
+      } finally {
+        document.body.removeChild(textArea);
+      }
+    }
   };
 
   const status = getEventStatus();
@@ -167,13 +226,11 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
         </motion.button>
 
         <motion.button
-          onClick={(e) => {
-            e.stopPropagation();
-            // TODO: Implement share functionality
-          }}
+          onClick={handleShare}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           className="p-2.5 rounded-full bg-white/90 dark:bg-gray-800/90 text-gray-600 dark:text-gray-300 hover:bg-[#4f0f69] hover:text-white backdrop-blur-md shadow-lg transition-all duration-300"
+          title="Share event"
         >
           <Share2 className="w-4 h-4" />
         </motion.button>
@@ -328,43 +385,64 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
           {/* Premium Pricing */}
           <div className="flex flex-col">
             {(() => {
+              // Helper to safely convert price to number
+              const toNumber = (val) => {
+                if (val == null) return 0;
+                const num =
+                  typeof val === "string" ? parseFloat(val) : Number(val);
+                return isNaN(num) ? 0 : num;
+              };
+
               // Determine if event has paid ticket types
               const hasTicketTypes =
-                event.ticketTypes && event.ticketTypes.length > 0;
-              const hasPaidTicketTypes =
-                hasTicketTypes &&
-                event.ticketTypes.some((t) => t.price && t.price > 0);
-              const minTicketPrice = hasTicketTypes
-                ? Math.min(...event.ticketTypes.map((t) => t.price || 0))
-                : null;
+                event.ticketTypes &&
+                Array.isArray(event.ticketTypes) &&
+                event.ticketTypes.length > 0;
 
-              // If there are ticket types with prices > 0, show the minimum price
-              if (hasPaidTicketTypes) {
+              if (hasTicketTypes) {
+                // Get all ticket prices as numbers
+                const ticketPrices = event.ticketTypes
+                  .map((t) => toNumber(t?.price))
+                  .filter((p) => p > 0);
+
+                // If there are any paid ticket types, show the minimum price
+                if (ticketPrices.length > 0) {
+                  const minTicketPrice = Math.min(...ticketPrices);
+                  return (
+                    <>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
+                          From
+                        </span>
+                        <PriceDisplay
+                          amount={minTicketPrice}
+                          originalCurrency="KES"
+                          className="text-xl font-bold text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      {event.ticketTypes.length > 1 && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                          {event.ticketTypes.length} ticket options
+                        </span>
+                      )}
+                    </>
+                  );
+                }
+
+                // All ticket types are free (price 0 or no price)
                 return (
-                  <>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-semibold">
-                        From
-                      </span>
-                      <PriceDisplay
-                        amount={minTicketPrice}
-                        originalCurrency="KES"
-                        className="text-xl font-bold text-gray-900 dark:text-white"
-                      />
-                    </div>
-                    {event.ticketTypes.length > 1 && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                        {event.ticketTypes.length} ticket options
-                      </span>
-                    )}
-                  </>
+                  <div className="flex items-center space-x-2">
+                    <Award className="w-4 h-4 text-green-500" />
+                    <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                      Free Event
+                    </span>
+                  </div>
                 );
               }
 
-              // If all ticket types are free or no ticket types, check isFree flag or price
-              const isActuallyFree = hasTicketTypes
-                ? minTicketPrice === 0 || minTicketPrice === null
-                : event.isFree || !event.price || event.price === 0;
+              // No ticket types - check isFree flag or price field
+              const eventPrice = toNumber(event.price);
+              const isActuallyFree = event.isFree || eventPrice === 0;
 
               if (isActuallyFree) {
                 return (
@@ -380,7 +458,7 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
               // Show regular price if event has a price but no ticket types
               return (
                 <PriceDisplay
-                  amount={event.price || 0}
+                  amount={eventPrice}
                   originalCurrency="KES"
                   className="text-xl font-bold text-gray-900 dark:text-white"
                 />
