@@ -14,6 +14,7 @@ import {
   Calendar,
   DollarSign,
   User,
+  Mail,
 } from "lucide-react";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
@@ -29,6 +30,7 @@ const AdminOrders = () => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [limit] = useState(20);
+  const [sendingReminders, setSendingReminders] = useState({});
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== "admin") {
@@ -105,6 +107,34 @@ const AdminOrders = () => {
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  const handleSendReminders = async (orderId) => {
+    if (
+      !window.confirm(
+        "Send reminder emails to all ticket holders for this order?"
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setSendingReminders({ ...sendingReminders, [orderId]: true });
+      const response = await api.post(
+        `/api/admin/orders/${orderId}/send-reminders`
+      );
+
+      if (response.data?.success) {
+        toast.success(response.data.message || "Reminders sent successfully!");
+      } else {
+        toast.error(response.data?.error || "Failed to send reminders");
+      }
+    } catch (err) {
+      console.error("Failed to send reminders:", err);
+      toast.error(err.response?.data?.error || "Failed to send reminders");
+    } finally {
+      setSendingReminders({ ...sendingReminders, [orderId]: false });
+    }
+  };
 
   if (loading && orders.length === 0) {
     return (
@@ -290,6 +320,25 @@ const AdminOrders = () => {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
+                  {/* Show button for any order - backend will validate if tickets exist */}
+                  <button
+                    onClick={() => handleSendReminders(order._id)}
+                    disabled={sendingReminders[order._id]}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Send reminder emails to ticket holders for this order"
+                  >
+                    {sendingReminders[order._id] ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4" />
+                        Send Reminder
+                      </>
+                    )}
+                  </button>
                   <a
                     href={`/payment/${order._id}`}
                     target="_blank"

@@ -1,123 +1,107 @@
 #!/usr/bin/env node
 
 /**
- * Create or update a user to have admin role
- * 
+ * Create a single admin user with specified credentials
+ *
  * Usage:
- *   node server/scripts/createAdminUser.js <email> [password]
- * 
- * Examples:
- *   # Update existing user to admin (keeps existing password)
- *   node server/scripts/createAdminUser.js admin@example.com
- * 
- *   # Create new admin user or update existing with new password
- *   node server/scripts/createAdminUser.js admin@example.com newpassword123
+ *   node server/scripts/createAdminUser.js <email> <password> <name>
+ *
+ * Example:
+ *   node server/scripts/createAdminUser.js admin@event-i.co.ke "#EventI400%" "Admin User"
  */
 
-const mongoose = require('mongoose');
-const User = require('../models/User');
+const mongoose = require("mongoose");
+const User = require("../models/User");
 
-// Get MongoDB URI from environment or use default
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/event_i';
+// Get MongoDB URI from environment
+const MONGODB_URI =
+  process.env.MONGODB_URI || "mongodb://localhost:27017/event_i";
 
-async function createAdminUser(email, password = null) {
+// Get arguments from command line
+const [email, password, name] = process.argv.slice(2);
+
+if (!email || !password) {
+  console.error("❌ Error: Email and password are required");
+  console.error("Usage: node createAdminUser.js <email> <password> [name]");
+  process.exit(1);
+}
+
+const userName = name || email.split("@")[0];
+
+async function createAdminUser() {
   try {
-    console.log('🔗 Connecting to MongoDB...');
+    console.log("🔗 Connecting to MongoDB...");
     await mongoose.connect(MONGODB_URI);
-    console.log('✅ Connected to MongoDB\n');
+    console.log("✅ Connected to MongoDB");
 
-    // Find existing user
-    let user = await User.findOne({ email });
-    
-    if (!user) {
-      console.log(`📝 User ${email} not found. Creating new admin user...`);
-      
-      // Extract username from email if not provided
-      const username = email.split('@')[0];
-      
-      user = new User({
-        email,
-        username,
-        role: 'admin',
-        emailVerified: true,
-        isActive: true,
-        accountStatus: 'active',
-      });
-      
-      if (password) {
-        await user.setPassword(password);
-        console.log('   ✅ Password set');
-      } else {
-        console.log('   ⚠️  No password provided. User will need to use password reset.');
-      }
-      
-    } else {
-      console.log(`📝 User ${email} found. Updating to admin role...`);
+    // Check if user already exists
+    let user = await User.findOne({ email: email.toLowerCase().trim() });
+
+    if (user) {
+      console.log(`\n📝 User found: ${email}`);
       console.log(`   Current role: ${user.role}`);
-      
-      user.role = 'admin';
+      console.log(`   Updating to admin role...`);
+
+      user.role = "admin";
       user.emailVerified = true;
       user.isActive = true;
-      user.accountStatus = 'active';
-      
-      if (password) {
-        await user.setPassword(password);
-        console.log('   ✅ Password updated');
-      } else {
-        console.log('   ℹ️  Password not changed (existing password remains)');
+      user.accountStatus = "active";
+      if (!user.name && userName) {
+        user.name = userName;
       }
+
+      await user.setPassword(password);
+      await user.save();
+
+      console.log(`   ✅ Admin user updated: ${email}`);
+      console.log(`   User ID: ${user._id}`);
+    } else {
+      console.log(`\n📝 Creating new admin user: ${email}`);
+
+      // Sanitize username: remove dots and replace with underscores
+      const rawUsername = email.split("@")[0];
+      const username = rawUsername.replace(/[^a-zA-Z0-9_]/g, "_");
+
+      user = new User({
+        email: email.toLowerCase().trim(),
+        username: username,
+        name: userName,
+        firstName: userName,
+        role: "admin",
+        emailVerified: true,
+        isActive: true,
+        accountStatus: "active",
+      });
+
+      await user.setPassword(password);
+      await user.save();
+
+      console.log(`   ✅ Admin user created: ${email}`);
+      console.log(`   User ID: ${user._id}`);
+      console.log(`   Username: ${username}`);
     }
 
-    await user.save();
-    
-    console.log('\n✅ Admin user created/updated successfully!');
-    console.log('   Email:', user.email);
-    console.log('   Role:', user.role);
-    console.log('   User ID:', user._id);
-    console.log('   Email Verified:', user.emailVerified);
-    console.log('   Active:', user.isActive);
-    
-    if (!password && !user.passwordHash) {
-      console.log('\n⚠️  WARNING: User has no password set. They will need to use password reset to login.');
-    }
+    console.log(`\n📋 Summary:`);
+    console.log(`   Email: ${email}`);
+    console.log(`   Password: ${password}`);
+    console.log(`   Name: ${userName}`);
+    console.log(`   Role: admin`);
+    console.log(`   Status: active`);
+    console.log(`\n✅ Process completed!`);
 
     await mongoose.disconnect();
-    console.log('\n✅ Disconnected from MongoDB');
+    console.log("\n✅ Disconnected from MongoDB");
     process.exit(0);
-    
   } catch (error) {
-    console.error('\n❌ Error:', error.message);
-    
-    if (error.code === 11000) {
-      console.error('   This email or username is already in use by another account.');
-    }
-    
+    console.error("\n❌ Error:", error.message);
+    console.error(error.stack);
     await mongoose.disconnect().catch(() => {});
     process.exit(1);
   }
 }
 
-// Parse command line arguments
-const [,, email, password] = process.argv;
-
-if (!email) {
-  console.error('❌ Error: Email is required\n');
-  console.error('Usage: node server/scripts/createAdminUser.js <email> [password]');
-  console.error('\nExamples:');
-  console.error('  # Update existing user to admin (keep existing password)');
-  console.error('  node server/scripts/createAdminUser.js admin@example.com');
-  console.error('\n  # Create new admin or update with new password');
-  console.error('  node server/scripts/createAdminUser.js admin@example.com newpassword123');
-  process.exit(1);
+if (require.main === module) {
+  createAdminUser();
 }
 
-// Validate email format (basic)
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-if (!emailRegex.test(email)) {
-  console.error('❌ Error: Invalid email format');
-  process.exit(1);
-}
-
-// Run the script
-createAdminUser(email, password);
-
+module.exports = { createAdminUser };

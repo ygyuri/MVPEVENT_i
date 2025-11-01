@@ -18,8 +18,10 @@ import {
   DollarSign,
   ArrowUp,
   ArrowDown,
+  Mail,
 } from "lucide-react";
 import api from "../utils/api";
+import { toast } from "react-hot-toast";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -27,6 +29,7 @@ const AdminDashboard = () => {
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sendingReminders, setSendingReminders] = useState({});
 
   useEffect(() => {
     // Check if user is admin
@@ -51,6 +54,34 @@ const AdminDashboard = () => {
       setError(err.response?.data?.error || "Failed to load dashboard");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendReminders = async (orderId) => {
+    if (
+      !window.confirm(
+        "Send reminder emails to all ticket holders for this order?"
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setSendingReminders({ ...sendingReminders, [orderId]: true });
+      const response = await api.post(
+        `/api/admin/orders/${orderId}/send-reminders`
+      );
+
+      if (response.data?.success) {
+        toast.success(response.data.message || "Reminders sent successfully!");
+      } else {
+        toast.error(response.data?.error || "Failed to send reminders");
+      }
+    } catch (err) {
+      console.error("Failed to send reminders:", err);
+      toast.error(err.response?.data?.error || "Failed to send reminders");
+    } finally {
+      setSendingReminders({ ...sendingReminders, [orderId]: false });
     }
   };
 
@@ -358,6 +389,9 @@ const AdminDashboard = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Date
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -420,6 +454,27 @@ const AdminDashboard = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         {new Date(order.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {/* Show button for all orders - backend will validate if tickets exist */}
+                        <button
+                          onClick={() => handleSendReminders(order._id)}
+                          disabled={sendingReminders[order._id]}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Send reminder emails to ticket holders for this order"
+                        >
+                          {sendingReminders[order._id] ? (
+                            <>
+                              <Clock className="w-3 h-3 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Mail className="w-3 h-3" />
+                              Remind
+                            </>
+                          )}
+                        </button>
                       </td>
                     </tr>
                   ))}

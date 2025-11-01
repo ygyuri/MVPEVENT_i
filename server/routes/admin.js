@@ -567,4 +567,41 @@ router.post(
   }
 );
 
+// Send reminders for an order (admin only)
+router.post(
+  "/orders/:orderId/send-reminders",
+  verifyToken,
+  requireRole("admin"),
+  [param("orderId").isMongoId().withMessage("Invalid order ID")],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid input",
+          details: errors.array(),
+        });
+      }
+
+      const { orderId } = req.params;
+      const reminderService = require("../services/reminderService");
+
+      const result = await reminderService.sendRemindersForOrder(orderId);
+
+      res.json({
+        success: true,
+        message: `Reminders sent: ${result.sent} successful, ${result.failed} failed`,
+        data: result,
+      });
+    } catch (error) {
+      console.error("Send reminders error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to send reminders",
+      });
+    }
+  }
+);
+
 module.exports = router;

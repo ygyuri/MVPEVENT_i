@@ -5,7 +5,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchFeaturedEvents } from "../store/slices/eventsSlice";
 import { cn } from "../utils/cn";
 
-const FeaturedEventsMasonry = ({ baseOpacity = 0.65, subtleAnimations = false }) => {
+const FeaturedEventsMasonry = ({
+  baseOpacity = 0.65,
+  subtleAnimations = false,
+}) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { featuredEvents } = useSelector((state) => state.events);
@@ -107,7 +110,9 @@ const FeaturedEventsMasonry = ({ baseOpacity = 0.65, subtleAnimations = false })
                   ease: subtleAnimations ? [0.25, 0.46, 0.45, 0.94] : "easeOut",
                 }}
                 whileHover={{
-                  opacity: subtleAnimations ? baseOpacity + 0.1 : baseOpacity + 0.2,
+                  opacity: subtleAnimations
+                    ? baseOpacity + 0.1
+                    : baseOpacity + 0.2,
                   scale: subtleAnimations ? 1.03 : 1.08,
                   zIndex: 10,
                   transition: {
@@ -154,8 +159,8 @@ const FeaturedEventsMasonry = ({ baseOpacity = 0.65, subtleAnimations = false })
                       }}
                       whileHover={{
                         scale: subtleAnimations ? 1.08 : 1.25,
-                        filter: subtleAnimations 
-                          ? "brightness(1.15) contrast(1.1)" 
+                        filter: subtleAnimations
+                          ? "brightness(1.15) contrast(1.1)"
                           : "brightness(1.35) contrast(1.3)",
                         transition: {
                           type: "spring",
@@ -182,14 +187,14 @@ const FeaturedEventsMasonry = ({ baseOpacity = 0.65, subtleAnimations = false })
                       className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none"
                       initial={{ opacity: 0, x: "-150%" }}
                       whileHover={{
-                        opacity: subtleAnimations 
-                          ? [0, 0.6, 0.6, 0] 
+                        opacity: subtleAnimations
+                          ? [0, 0.6, 0.6, 0]
                           : [0, 1, 1, 0],
                         x: ["-150%", "250%", "250%", "250%"],
                         transition: {
                           duration: subtleAnimations ? 1.2 : 0.8,
-                          ease: subtleAnimations 
-                            ? [0.25, 0.46, 0.45, 0.94] 
+                          ease: subtleAnimations
+                            ? [0.25, 0.46, 0.45, 0.94]
                             : [0.25, 0.46, 0.45, 0.94],
                           times: [0, 0.3, 0.7, 1],
                         },
@@ -272,8 +277,8 @@ const FeaturedEventsMasonry = ({ baseOpacity = 0.65, subtleAnimations = false })
                     boxShadow: "0 0 0px rgba(79, 15, 105, 0)",
                   }}
                   whileHover={{
-                    borderColor: subtleAnimations 
-                      ? "rgba(79, 15, 105, 0.25)" 
+                    borderColor: subtleAnimations
+                      ? "rgba(79, 15, 105, 0.25)"
                       : "rgba(79, 15, 105, 0.4)",
                     boxShadow: subtleAnimations
                       ? "0 0 12px rgba(79, 15, 105, 0.2)"
