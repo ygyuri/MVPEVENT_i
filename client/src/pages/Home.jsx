@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { motion } from "framer-motion";
+import { Globe } from "lucide-react";
 import {
   fetchFeaturedEvents,
   fetchTrendingEvents,
@@ -77,16 +78,17 @@ const Home = () => {
         <div className="absolute bottom-20 left-1/2 w-40 h-40 sm:w-56 sm:h-56 lg:w-72 lg:h-72 bg-pink-200 dark:bg-pink-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob animation-delay-4000" />
 
         <div className="container-modern relative z-10">
-          <div className="text-center-modern py-12 sm:py-16 md:py-20 lg:py-32 px-4">
-            {/* Badge */}
+          <div className="text-center py-8 sm:py-12 md:py-16 lg:py-24 px-4 sm:px-6">
+            {/* Badge with Globe Icon */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3 }}
-              className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-full mb-4 sm:mb-6 md:mb-8"
+              className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 rounded-full mb-4 sm:mb-6"
             >
+              <Globe className="w-4 h-4 text-blue-700 dark:text-blue-300" />
               <span className="text-xs sm:text-sm font-semibold text-blue-700 dark:text-blue-300">
-                ✨ The event platform for the modern age
+                🌍 Trusted by organizers worldwide
               </span>
             </motion.div>
 
@@ -94,11 +96,11 @@ const Home = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-web3-primary tracking-tight mb-4 sm:mb-5 md:mb-6"
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-extrabold text-web3-primary tracking-tight mb-3 sm:mb-4 md:mb-5 px-2 leading-tight"
             >
-              The Modern Way to
-              <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Manage Events
+              Manage Your Events
+              <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mt-1 sm:mt-2">
+                Seamlessly, Anywhere
               </span>
             </motion.h1>
 
@@ -106,37 +108,70 @@ const Home = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.15, duration: 0.4 }}
-              className="text-base sm:text-lg md:text-xl lg:text-2xl text-web3-secondary leading-relaxed max-w-3xl mx-auto mb-6 sm:mb-8 md:mb-12 px-2"
+              className="text-sm sm:text-base md:text-lg lg:text-xl text-web3-secondary leading-relaxed max-w-2xl mx-auto mb-6 sm:mb-8 px-3 sm:px-4"
             >
-              Effortless event management for organizers. Seamless discovery for
-              attendees.
+              The global platform for effortless event management. Discover and
+              create events from anywhere in the world with multi-currency
+              support.
             </motion.p>
+
+            {/* Multi-Currency Support Badge */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+              className="flex justify-center items-center gap-3 mb-6 sm:mb-8"
+            >
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-md">
+                <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-xs sm:text-sm font-medium text-web3-primary">
+                  <span className="hidden sm:inline">
+                    30+ currencies supported
+                  </span>
+                  <span className="sm:hidden">30+ currencies</span>
+                </span>
+                <div className="flex items-center gap-1 ml-2">
+                  <span className="text-lg">🇰🇪</span>
+                  <span className="text-lg">🇺🇸</span>
+                  <span className="text-lg">🇪🇺</span>
+                  <span className="text-lg">🇬🇧</span>
+                  <span className="text-xs text-web3-secondary">+26</span>
+                </div>
+              </div>
+            </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.4 }}
-              className="flex flex-nowrap justify-start sm:justify-center items-center gap-3 sm:gap-4 md:gap-6 mb-8 sm:mb-10 md:mb-12 overflow-x-auto pb-2 scrollbar-hide"
+              className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 md:gap-4 mb-6 sm:mb-8 md:mb-10 px-2"
             >
-              <span className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
-                <span className="text-base sm:text-lg md:text-xl lg:text-2xl text-green-500">✓</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
+                <span className="text-lg sm:text-xl text-green-500">✓</span>
                 <span className="text-xs sm:text-sm font-medium text-web3-primary">
-                  <span className="hidden sm:inline">Interactive polls & feedback</span>
-                  <span className="sm:hidden">Interactive polls</span>
+                  Global reach
                 </span>
               </span>
-              <span className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
-                <span className="text-base sm:text-lg md:text-xl lg:text-2xl text-green-500">✓</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
+                <span className="text-lg sm:text-xl text-green-500">✓</span>
                 <span className="text-xs sm:text-sm font-medium text-web3-primary">
-                  <span className="hidden sm:inline">Easy fund access</span>
-                  <span className="sm:hidden">Easy access</span>
+                  <span className="hidden sm:inline">
+                    Multi-currency payments
+                  </span>
+                  <span className="sm:hidden">Multi-currency</span>
                 </span>
               </span>
-              <span className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
-                <span className="text-base sm:text-lg md:text-xl lg:text-2xl text-green-500">✓</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
+                <span className="text-lg sm:text-xl text-green-500">✓</span>
                 <span className="text-xs sm:text-sm font-medium text-web3-primary">
-                  <span className="hidden sm:inline">Affordable pricing</span>
-                  <span className="sm:hidden">Affordable</span>
+                  <span className="hidden sm:inline">24/7 global support</span>
+                  <span className="sm:hidden">24/7 support</span>
+                </span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-white dark:bg-gray-800 rounded-full shadow-md hover:shadow-lg transition-shadow whitespace-nowrap flex-shrink-0">
+                <span className="text-lg sm:text-xl text-green-500">✓</span>
+                <span className="text-xs sm:text-sm font-medium text-web3-primary">
+                  Secure worldwide
                 </span>
               </span>
             </motion.div>

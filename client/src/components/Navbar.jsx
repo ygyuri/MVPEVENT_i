@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -22,14 +22,35 @@ import { logout } from "../store/slices/authSlice";
 const Navbar = ({ onOpenAuthModal }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const location = useLocation();
 
   const dispatch = useDispatch();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { isDarkMode } = useTheme();
 
+  // Check if a link is active
+  const isActive = (path) => {
+    if (path === "/") {
+      return location.pathname === "/";
+    }
+    return location.pathname.startsWith(path);
+  };
+
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMenuOpen]);
 
   const handleLogout = async () => {
     await dispatch(logout());
@@ -96,15 +117,18 @@ const Navbar = ({ onOpenAuthModal }) => {
 
       {/* Main Navigation */}
       <div className="container-modern">
-        <div className="flex justify-between items-center h-20">
+        <div className="flex justify-between items-center h-16 sm:h-20">
           {/* Brand Logo */}
           <motion.div
             initial={{ x: -50, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.6 }}
           >
-            <Link to="/" className="flex items-center space-x-3 group">
-              <div className="w-32 h-32 flex items-center justify-center">
+            <Link
+              to="/"
+              className="flex items-center space-x-2 sm:space-x-3 group"
+            >
+              <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 flex items-center justify-center">
                 <img
                   src={
                     isDarkMode
@@ -112,7 +136,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                       : "/logos/event-i_light_mode_logo.png"
                   }
                   alt="Event-i Logo"
-                  className="h-28 w-auto object-contain"
+                  className="h-16 sm:h-20 md:h-28 w-auto object-contain"
                   onError={(e) => {
                     console.error("Logo failed to load:", e.target.src);
                     // Fallback to text logo
@@ -121,7 +145,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                   }}
                 />
                 <div
-                  className="h-28 flex items-center justify-center text-2xl font-bold text-web3-accent"
+                  className="h-16 sm:h-20 md:h-28 flex items-center justify-center text-lg sm:text-xl md:text-2xl font-bold text-web3-accent"
                   style={{ display: "none" }}
                 >
                   Event-i
@@ -135,55 +159,90 @@ const Navbar = ({ onOpenAuthModal }) => {
             initial={{ x: 50, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.7, duration: 0.5 }}
-            className="hidden md:flex items-center space-x-2"
+            className="hidden md:flex items-center space-x-1 lg:space-x-2"
           >
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <motion.div
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+            >
               <Link
                 to="/"
-                className={`px-8 py-4 rounded-2xl transition-all duration-300 font-semibold text-base ${
-                  isDarkMode
-                    ? "text-gray-200 hover:text-white hover:bg-[#4f0f69]/30 hover:shadow-lg hover:shadow-[#4f0f69]/20"
-                    : "text-gray-600 hover:text-[#4f0f69] hover:bg-white hover:shadow-lg hover:shadow-gray-200/50"
+                className={`relative px-6 lg:px-8 py-3 lg:py-4 transition-all duration-300 font-semibold text-sm lg:text-base ${
+                  isActive("/")
+                    ? isDarkMode
+                      ? "text-white"
+                      : "text-[#4f0f69]"
+                    : isDarkMode
+                    ? "text-gray-300 hover:text-white hover:bg-[#4f0f69]/20"
+                    : "text-gray-600 hover:text-[#4f0f69] hover:bg-gray-50"
                 }`}
               >
                 Discover
+                {isActive("/") && (
+                  <motion.div
+                    layoutId="activeIndicator"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
               </Link>
             </motion.div>
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <motion.div
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+            >
               <Link
                 to="/events"
-                className={`px-8 py-4 rounded-2xl transition-all duration-300 font-semibold text-base ${
-                  isDarkMode
-                    ? "text-gray-200 hover:text-white hover:bg-[#4f0f69]/30 hover:shadow-lg hover:shadow-[#4f0f69]/20"
-                    : "text-gray-600 hover:text-[#4f0f69] hover:bg-white hover:shadow-lg hover:shadow-gray-200/50"
+                className={`relative px-6 lg:px-8 py-3 lg:py-4 transition-all duration-300 font-semibold text-sm lg:text-base ${
+                  isActive("/events")
+                    ? isDarkMode
+                      ? "text-white"
+                      : "text-[#4f0f69]"
+                    : isDarkMode
+                    ? "text-gray-300 hover:text-white hover:bg-[#4f0f69]/20"
+                    : "text-gray-600 hover:text-[#4f0f69] hover:bg-gray-50"
                 }`}
               >
                 Events
+                {isActive("/events") && (
+                  <motion.div
+                    layoutId="activeIndicator"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
               </Link>
             </motion.div>
-            {/* {isAuthenticated && (
-              <Link 
-                to="/wallet" 
-                className="text-web3-secondary hover:text-web3-blue transition-colors duration-200 font-medium"
-              >
-                Wallet
-              </Link>
-            )} */}
             {isAuthenticated &&
               (user?.role === "admin" || user?.role === "organizer") && (
                 <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   <Link
                     to="/organizer"
-                    className={`px-8 py-4 rounded-2xl transition-all duration-300 font-semibold text-base ${
-                      isDarkMode
-                        ? "text-gray-200 hover:text-white hover:bg-[#4f0f69]/30 hover:shadow-lg hover:shadow-[#4f0f69]/20"
-                        : "text-gray-600 hover:text-[#4f0f69] hover:bg-white hover:shadow-lg hover:shadow-gray-200/50"
+                    className={`relative px-6 lg:px-8 py-3 lg:py-4 transition-all duration-300 font-semibold text-sm lg:text-base ${
+                      isActive("/organizer")
+                        ? isDarkMode
+                          ? "text-white"
+                          : "text-[#4f0f69]"
+                        : isDarkMode
+                        ? "text-gray-300 hover:text-white hover:bg-[#4f0f69]/20"
+                        : "text-gray-600 hover:text-[#4f0f69] hover:bg-gray-50"
                     }`}
                   >
                     Organizer
+                    {isActive("/organizer") && (
+                      <motion.div
+                        layoutId="activeIndicator"
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full"
+                        transition={{
+                          type: "spring",
+                          stiffness: 380,
+                          damping: 30,
+                        }}
+                      />
+                    )}
                   </Link>
                 </motion.div>
               )}
@@ -194,41 +253,13 @@ const Navbar = ({ onOpenAuthModal }) => {
             initial={{ x: 50, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.8, duration: 0.5 }}
-            className="flex items-center space-x-3"
+            className="flex items-center space-x-2 lg:space-x-3"
           >
-            {/* Currency & Language */}
-            {/* <div className="hidden lg:flex items-center space-x-2">
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <CurrencySelector
-                  className={`rounded-xl px-4 py-2 shadow-sm transition-colors duration-300 ${
-                    isDarkMode
-                      ? "bg-[#4f0f69]/20 hover:bg-[#4f0f69]/30"
-                      : "bg-white/80 hover:bg-white"
-                  }`}
-                />
-              </motion.div>
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className={`flex items-center space-x-1 px-4 py-2 rounded-xl cursor-pointer transition-colors duration-300 shadow-sm ${
-                  isDarkMode
-                    ? "bg-[#4f0f69]/20 hover:bg-[#4f0f69]/30"
-                    : "bg-white/80 hover:bg-white"
-                }`}
-              >
-                <Globe className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  EN
-                </span>
-                <ChevronDown className="w-3 h-3 text-gray-500" />
-              </motion.div>
-            </div> */}
-
             {/* Theme Toggle */}
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <motion.div
+              whileHover={{ scale: 1.1, rotate: 15 }}
+              whileTap={{ scale: 0.9 }}
+            >
               <ThemeToggle size="default" />
             </motion.div>
 
@@ -254,42 +285,38 @@ const Navbar = ({ onOpenAuthModal }) => {
               </motion.button>
             )} */}
 
-            {/* Modern Authentication Section */}
+            {/* Modern Authentication Section - Hidden on Mobile */}
             {isAuthenticated ? (
-              <div className="relative">
+              <div className="relative hidden md:block">
                 <motion.button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`flex items-center space-x-3 p-3 rounded-2xl transition-colors duration-300 group shadow-sm ${
-                    isDarkMode
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`p-2.5 lg:p-3 rounded-lg transition-all duration-300 group ${
+                    isUserMenuOpen
+                      ? isDarkMode
+                        ? "bg-[#4f0f69]/30 shadow-lg shadow-[#4f0f69]/20"
+                        : "bg-white shadow-lg"
+                      : isDarkMode
                       ? "bg-[#4f0f69]/20 hover:bg-[#4f0f69]/30"
                       : "bg-white/80 hover:bg-white"
                   }`}
+                  aria-label={
+                    isUserMenuOpen ? "Close user menu" : "Open user menu"
+                  }
+                  aria-expanded={isUserMenuOpen}
                 >
-                  <div className="w-8 h-8 bg-gradient-to-br from-[#4f0f69] to-[#6b1a8a] rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="hidden md:block text-left">
-                    <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {user?.name ||
-                        user?.firstName ||
-                        user?.username ||
-                        "User"}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {user?.role === "admin"
-                        ? "Administrator"
-                        : user?.role === "organizer"
-                        ? "Event Organizer"
-                        : "Customer"}
-                    </div>
-                  </div>
                   <motion.div
-                    animate={{ rotate: isUserMenuOpen ? 180 : 0 }}
+                    animate={{ rotate: isUserMenuOpen ? 90 : 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <ChevronDown className="w-4 h-4 text-gray-500 group-hover:text-[#4f0f69] transition-colors duration-300" />
+                    <Menu
+                      className={`w-6 h-6 lg:w-7 lg:h-7 transition-colors duration-300 ${
+                        isUserMenuOpen
+                          ? "text-[#4f0f69] dark:text-white"
+                          : "text-gray-600 dark:text-gray-300 group-hover:text-[#4f0f69] dark:group-hover:text-white"
+                      }`}
+                    />
                   </motion.div>
                 </motion.button>
 
@@ -297,36 +324,39 @@ const Navbar = ({ onOpenAuthModal }) => {
                 <AnimatePresence>
                   {isUserMenuOpen && (
                     <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
                       className={`absolute right-0 mt-2 w-72 ${
                         isDarkMode
-                          ? "bg-gray-800 border-gray-700"
-                          : "bg-white border-gray-200"
-                      } border rounded-xl shadow-2xl z-50 overflow-hidden`}
+                          ? "bg-gray-800/95 backdrop-blur-md border-gray-700"
+                          : "bg-white/95 backdrop-blur-md border-gray-200"
+                      } border rounded-2xl shadow-2xl z-50 overflow-hidden`}
                     >
                       {/* User Info Header */}
                       <div
-                        className={`px-4 py-3 border-b ${
-                          isDarkMode ? "border-gray-700" : "border-gray-100"
+                        className={`px-4 py-4 border-b ${
+                          isDarkMode
+                            ? "border-gray-700 bg-gradient-to-r from-[#4f0f69]/20 to-transparent"
+                            : "border-gray-200 bg-gradient-to-r from-blue-50/50 to-transparent"
                         }`}
                       >
                         <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-[#4f0f69] to-[#6b1a8a] rounded-full flex items-center justify-center flex-shrink-0">
-                            <User className="w-5 h-5 text-white" />
+                          <div className="w-12 h-12 bg-gradient-to-br from-[#4f0f69] to-[#6b1a8a] rounded-full flex items-center justify-center flex-shrink-0 ring-2 ring-white/50 dark:ring-gray-700/50 shadow-lg">
+                            <User className="w-6 h-6 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p
-                              className={`text-sm font-semibold truncate ${
+                              className={`text-base font-semibold truncate ${
                                 isDarkMode ? "text-white" : "text-gray-900"
                               }`}
                             >
                               {user?.name ||
                                 `${user?.firstName || ""} ${
                                   user?.lastName || ""
-                                }`.trim() || "User"}
+                                }`.trim() ||
+                                "User"}
                             </p>
                             <p
                               className={`text-xs truncate ${
@@ -335,12 +365,12 @@ const Navbar = ({ onOpenAuthModal }) => {
                             >
                               {user?.email || "No email"}
                             </p>
-                            <div className="mt-1.5">
+                            <div className="mt-2">
                               <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium capitalize ${
+                                className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium capitalize ${
                                   isDarkMode
-                                    ? "bg-blue-900/30 text-blue-300"
-                                    : "bg-blue-100 text-blue-700"
+                                    ? "bg-blue-900/40 text-blue-300 border border-blue-800/50"
+                                    : "bg-blue-100 text-blue-700 border border-blue-200"
                                 }`}
                               >
                                 {user?.role || "user"}
@@ -351,29 +381,31 @@ const Navbar = ({ onOpenAuthModal }) => {
                       </div>
 
                       {/* Menu Items */}
-                      <div className="py-1">
+                      <div className="py-2">
                         {/* My Profile */}
                         <Link
                           to="/profile"
                           onClick={() => setIsUserMenuOpen(false)}
-                          className={`flex items-center px-4 py-2.5 text-sm font-medium mx-1 my-0.5 rounded-lg transition-colors duration-150 ${
+                          className={`flex items-center px-4 py-3 text-sm font-medium mx-1 my-0.5 rounded-xl transition-all duration-200 group ${
                             isDarkMode
-                              ? "text-gray-300 hover:bg-gray-700 hover:text-white"
-                              : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                              ? "text-gray-300 hover:bg-[#4f0f69]/30 hover:text-white"
+                              : "text-gray-700 hover:bg-blue-50 hover:text-[#4f0f69]"
                           }`}
                         >
-                          <User className="w-4 h-4 mr-3 flex-shrink-0" />
+                          <User className="w-4 h-4 mr-3 flex-shrink-0 group-hover:scale-110 transition-transform" />
                           <span>My Profile</span>
                         </Link>
 
                         {/* Reminders Section */}
                         <div
                           className={`px-4 py-2 mt-1 ${
-                            isDarkMode ? "border-t border-gray-700" : "border-t border-gray-100"
+                            isDarkMode
+                              ? "border-t border-gray-700"
+                              : "border-t border-gray-200"
                           }`}
                         >
                           <p
-                            className={`text-xs font-semibold mb-1 ${
+                            className={`text-xs font-semibold mb-2 px-1 ${
                               isDarkMode ? "text-gray-400" : "text-gray-500"
                             } uppercase tracking-wide`}
                           >
@@ -382,38 +414,41 @@ const Navbar = ({ onOpenAuthModal }) => {
                           <Link
                             to="/preferences/reminders"
                             onClick={() => setIsUserMenuOpen(false)}
-                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${
+                            className={`flex items-center px-4 py-3 mx-1 my-0.5 text-sm font-medium rounded-xl transition-all duration-200 group ${
                               isDarkMode
-                                ? "text-gray-300 hover:bg-gray-700 hover:text-white"
-                                : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                                ? "text-gray-300 hover:bg-[#4f0f69]/30 hover:text-white"
+                                : "text-gray-700 hover:bg-blue-50 hover:text-[#4f0f69]"
                             }`}
                           >
-                            <Settings className="w-4 h-4 mr-3 flex-shrink-0" />
+                            <Settings className="w-4 h-4 mr-3 flex-shrink-0 group-hover:rotate-90 transition-transform" />
                             <span>Preferences</span>
                           </Link>
                           <Link
                             to="/reminders/history"
                             onClick={() => setIsUserMenuOpen(false)}
-                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${
+                            className={`flex items-center px-4 py-3 mx-1 my-0.5 text-sm font-medium rounded-xl transition-all duration-200 group ${
                               isDarkMode
-                                ? "text-gray-300 hover:bg-gray-700 hover:text-white"
-                                : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                                ? "text-gray-300 hover:bg-[#4f0f69]/30 hover:text-white"
+                                : "text-gray-700 hover:bg-blue-50 hover:text-[#4f0f69]"
                             }`}
                           >
-                            <Bell className="w-4 h-4 mr-3 flex-shrink-0" />
+                            <Bell className="w-4 h-4 mr-3 flex-shrink-0 group-hover:scale-110 transition-transform" />
                             <span>History</span>
                           </Link>
                         </div>
 
                         {/* Organizer Section */}
-                        {(user?.role === "admin" || user?.role === "organizer") && (
+                        {(user?.role === "admin" ||
+                          user?.role === "organizer") && (
                           <div
                             className={`px-4 py-2 ${
-                              isDarkMode ? "border-t border-gray-700" : "border-t border-gray-100"
+                              isDarkMode
+                                ? "border-t border-gray-700"
+                                : "border-t border-gray-200"
                             }`}
                           >
                             <p
-                              className={`text-xs font-semibold mb-1 ${
+                              className={`text-xs font-semibold mb-2 px-1 ${
                                 isDarkMode ? "text-gray-400" : "text-gray-500"
                               } uppercase tracking-wide`}
                             >
@@ -422,13 +457,13 @@ const Navbar = ({ onOpenAuthModal }) => {
                             <Link
                               to="/scanner"
                               onClick={() => setIsUserMenuOpen(false)}
-                              className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${
+                              className={`flex items-center px-4 py-3 mx-1 my-0.5 text-sm font-medium rounded-xl transition-all duration-200 group ${
                                 isDarkMode
-                                  ? "text-gray-300 hover:bg-gray-700 hover:text-white"
-                                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                                  ? "text-gray-300 hover:bg-[#4f0f69]/30 hover:text-white"
+                                  : "text-gray-700 hover:bg-blue-50 hover:text-[#4f0f69]"
                               }`}
                             >
-                              <Shield className="w-4 h-4 mr-3 flex-shrink-0" />
+                              <Shield className="w-4 h-4 mr-3 flex-shrink-0 group-hover:scale-110 transition-transform" />
                               <span>QR Scanner</span>
                             </Link>
                           </div>
@@ -436,19 +471,21 @@ const Navbar = ({ onOpenAuthModal }) => {
 
                         {/* Sign Out */}
                         <div
-                          className={`px-4 pt-2 pb-1 ${
-                            isDarkMode ? "border-t border-gray-700" : "border-t border-gray-100"
+                          className={`px-4 pt-2 pb-2 ${
+                            isDarkMode
+                              ? "border-t border-gray-700"
+                              : "border-t border-gray-200"
                           }`}
                         >
                           <button
                             onClick={handleLogout}
-                            className={`flex items-center w-full px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${
+                            className={`flex items-center w-full px-4 py-3 mx-1 text-sm font-medium rounded-xl transition-all duration-200 group ${
                               isDarkMode
-                                ? "text-red-400 hover:bg-red-900/20 hover:text-red-300"
+                                ? "text-red-400 hover:bg-red-900/30 hover:text-red-300"
                                 : "text-red-600 hover:bg-red-50 hover:text-red-700"
                             }`}
                           >
-                            <LogOut className="w-4 h-4 mr-3 flex-shrink-0" />
+                            <LogOut className="w-4 h-4 mr-3 flex-shrink-0 group-hover:scale-110 transition-transform" />
                             <span>Sign Out</span>
                           </button>
                         </div>
@@ -460,29 +497,35 @@ const Navbar = ({ onOpenAuthModal }) => {
             ) : (
               <motion.button
                 onClick={() => onOpenAuthModal(true)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className={`flex items-center space-x-2 px-6 py-3 rounded-2xl transition-colors duration-300 font-medium shadow-sm ${
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                className={`hidden md:flex items-center space-x-2 px-5 lg:px-6 py-2.5 lg:py-3 rounded-xl lg:rounded-2xl transition-all duration-300 font-semibold text-sm lg:text-base shadow-md hover:shadow-lg ${
                   isDarkMode
-                    ? "bg-[#4f0f69] hover:bg-white text-white hover:text-[#4f0f69]"
-                    : "bg-white hover:bg-[#4f0f69] text-[#4f0f69] hover:text-white border border-[#4f0f69]"
+                    ? "bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] hover:from-[#6b1a8a] hover:to-[#8A4FFF] text-white border border-[#4f0f69]/50"
+                    : "bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] hover:from-[#6b1a8a] hover:to-[#8A4FFF] text-white border border-[#4f0f69]/20"
                 }`}
               >
-                <User className="w-4 h-4" />
-                <span className="hidden md:block">Sign In</span>
+                <User className="w-4 h-4 lg:w-5 lg:h-5" />
+                <span>Sign In</span>
               </motion.button>
             )}
 
             {/* Mobile menu button */}
             <motion.button
               onClick={toggleMenu}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className={`md:hidden p-3 rounded-xl transition-colors duration-300 shadow-sm ${
-                isDarkMode
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`md:hidden p-2.5 rounded-xl transition-all duration-300 ${
+                isMenuOpen
+                  ? isDarkMode
+                    ? "bg-[#4f0f69]/30 text-white"
+                    : "bg-[#4f0f69]/10 text-[#4f0f69]"
+                  : isDarkMode
                   ? "text-gray-400 hover:text-white hover:bg-[#4f0f69]/20"
-                  : "text-gray-600 hover:text-[#4f0f69] hover:bg-white/80"
+                  : "text-gray-600 hover:text-[#4f0f69] hover:bg-gray-100"
               }`}
+              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={isMenuOpen}
             >
               <motion.div
                 animate={{ rotate: isMenuOpen ? 180 : 0 }}
@@ -501,87 +544,273 @@ const Navbar = ({ onOpenAuthModal }) => {
         {/* Modern Mobile Navigation */}
         <AnimatePresence>
           {isMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="md:hidden overflow-hidden"
-            >
+            <>
+              {/* Backdrop */}
               <motion.div
-                initial={{ y: -20, opacity: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+                onClick={() => setIsMenuOpen(false)}
+              />
+              {/* Menu Content - Slide in from top */}
+              <motion.div
+                initial={{ y: "-100%", opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1, duration: 0.3 }}
-                className={`px-4 pt-4 pb-6 space-y-2 rounded-2xl mt-4 shadow-lg ${
-                  isDarkMode ? "bg-gray-800" : "bg-white"
-                }`}
+                exit={{ y: "-100%", opacity: 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className={`fixed inset-x-0 top-0 md:hidden z-50 ${
+                  isDarkMode ? "bg-gray-900" : "bg-white"
+                } shadow-2xl max-h-screen overflow-y-auto`}
               >
-                <motion.div
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.2, duration: 0.3 }}
+                {/* Header with close button */}
+                <div
+                  className={`flex items-center justify-between px-4 py-4 border-b ${
+                    isDarkMode ? "border-gray-700" : "border-gray-200"
+                  }`}
                 >
-                  <Link
-                    to="/"
-                    className={`px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base ${
-                      isDarkMode
-                        ? "text-gray-200 hover:text-white hover:bg-[#4f0f69]/30 hover:shadow-lg hover:shadow-[#4f0f69]/20"
-                        : "text-gray-600 hover:text-[#4f0f69] hover:bg-white hover:shadow-lg hover:shadow-gray-200/50"
+                  <h2
+                    className={`text-lg font-bold ${
+                      isDarkMode ? "text-white" : "text-gray-900"
                     }`}
-                    onClick={() => setIsMenuOpen(false)}
                   >
-                    Discover
-                  </Link>
-                </motion.div>
-                <motion.div
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.3, duration: 0.3 }}
-                >
-                  <Link
-                    to="/events"
-                    className={`px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base ${
+                    Menu
+                  </h2>
+                  <motion.button
+                    onClick={() => setIsMenuOpen(false)}
+                    whileTap={{ scale: 0.95 }}
+                    className={`p-2 rounded-lg transition-colors ${
                       isDarkMode
-                        ? "text-gray-200 hover:text-white hover:bg-[#4f0f69]/30 hover:shadow-lg hover:shadow-[#4f0f69]/20"
-                        : "text-gray-600 hover:text-[#4f0f69] hover:bg-white hover:shadow-lg hover:shadow-gray-200/50"
+                        ? "text-gray-400 hover:bg-gray-800 hover:text-white"
+                        : "text-gray-600 hover:bg-gray-100"
                     }`}
-                    onClick={() => setIsMenuOpen(false)}
+                    aria-label="Close menu"
                   >
-                    Events
-                  </Link>
-                </motion.div>
-                {isAuthenticated &&
-                  (user?.role === "admin" || user?.role === "organizer") && (
+                    <X className="w-6 h-6" />
+                  </motion.button>
+                </div>
+
+                {/* User Info Section (if authenticated) */}
+                {isAuthenticated && (
+                  <div
+                    className={`px-4 py-4 border-b ${
+                      isDarkMode
+                        ? "border-gray-700 bg-gray-800/50"
+                        : "border-gray-200 bg-gray-50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-[#4f0f69] to-[#6b1a8a] rounded-full flex items-center justify-center flex-shrink-0">
+                        <User className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`text-base font-semibold truncate ${
+                            isDarkMode ? "text-white" : "text-gray-900"
+                          }`}
+                        >
+                          {user?.name ||
+                            `${user?.firstName || ""} ${
+                              user?.lastName || ""
+                            }`.trim() ||
+                            user?.username ||
+                            "User"}
+                        </p>
+                        <p
+                          className={`text-sm truncate ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          {user?.email || "No email"}
+                        </p>
+                        {user?.role && (
+                          <span
+                            className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium capitalize ${
+                              isDarkMode
+                                ? "bg-blue-900/30 text-blue-300"
+                                : "bg-blue-100 text-blue-700"
+                            }`}
+                          >
+                            {user.role}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Navigation Links */}
+                <div className="px-4 py-4 space-y-1">
+                  <motion.div
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.1, duration: 0.3 }}
+                  >
+                    <Link
+                      to="/"
+                      className={`flex items-center px-4 py-4 rounded-xl transition-all duration-200 font-semibold text-base min-h-[48px] ${
+                        isDarkMode
+                          ? "text-gray-200 active:bg-[#4f0f69]/40 hover:bg-[#4f0f69]/30"
+                          : "text-gray-700 active:bg-gray-100 hover:bg-gray-50"
+                      }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Discover
+                    </Link>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.15, duration: 0.3 }}
+                  >
+                    <Link
+                      to="/events"
+                      className={`flex items-center px-4 py-4 rounded-xl transition-all duration-200 font-semibold text-base min-h-[48px] ${
+                        isDarkMode
+                          ? "text-gray-200 active:bg-[#4f0f69]/40 hover:bg-[#4f0f69]/30"
+                          : "text-gray-700 active:bg-gray-100 hover:bg-gray-50"
+                      }`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Events
+                    </Link>
+                  </motion.div>
+
+                  {isAuthenticated &&
+                    (user?.role === "admin" || user?.role === "organizer") && (
+                      <>
+                        <div
+                          className={`h-px my-2 ${
+                            isDarkMode ? "bg-gray-700" : "bg-gray-200"
+                          }`}
+                        />
+                        <motion.div
+                          initial={{ x: -20, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: 0.2, duration: 0.3 }}
+                        >
+                          <Link
+                            to="/organizer"
+                            className={`flex items-center px-4 py-4 rounded-xl transition-all duration-200 font-semibold text-base min-h-[48px] ${
+                              isDarkMode
+                                ? "text-gray-200 active:bg-[#4f0f69]/40 hover:bg-[#4f0f69]/30"
+                                : "text-gray-700 active:bg-gray-100 hover:bg-gray-50"
+                            }`}
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            Organizer Dashboard
+                          </Link>
+                        </motion.div>
+                      </>
+                    )}
+
+                  {/* Additional Links for Authenticated Users */}
+                  {isAuthenticated && (
+                    <>
+                      <div
+                        className={`h-px my-2 ${
+                          isDarkMode ? "bg-gray-700" : "bg-gray-200"
+                        }`}
+                      />
+                      <motion.div
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: 0.25, duration: 0.3 }}
+                      >
+                        <Link
+                          to="/profile"
+                          className={`flex items-center px-4 py-4 rounded-xl transition-all duration-200 font-medium text-sm min-h-[48px] ${
+                            isDarkMode
+                              ? "text-gray-300 active:bg-[#4f0f69]/40 hover:bg-[#4f0f69]/30"
+                              : "text-gray-600 active:bg-gray-100 hover:bg-gray-50"
+                          }`}
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <User className="w-5 h-5 mr-3" />
+                          My Profile
+                        </Link>
+                      </motion.div>
+
+                      {user?.role === "admin" || user?.role === "organizer" ? (
+                        <motion.div
+                          initial={{ x: -20, opacity: 0 }}
+                          animate={{ x: 0, opacity: 1 }}
+                          transition={{ delay: 0.3, duration: 0.3 }}
+                        >
+                          <Link
+                            to="/scanner"
+                            className={`flex items-center px-4 py-4 rounded-xl transition-all duration-200 font-medium text-sm min-h-[48px] ${
+                              isDarkMode
+                                ? "text-gray-300 active:bg-[#4f0f69]/40 hover:bg-[#4f0f69]/30"
+                                : "text-gray-600 active:bg-gray-100 hover:bg-gray-50"
+                            }`}
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            <Shield className="w-5 h-5 mr-3" />
+                            QR Scanner
+                          </Link>
+                        </motion.div>
+                      ) : null}
+                    </>
+                  )}
+
+                  {/* Sign Out / Sign In */}
+                  <div
+                    className={`h-px my-2 ${
+                      isDarkMode ? "bg-gray-700" : "bg-gray-200"
+                    }`}
+                  />
+                  {isAuthenticated ? (
                     <motion.div
                       initial={{ x: -20, opacity: 0 }}
                       animate={{ x: 0, opacity: 1 }}
-                      transition={{ delay: 0.4, duration: 0.3 }}
+                      transition={{ delay: 0.35, duration: 0.3 }}
                     >
-                      <Link
-                        to="/organizer"
-                        className={`px-6 py-4 rounded-xl transition-all duration-300 font-semibold text-base ${
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setIsMenuOpen(false);
+                        }}
+                        className={`flex items-center w-full px-4 py-4 rounded-xl transition-all duration-200 font-medium text-sm min-h-[48px] ${
                           isDarkMode
-                            ? "text-gray-200 hover:text-white hover:bg-[#4f0f69]/30 hover:shadow-lg hover:shadow-[#4f0f69]/20"
-                            : "text-gray-600 hover:text-[#4f0f69] hover:bg-white hover:shadow-lg hover:shadow-gray-200/50"
+                            ? "text-red-400 active:bg-red-900/20 hover:bg-red-900/10"
+                            : "text-red-600 active:bg-red-50 hover:bg-red-50/50"
                         }`}
-                        onClick={() => setIsMenuOpen(false)}
                       >
-                        Organizer
-                      </Link>
+                        <LogOut className="w-5 h-5 mr-3" />
+                        Sign Out
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: 0.25, duration: 0.3 }}
+                    >
+                      <button
+                        onClick={() => {
+                          onOpenAuthModal?.(true);
+                          setIsMenuOpen(false);
+                        }}
+                        className={`flex items-center justify-center w-full px-4 py-4 rounded-xl transition-all duration-200 font-semibold text-base min-h-[48px] ${
+                          isDarkMode
+                            ? "bg-[#4f0f69] text-white active:bg-[#6b1a8a] hover:bg-[#5a1580]"
+                            : "bg-[#4f0f69] text-white active:bg-[#6b1a8a] hover:bg-[#5a1580]"
+                        }`}
+                      >
+                        <User className="w-5 h-5 mr-2" />
+                        Sign In / Sign Up
+                      </button>
                     </motion.div>
                   )}
-                {/* <motion.div
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.5, duration: 0.3 }}
-                  className="pt-4 border-t border-gray-100 dark:border-gray-800"
-                >
-                  <div className="px-4 py-2">
-                    <CurrencySelector className="w-full" />
-                  </div>
-                </motion.div> */}
+                </div>
+
+                {/* Bottom padding for safe area */}
+                <div className="h-4 sm:h-8" />
               </motion.div>
-            </motion.div>
+            </>
           )}
         </AnimatePresence>
       </div>
