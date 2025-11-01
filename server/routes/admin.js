@@ -567,6 +567,94 @@ router.post(
   }
 );
 
+// Get all tickets for an order with QR codes (admin only)
+router.get(
+  "/orders/:orderId/tickets",
+  verifyToken,
+  requireRole("admin"),
+  [param("orderId").isMongoId().withMessage("Invalid order ID")],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res
+          .status(400)
+          .json({ error: "Invalid order ID", details: errors.array() });
+      }
+
+      const { orderId } = req.params;
+      const Ticket = require("../models/Ticket");
+      const Order = require("../models/Order");
+
+      // Verify order exists
+      const order = await Order.findById(orderId).lean();
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Check if order is paid - QR codes only available for paid orders
+      const isPaid =
+        order.paymentStatus === "paid" ||
+        order.paymentStatus === "completed" ||
+        (order.status === "completed" && order.paymentStatus !== "pending");
+
+      // Get all tickets for this order
+      const tickets = await Ticket.find({ orderId })
+        .populate("eventId", "title slug dates location")
+        .sort({ createdAt: 1 })
+        .lean();
+
+      // Format tickets with QR codes (only include QR codes if order is paid)
+      const formattedTickets = tickets.map((ticket) => ({
+        id: ticket._id,
+        ticketNumber: ticket.ticketNumber,
+        event: ticket.eventId
+          ? {
+              id: ticket.eventId._id,
+              title: ticket.eventId.title,
+              slug: ticket.eventId.slug,
+              startDate: ticket.eventId.dates?.startDate,
+              location: ticket.eventId.location,
+            }
+          : null,
+        holder: {
+          firstName: ticket.holder?.firstName,
+          lastName: ticket.holder?.lastName,
+          email: ticket.holder?.email,
+          phone: ticket.holder?.phone,
+        },
+        ticketType: ticket.ticketType,
+        price: ticket.price,
+        status: ticket.status,
+        usedAt: ticket.usedAt,
+        // Only include QR codes if order is paid
+        qrCode: isPaid ? ticket.qrCode : null,
+        qrCodeUrl: isPaid ? ticket.qrCodeUrl : null,
+        createdAt: ticket.createdAt,
+      }));
+
+      res.json({
+        success: true,
+        data: {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          paymentStatus: order.paymentStatus,
+          orderStatus: order.status,
+          isPaid: isPaid,
+          tickets: formattedTickets,
+          count: formattedTickets.length,
+        },
+      });
+    } catch (error) {
+      console.error("Get order tickets error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch tickets for order",
+      });
+    }
+  }
+);
+
 // Send reminders for an order (admin only)
 router.post(
   "/orders/:orderId/send-reminders",

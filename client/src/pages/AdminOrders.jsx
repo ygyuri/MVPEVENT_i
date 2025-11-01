@@ -15,9 +15,11 @@ import {
   DollarSign,
   User,
   Mail,
+  QrCode,
 } from "lucide-react";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
+import OrderTicketsModal from "../components/admin/OrderTicketsModal";
 
 const AdminOrders = () => {
   const navigate = useNavigate();
@@ -31,6 +33,8 @@ const AdminOrders = () => {
   const [total, setTotal] = useState(0);
   const [limit] = useState(20);
   const [sendingReminders, setSendingReminders] = useState({});
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showTicketsModal, setShowTicketsModal] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== "admin") {
@@ -319,7 +323,19 @@ const AdminOrders = () => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* View Tickets & QR Codes */}
+                  <button
+                    onClick={() => {
+                      setSelectedOrder(order);
+                      setShowTicketsModal(true);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800 transition-colors"
+                    title="View all tickets and QR codes for this order"
+                  >
+                    <QrCode className="w-4 h-4" />
+                    View Tickets
+                  </button>
                   {/* Show button for any order - backend will validate if tickets exist */}
                   <button
                     onClick={() => handleSendReminders(order._id)}
@@ -377,6 +393,17 @@ const AdminOrders = () => {
           </button>
         </div>
       )}
+
+      {/* Order Tickets Modal */}
+      <OrderTicketsModal
+        isOpen={showTicketsModal}
+        onClose={() => {
+          setShowTicketsModal(false);
+          setSelectedOrder(null);
+        }}
+        orderId={selectedOrder?._id}
+        orderNumber={selectedOrder?.orderNumber}
+      />
     </div>
   );
 };
