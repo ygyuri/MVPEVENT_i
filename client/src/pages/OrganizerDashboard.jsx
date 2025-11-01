@@ -11,6 +11,8 @@ import {
   Clock,
   Bell,
   CheckCircle,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import EnhancedButton from "../components/EnhancedButton";
 import EventStatusBadge from "../components/organizer/EventStatusBadge";
@@ -22,6 +24,7 @@ import {
 import { dateUtils } from "../utils/eventHelpers";
 import { useEventUpdates } from "../hooks/useEventUpdates";
 import { useSocket } from "../hooks/useSocket";
+import AdminOrganizerList from "../components/AdminOrganizerList";
 
 const OrganizerDashboard = () => {
   const dispatch = useDispatch();
@@ -45,6 +48,10 @@ const OrganizerDashboard = () => {
   const [recentUpdates, setRecentUpdates] = useState([]);
   const [allEventUpdates, setAllEventUpdates] = useState({});
 
+  // Get impersonation state once at component level
+  const isImpersonating = localStorage.getItem("impersonatingUserId");
+  const impersonatingEmail = localStorage.getItem("impersonatingUserEmail");
+
   // Handle post-publish celebration
   useEffect(() => {
     if (location.state?.justPublished) {
@@ -63,8 +70,11 @@ const OrganizerDashboard = () => {
       return;
     }
 
-    // Check if user is an organizer
-    if (user.role !== "organizer") {
+    // Check if user is an organizer OR admin impersonating an organizer
+    const canAccess =
+      user.role === "organizer" || (user.role === "admin" && isImpersonating);
+
+    if (!canAccess) {
       return;
     }
 
@@ -93,8 +103,15 @@ const OrganizerDashboard = () => {
     );
   }
 
-  // Show error if user is not an organizer
-  if (user && user.role !== "organizer") {
+  // If admin but NOT impersonating, show organizer list
+  if (user && user.role === "admin" && !isImpersonating) {
+    return <AdminOrganizerList />;
+  }
+
+  // Show error if user is not an organizer and not admin impersonating
+  const canAccess =
+    user?.role === "organizer" || (user?.role === "admin" && isImpersonating);
+  if (user && !canAccess) {
     return (
       <div className="container-modern">
         <div className="flex items-center justify-center min-h-screen">
@@ -112,6 +129,16 @@ const OrganizerDashboard = () => {
   }
 
   const recentEvents = events.slice(0, 5);
+
+  // Handle stop impersonation
+  const handleStopImpersonation = () => {
+    if (window.confirm("Stop impersonating and return to admin view?")) {
+      localStorage.removeItem("impersonatingUserId");
+      localStorage.removeItem("impersonatingUserEmail");
+      localStorage.removeItem("originalUserId");
+      window.location.reload();
+    }
+  };
 
   // Handle update composer
   const handlePostUpdate = (eventId) => {
@@ -185,6 +212,32 @@ const OrganizerDashboard = () => {
 
   return (
     <div className="container-modern">
+      {/* Impersonation Banner */}
+      {isImpersonating && user?.role === "admin" && (
+        <div className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+              <div>
+                <p className="font-semibold text-yellow-900 dark:text-yellow-200">
+                  Viewing as Organizer
+                </p>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  You are currently viewing the organizer dashboard as{" "}
+                  <strong>{impersonatingEmail}</strong>
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleStopImpersonation}
+              className="flex items-center gap-2 px-4 py-2 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-800 transition-colors"
+            >
+              <X className="w-4 h-4" />
+              Stop Impersonating
+            </button>
+          </div>
+        </div>
+      )}
       {/* Success Banner - Show after publishing an event */}
       {showPublishSuccess && (
         <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-6 shadow-lg animate-in fade-in slide-in-from-top-4 duration-500">
