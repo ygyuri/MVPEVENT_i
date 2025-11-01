@@ -2,10 +2,15 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { fetchEvents, fetchCategories } from "../store/slices/eventsSlice";
+import {
+  fetchEvents,
+  fetchCategories,
+  fetchFeaturedEvents,
+} from "../store/slices/eventsSlice";
 import EventCard from "../components/EventCard";
 import EventSearch from "../components/EventSearch";
 import Pagination from "../components/Pagination";
+import FeaturedEventsMasonry from "../components/FeaturedEventsMasonry";
 import { useInView } from "react-intersection-observer";
 
 const shallowEqual = (a, b) => {
@@ -61,6 +66,7 @@ const Events = () => {
     if (didInitRef.current) return;
     didInitRef.current = true;
     dispatch(fetchCategories());
+    dispatch(fetchFeaturedEvents({ page: 1, pageSize: 50 }));
     // initial load
     void loadEvents({ page: 1 });
     return () => abortControllerRef.current?.abort();
@@ -137,29 +143,78 @@ const Events = () => {
   );
 
   return (
-    <div className="relative">
-      <section className="hero-modern">
-        <div className="container-modern">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="text-center-modern"
-          >
-            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-web3-primary">
-              Explore Event-i Events
-            </h1>
-            <p className="mt-3 text-base md:text-lg text-web3-secondary">
-              {headerSubtitle}
-            </p>
-          </motion.div>
+    <div className="relative min-h-screen bg-white dark:bg-gray-900">
+      {/* Modern Hero Section - Content on top */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-50/90 via-white/70 to-purple-50/90 dark:from-gray-900/90 dark:via-gray-800/70 dark:to-gray-900/90 backdrop-blur-md">
+        {/* Featured Events Masonry Background - Only in Hero Section */}
+        <FeaturedEventsMasonry />
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-blue-200 dark:bg-blue-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob" />
+          <div className="absolute top-40 right-10 w-72 h-72 bg-purple-200 dark:bg-purple-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob animation-delay-2000" />
+          <div className="absolute -bottom-8 left-1/2 w-72 h-72 bg-pink-200 dark:bg-pink-800/30 rounded-full mix-blend-multiply filter blur-xl opacity-20 dark:opacity-10 animate-blob animation-delay-4000" />
+        </div>
 
-          <div className="mt-8">
-            <EventSearch
-              onSearch={handleSearch}
-              onFilter={handleFilter}
-              categories={categories}
-            />
+        <div className="container-modern relative z-30 pointer-events-none">
+          <div className="py-12 md:py-16 lg:py-20 pointer-events-none">
+            {/* Hero Content */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="text-center max-w-4xl mx-auto mb-10 md:mb-12 pointer-events-none"
+            >
+              {/* Badge */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1, duration: 0.4 }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 rounded-full mb-6 md:mb-8"
+              >
+                <span className="text-sm md:text-base font-semibold text-blue-700 dark:text-blue-300">
+                  🎉 Discover Amazing Events
+                </span>
+              </motion.div>
+
+              {/* Main Title */}
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-4 md:mb-6"
+              >
+                <span className="text-web3-primary dark:text-white">
+                  Explore Event-i
+                </span>
+                <span className="block bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  Events
+                </span>
+              </motion.h1>
+
+              {/* Subtitle */}
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.6 }}
+                className="text-base md:text-lg lg:text-xl text-web3-secondary dark:text-gray-400 max-w-2xl mx-auto leading-relaxed"
+              >
+                {headerSubtitle}
+              </motion.p>
+            </motion.div>
+
+            {/* Search Component */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+              className="max-w-5xl mx-auto pointer-events-auto"
+            >
+              <EventSearch
+                onSearch={handleSearch}
+                onFilter={handleFilter}
+                categories={categories}
+              />
+            </motion.div>
           </div>
         </div>
       </section>

@@ -209,4 +209,18 @@ html.theme-transitioning video {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Shimmer animation for masonry tiles */
+@keyframes shimmer {
+  0% {
+    transform: skewX(-20deg) translateX(-100%);
+  }
+  100% {
+    transform: skewX(-20deg) translateX(200%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 0.7s ease-in-out;
 } 
