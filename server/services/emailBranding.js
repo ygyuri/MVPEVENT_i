@@ -258,8 +258,9 @@ const getEmailBaseStyles = () => {
 
 const getEmailHeader = (title, subtitle = "") => {
   const frontendUrl = process.env.FRONTEND_URL || "https://event-i.co.ke";
-  const logoUrl = `${frontendUrl}/logos/event-i_light_mode_logo.png`;
-
+  // Use dark mode logo (white logo) for purple gradient background
+  const logoUrl = `${frontendUrl}/logos/event-i_dark_mode_logo.png`;
+  
   return `
     <div class="header">
       <img src="${logoUrl}" alt="Event-i Logo" class="logo" style="max-width: 180px; height: auto; margin-bottom: 16px;" />
