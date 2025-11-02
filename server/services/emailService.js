@@ -729,7 +729,14 @@ class EmailService {
             
             <div class="footer">
               <p>This is an automated notification for admin review.</p>
-              <p>© 2024 Event-i. All rights reserved.</p>
+              <p>© ${new Date().getFullYear()} Event-i. All rights reserved.</p>
+              <!-- Powered by Tajilabs -->
+              <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+                <p style="font-size: 11px; color: #6B7280; margin-bottom: 8px;">Powered by</p>
+                <a href="https://tajilabs.co.ke" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">
+                  <img src="https://tajilabs.co.ke/tajilabs-logo-horizontal.png" alt="Tajilabs" style="max-width: 140px; height: auto; margin: 0;" />
+                </a>
+              </div>
             </div>
           </div>
         </body>
@@ -1164,6 +1171,14 @@ class EmailService {
                 
                 <div class="footer-brand">Event-i</div>
                 <p style="margin-top: 4px;">© ${new Date().getFullYear()}</p>
+                
+                <!-- Powered by Tajilabs -->
+                <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+                  <p style="font-size: 11px; color: #6B7280; margin-bottom: 8px;">Powered by</p>
+                  <a href="https://tajilabs.co.ke" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">
+                    <img src="https://tajilabs.co.ke/tajilabs-logo-horizontal.png" alt="Tajilabs" style="max-width: 140px; height: auto; margin: 0;" />
+                  </a>
+                </div>
               </div>
             </div>
           </div>

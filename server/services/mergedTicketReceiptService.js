@@ -27,7 +27,7 @@ class MergedTicketReceiptService {
       const smtpPort = Number(process.env.SMTP_PORT) || 587;
       // Port 465 uses SSL, other ports use STARTTLS
       const isSecure = smtpPort === 465;
-      
+
       this.transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || "smtp.gmail.com",
         port: smtpPort,
@@ -112,14 +112,16 @@ class MergedTicketReceiptService {
           if (ticket.qrCodeUrl) {
             try {
               // Extract base64 data from data URL (format: "data:image/png;base64,<base64-data>")
-              const base64Match = ticket.qrCodeUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+              const base64Match = ticket.qrCodeUrl.match(
+                /^data:image\/(\w+);base64,(.+)$/
+              );
               if (base64Match) {
                 const imageType = base64Match[1] || "png";
                 const base64Data = base64Match[2];
-                
+
                 // Convert base64 to Buffer
                 const imageBuffer = Buffer.from(base64Data, "base64");
-                
+
                 // Add as inline attachment with Content-ID
                 attachments.push({
                   filename: `qr-${ticketNumber || index}.${imageType}`,
@@ -129,7 +131,10 @@ class MergedTicketReceiptService {
                 });
               }
             } catch (qrError) {
-              console.error(`Error processing QR code for ticket ${ticketNumber}:`, qrError);
+              console.error(
+                `Error processing QR code for ticket ${ticketNumber}:`,
+                qrError
+              );
             }
           }
 
@@ -141,7 +146,11 @@ class MergedTicketReceiptService {
                   <td width="200" style="vertical-align: top; padding-right: 20px;">
                     <!-- QR Code -->
                     <div style="background: #FFFFFF; padding: 12px; border-radius: 12px; border: 2px solid #3A7DFF; display: inline-block;">
-                      ${qrCodeUrl ? `<img src="cid:${qrCid}" alt="Ticket QR Code" style="width: 180px; height: 180px; display: block;" />` : '<p style="color: #6B7280; font-size: 12px;">QR Code pending</p>'}
+                      ${
+                        qrCodeUrl
+                          ? `<img src="cid:${qrCid}" alt="Ticket QR Code" style="width: 180px; height: 180px; display: block;" />`
+                          : '<p style="color: #6B7280; font-size: 12px;">QR Code pending</p>'
+                      }
                     </div>
                   </td>
                   <td style="vertical-align: top;">
@@ -157,7 +166,9 @@ class MergedTicketReceiptService {
                     
                     <div style="margin-bottom: 12px;">
                       <span style="color: #6B7280; font-size: 14px;">Holder:</span>
-                      <span style="color: #1A1A1A; font-weight: 600; font-size: 14px; margin-left: 8px;">${ticket.holder?.firstName} ${ticket.holder?.lastName}</span>
+                      <span style="color: #1A1A1A; font-weight: 600; font-size: 14px; margin-left: 8px;">${
+                        ticket.holder?.firstName
+                      } ${ticket.holder?.lastName}</span>
                     </div>
                     
                     <div style="margin-bottom: 12px;">
@@ -430,6 +441,14 @@ class MergedTicketReceiptService {
                 
                 <div style="margin-top: 20px; font-weight: 600; color: #3A7DFF; font-size: 16px;">Event-i</div>
                 <p style="margin-top: 4px; color: #6B7280; font-size: 12px;">© ${new Date().getFullYear()} All rights reserved.</p>
+                
+                <!-- Powered by Tajilabs -->
+                <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+                  <p style="font-size: 11px; color: #6B7280; margin-bottom: 8px;">Powered by</p>
+                  <a href="https://tajilabs.co.ke" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">
+                    <img src="https://tajilabs.co.ke/tajilabs-logo-horizontal.png" alt="Tajilabs" style="max-width: 140px; height: auto; margin: 0;" />
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -452,7 +471,10 @@ class MergedTicketReceiptService {
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      console.log(`✅ Merged ticket & receipt email sent with ${attachments.length} QR code(s):`, info.messageId);
+      console.log(
+        `✅ Merged ticket & receipt email sent with ${attachments.length} QR code(s):`,
+        info.messageId
+      );
 
       return {
         success: true,

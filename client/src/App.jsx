@@ -31,6 +31,10 @@ import UserPreferences from "./pages/UserPreferences";
 import ReminderHistory from "./pages/ReminderHistory";
 import PollsPage from "./pages/PollsPage";
 import PollsTest from "./pages/PollsTest";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import CookiePolicy from "./pages/CookiePolicy";
+import Error404 from "./pages/Error404";
 import {
   OrganizerUpdatesDashboard,
   AttendeeUpdatesView,
@@ -38,6 +42,7 @@ import {
 import { getCurrentUser } from "./store/slices/authSlice";
 import ErrorBoundary from "./components/shared/ErrorBoundary";
 import { ToastProvider } from "./components/shared/Toast";
+import ScrollToTop from "./components/shared/ScrollToTop";
 
 function App() {
   const dispatch = useDispatch();
@@ -125,10 +130,15 @@ function App() {
                     element={<PollsPage />}
                   />
                   <Route path="/polls-test" element={<PollsTest />} />
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/terms" element={<TermsOfService />} />
+                  <Route path="/cookies" element={<CookiePolicy />} />
+                  <Route path="*" element={<Error404 />} />
                 </Routes>
               </main>
               <Footer />
             </div>
+            <ScrollToTop />
             <AuthModal
               isOpen={isAuthModalOpen}
               onClose={() => setIsAuthModalOpen(false)}

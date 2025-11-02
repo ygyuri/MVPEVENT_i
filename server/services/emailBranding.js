@@ -273,6 +273,7 @@ const getEmailHeader = (title, subtitle = "") => {
 const getEmailFooter = () => {
   const frontendUrl = process.env.FRONTEND_URL || "https://event-i.co.ke";
   const logoUrl = `${frontendUrl}/logos/event-i_light_mode_logo.png`;
+  const tajilabsLogoUrl = "https://tajilabs.co.ke/tajilabs-logo-horizontal.png";
   const supportEmail =
     process.env.SUPPORT_EMAIL ||
     process.env.SMTP_USER ||
@@ -299,6 +300,13 @@ const getEmailFooter = () => {
       <p style="font-size: 11px; margin-top: 8px;">
         This is an automated email. Please do not reply directly to this message.
       </p>
+      <!-- Powered by Tajilabs -->
+      <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #E5E7EB;">
+        <p style="font-size: 11px; color: #6B7280; margin-bottom: 8px;">Powered by</p>
+        <a href="https://tajilabs.co.ke" target="_blank" rel="noopener noreferrer" style="display: inline-block; text-decoration: none;">
+          <img src="${tajilabsLogoUrl}" alt="Tajilabs" style="max-width: 140px; height: auto; margin: 0;" />
+        </a>
+      </div>
     </div>
   `;
 };

@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTheme } from "../contexts/ThemeContext";
 import { Mail, Phone, Facebook, Twitter, Instagram } from "lucide-react";
+import tajilabsLogo from "../assets/tajilabs-logo-horizontal.png";
 
 const Footer = () => {
   const { isDarkMode } = useTheme();
@@ -49,7 +50,7 @@ const Footer = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Phone className="w-4 h-4" />
-                  <span>+254 700 000 000</span>
+                  <span>+254 703 328 938</span>
                 </div>
               </div>
             </div>
@@ -163,6 +164,28 @@ const Footer = () => {
                   <Instagram className="w-5 h-5" />
                 </a>
               </div>
+            </div>
+
+            {/* Powered by Tajilabs */}
+            <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-col items-center">
+              <p className="text-xs text-gray-500 dark:text-gray-500 mb-3">
+                Powered by
+              </p>
+              <a
+                href="https://tajilabs.co.ke"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-80 transition-opacity"
+              >
+                <img
+                  src={tajilabsLogo}
+                  alt="Tajilabs"
+                  className="h-8 w-auto"
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                  }}
+                />
+              </a>
             </div>
           </div>
         </div>

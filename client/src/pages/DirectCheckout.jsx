@@ -19,6 +19,8 @@ import api from "../utils/api";
 import { useTheme } from "../contexts/ThemeContext";
 import { Helmet } from "react-helmet-async";
 import payheroLogo from "../assets/payhero-logo.png";
+import tajilabsLogo from "../assets/tajilabs-logo-horizontal.png";
+import FeaturedEventsMasonry from "../components/FeaturedEventsMasonry";
 
 const DirectCheckout = () => {
   const { slug } = useParams();
@@ -86,6 +88,9 @@ const DirectCheckout = () => {
   const [validationErrors, setValidationErrors] = useState({});
   const [touchedFields, setTouchedFields] = useState({});
 
+  // Dropdown state
+  const [isTicketDropdownOpen, setIsTicketDropdownOpen] = useState(false);
+
   // Refs for scrolling to errors
   const formRefs = {
     ticketType: useRef(null),
@@ -94,6 +99,9 @@ const DirectCheckout = () => {
     email: useRef(null),
     phone: useRef(null),
   };
+
+  // Dropdown ref
+  const ticketDropdownRef = useRef(null);
 
   // Validation functions
   const validateName = (name) => {
@@ -183,6 +191,25 @@ const DirectCheckout = () => {
       7
     )} ${digitsOnly.slice(7, 10)}`;
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        ticketDropdownRef.current &&
+        !ticketDropdownRef.current.contains(event.target)
+      ) {
+        setIsTicketDropdownOpen(false);
+      }
+    };
+
+    if (isTicketDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [isTicketDropdownOpen]);
 
   // Fetch event data
   useEffect(() => {
@@ -418,7 +445,7 @@ const DirectCheckout = () => {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`max-w-md w-full p-6 rounded-2xl ${
+          className={`max-w-md w-full p-6 ${
             isDarkMode
               ? "bg-red-900/20 border border-red-500/30"
               : "bg-red-50 border border-red-200"
@@ -500,15 +527,15 @@ const DirectCheckout = () => {
           />
         </Helmet>
       )}
-      <div className="relative min-h-screen">
-        <div className="section-modern">
-          <div className="container-modern max-w-5xl">
+      <div className="relative min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="section-modern py-8 md:py-12">
+          <div className="container-modern max-w-7xl">
             {/* Success Message */}
             {success && (
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
+                className={`mb-6 p-4 flex items-center gap-3 ${
                   isDarkMode
                     ? "bg-green-900/20 border border-green-500/30"
                     : "bg-green-50 border border-green-200"
@@ -538,14 +565,14 @@ const DirectCheckout = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`rounded-2xl overflow-hidden mb-6 ${
+              className={`overflow-hidden mb-8 shadow-xl ${
                 isDarkMode
                   ? "bg-gray-800 border border-gray-700"
-                  : "bg-white border border-gray-200"
+                  : "bg-white border border-gray-200 shadow-lg"
               }`}
             >
-              {/* Event Image */}
-              <div className="relative h-64 overflow-hidden">
+              {/* Event Image - Square Format */}
+              <div className="relative w-full aspect-square md:max-w-2xl mx-auto overflow-hidden">
                 <img
                   src={
                     event?.coverImageUrl ||
@@ -554,35 +581,37 @@ const DirectCheckout = () => {
                   alt={event?.title}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <h1 className="text-3xl font-bold text-white mb-2">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 drop-shadow-lg">
                     {event?.title}
                   </h1>
-                  <p className="text-gray-200">{event?.shortDescription}</p>
+                  <p className="text-gray-100 text-base sm:text-lg drop-shadow-md">
+                    {event?.shortDescription}
+                  </p>
                 </div>
               </div>
 
               {/* Event Details */}
-              <div className="p-6 grid md:grid-cols-2 gap-6">
-                <div className="flex items-center gap-3">
+              <div className="p-6 md:p-8 grid md:grid-cols-2 gap-6 bg-gradient-to-br from-purple-50/50 to-blue-50/50 dark:from-gray-800/50 dark:to-gray-900/50">
+                <div className="flex items-center gap-4">
                   <div
-                    className={`p-3 rounded-xl ${
-                      isDarkMode ? "bg-[#4f0f69]/20" : "bg-[#4f0f69]/10"
+                    className={`p-4 rounded-lg shadow-md ${
+                      isDarkMode ? "bg-[#4f0f69]/30" : "bg-[#4f0f69]/10"
                     }`}
                   >
-                    <Calendar className="w-6 h-6 text-[#4f0f69] dark:text-[#8A4FFF]" />
+                    <Calendar className="w-7 h-7 text-[#4f0f69] dark:text-[#8A4FFF]" />
                   </div>
                   <div>
                     <p
-                      className={`text-xs font-semibold uppercase tracking-wide ${
-                        isDarkMode ? "text-gray-400" : "text-gray-500"
+                      className={`text-xs font-semibold uppercase tracking-wide mb-1 ${
+                        isDarkMode ? "text-gray-400" : "text-gray-600"
                       }`}
                     >
                       Date & Time
                     </p>
                     <p
-                      className={`font-semibold text-lg ${
+                      className={`font-bold text-lg ${
                         isDarkMode ? "text-white" : "text-gray-900"
                       }`}
                     >
@@ -591,24 +620,24 @@ const DirectCheckout = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <div
-                    className={`p-3 rounded-xl ${
-                      isDarkMode ? "bg-[#4f0f69]/20" : "bg-[#4f0f69]/10"
+                    className={`p-4 rounded-lg shadow-md ${
+                      isDarkMode ? "bg-[#4f0f69]/30" : "bg-[#4f0f69]/10"
                     }`}
                   >
-                    <MapPin className="w-6 h-6 text-[#4f0f69] dark:text-[#8A4FFF]" />
+                    <MapPin className="w-7 h-7 text-[#4f0f69] dark:text-[#8A4FFF]" />
                   </div>
                   <div>
                     <p
-                      className={`text-xs font-semibold uppercase tracking-wide ${
-                        isDarkMode ? "text-gray-400" : "text-gray-500"
+                      className={`text-xs font-semibold uppercase tracking-wide mb-1 ${
+                        isDarkMode ? "text-gray-400" : "text-gray-600"
                       }`}
                     >
                       Venue
                     </p>
                     <p
-                      className={`font-semibold text-lg ${
+                      className={`font-bold text-lg ${
                         isDarkMode ? "text-white" : "text-gray-900"
                       }`}
                     >
@@ -619,476 +648,736 @@ const DirectCheckout = () => {
               </div>
             </motion.div>
 
-            {/* Checkout Form */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className={`rounded-2xl p-6 ${
-                isDarkMode
-                  ? "bg-gray-800 border border-gray-700"
-                  : "bg-white border border-gray-200"
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-8">
-                <div
-                  className={`p-3 rounded-xl ${
-                    isDarkMode ? "bg-[#4f0f69]/20" : "bg-[#4f0f69]/10"
-                  }`}
+            {/* Main Layout - Two Columns on Large Screens */}
+            <form onSubmit={handleSubmit}>
+              <div className="grid lg:grid-cols-3 gap-8">
+                {/* Checkout Form - Takes 2 columns */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="lg:col-span-2"
                 >
-                  <Ticket className="w-7 h-7 text-[#4f0f69] dark:text-[#8A4FFF]" />
-                </div>
-                <h2
-                  className={`text-3xl font-bold ${
-                    isDarkMode ? "text-white" : "text-gray-900"
-                  }`}
-                >
-                  Complete Your Purchase
-                </h2>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Ticket Selection */}
-                <div ref={formRefs.ticketType}>
-                  <label
-                    className={`block text-sm font-medium mb-2 ${
-                      isDarkMode ? "text-gray-300" : "text-gray-700"
+                  <div
+                    className={`p-6 md:p-8 shadow-xl ${
+                      isDarkMode
+                        ? "bg-gray-800 border border-gray-700"
+                        : "bg-white border border-gray-200"
                     }`}
                   >
-                    Select Ticket Type <span className="text-red-500">*</span>
-                  </label>
-
-                  {!event?.ticketTypes || event.ticketTypes.length === 0 ? (
-                    <div
-                      className={`p-4 rounded-lg border-2 border-dashed ${
-                        isDarkMode
-                          ? "border-gray-600 bg-gray-800"
-                          : "border-gray-300 bg-gray-50"
-                      }`}
-                    >
-                      <p
-                        className={`text-center ${
-                          isDarkMode ? "text-gray-400" : "text-gray-500"
+                    <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-200 dark:border-gray-700">
+                      <div
+                        className={`p-4 rounded-lg shadow-lg ${
+                          isDarkMode
+                            ? "bg-[#4f0f69]/30"
+                            : "bg-gradient-to-br from-[#4f0f69]/10 to-[#8A4FFF]/10"
                         }`}
                       >
-                        No ticket types configured for this event
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="relative">
-                        <select
-                          name="ticketType"
-                          value={formData.ticketType}
-                          onChange={handleInputChange}
-                          onBlur={handleBlur}
-                          className={`w-full px-4 py-3 rounded-lg border appearance-none ${
-                            touchedFields.ticketType &&
-                            validationErrors.ticketType
-                              ? "border-red-500 focus:ring-red-500"
-                              : isDarkMode
-                              ? "bg-gray-900 border-gray-600 text-white focus:ring-[#4f0f69]/50"
-                              : "bg-white border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20"
-                          } focus:ring-2 focus:border-[#4f0f69] transition-all pr-10`}
+                        <Ticket className="w-8 h-8 text-[#4f0f69] dark:text-[#8A4FFF]" />
+                      </div>
+                      <div>
+                        <h2
+                          className={`text-2xl md:text-3xl font-bold ${
+                            isDarkMode ? "text-white" : "text-gray-900"
+                          }`}
                         >
-                          {event.ticketTypes.map((ticket, index) => (
-                            <option
-                              key={ticket.name || index}
-                              value={ticket.name}
-                            >
-                              {ticket.name} - {ticket.currency || "KES"}{" "}
-                              {(ticket.price || 0).toLocaleString()}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown
-                          className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none ${
+                          Complete Your Purchase
+                        </h2>
+                        <p
+                          className={`text-sm mt-1 ${
                             isDarkMode ? "text-gray-400" : "text-gray-500"
                           }`}
+                        >
+                          Fill in your details to proceed
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      {/* Ticket Selection */}
+                      <div ref={formRefs.ticketType}>
+                        <label
+                          className={`block text-sm font-semibold mb-3 ${
+                            isDarkMode ? "text-gray-200" : "text-gray-800"
+                          }`}
+                        >
+                          Select Ticket Type{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+
+                        {!event?.ticketTypes ||
+                        event.ticketTypes.length === 0 ? (
+                          <div
+                            className={`p-4 border-2 border-dashed ${
+                              isDarkMode
+                                ? "border-gray-600 bg-gray-800"
+                                : "border-gray-300 bg-gray-50"
+                            }`}
+                          >
+                            <p
+                              className={`text-center ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
+                              No ticket types configured for this event
+                            </p>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="relative" ref={ticketDropdownRef}>
+                              {/* Custom Dropdown Button */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setIsTicketDropdownOpen(!isTicketDropdownOpen)
+                                }
+                                onBlur={handleBlur}
+                                className={`w-full px-4 py-3.5 border-2 text-left transition-all ${
+                                  touchedFields.ticketType &&
+                                  validationErrors.ticketType
+                                    ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                                    : isDarkMode
+                                    ? "bg-gray-900/50 border-gray-600 text-white focus:ring-[#4f0f69]/50 focus:border-[#4f0f69] hover:border-gray-500"
+                                    : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20 focus:border-[#4f0f69] hover:border-gray-400"
+                                } focus:ring-4 pr-10 font-medium flex items-center justify-between`}
+                              >
+                                <span>
+                                  {formData.ticketType
+                                    ? (() => {
+                                        const selected = event.ticketTypes.find(
+                                          (t) => t.name === formData.ticketType
+                                        );
+                                        return selected
+                                          ? `${selected.name} - ${
+                                              selected.currency || "KES"
+                                            } ${(
+                                              selected.price || 0
+                                            ).toLocaleString()}`
+                                          : "Select a ticket type";
+                                      })()
+                                    : "Select a ticket type"}
+                                </span>
+                                <ChevronDown
+                                  className={`w-5 h-5 transition-transform ${
+                                    isTicketDropdownOpen ? "rotate-180" : ""
+                                  } ${
+                                    isDarkMode
+                                      ? "text-gray-400"
+                                      : "text-gray-500"
+                                  }`}
+                                />
+                              </button>
+
+                              {/* Dropdown Menu */}
+                              <AnimatePresence>
+                                {isTicketDropdownOpen && (
+                                  <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    transition={{ duration: 0.2 }}
+                                    className={`absolute z-50 w-full mt-2 border-2 shadow-xl ${
+                                      isDarkMode
+                                        ? "bg-gray-800 border-gray-700"
+                                        : "bg-white border-gray-200"
+                                    } max-h-60 overflow-auto`}
+                                  >
+                                    {event.ticketTypes.map((ticket, index) => (
+                                      <button
+                                        key={ticket.name || index}
+                                        type="button"
+                                        onClick={() => {
+                                          setFormData((prev) => ({
+                                            ...prev,
+                                            ticketType: ticket.name,
+                                          }));
+                                          setIsTicketDropdownOpen(false);
+                                          // Mark as touched
+                                          setTouchedFields((prev) => ({
+                                            ...prev,
+                                            ticketType: true,
+                                          }));
+                                        }}
+                                        className={`w-full px-4 py-3 text-left transition-all ${
+                                          formData.ticketType === ticket.name
+                                            ? isDarkMode
+                                              ? "bg-[#4f0f69]/30 text-white"
+                                              : "bg-[#4f0f69]/10 text-[#4f0f69]"
+                                            : isDarkMode
+                                            ? "hover:bg-gray-700 text-white"
+                                            : "hover:bg-gray-50 text-gray-900"
+                                        } border-b ${
+                                          isDarkMode
+                                            ? "border-gray-700"
+                                            : "border-gray-100"
+                                        } ${
+                                          index === event.ticketTypes.length - 1
+                                            ? "border-b-0"
+                                            : ""
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between gap-3">
+                                          <div className="flex items-center gap-3 flex-1">
+                                            {formData.ticketType ===
+                                              ticket.name && (
+                                              <CheckCircle className="w-4 h-4 text-[#4f0f69] dark:text-[#8A4FFF] flex-shrink-0" />
+                                            )}
+                                            <span className="font-semibold">
+                                              {ticket.name}
+                                            </span>
+                                          </div>
+                                          <span
+                                            className={`font-bold ${
+                                              isDarkMode
+                                                ? "text-gray-300"
+                                                : "text-gray-700"
+                                            }`}
+                                          >
+                                            {ticket.currency || "KES"}{" "}
+                                            {(
+                                              ticket.price || 0
+                                            ).toLocaleString()}
+                                          </span>
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                            <p
+                              className={`mt-2 text-xs ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
+                              {event.ticketTypes.length} ticket type
+                              {event.ticketTypes.length > 1 ? "s" : ""}{" "}
+                              available
+                            </p>
+                          </>
+                        )}
+
+                        <AnimatePresence>
+                          {touchedFields.ticketType &&
+                            validationErrors.ticketType && (
+                              <motion.p
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="mt-2 text-sm text-red-500 flex items-center gap-1"
+                              >
+                                <AlertCircle className="w-4 h-4" />
+                                {validationErrors.ticketType}
+                              </motion.p>
+                            )}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* Quantity with +/- Buttons */}
+                      <div
+                        ref={formRefs.quantity}
+                        className="pt-4 border-t border-gray-200 dark:border-gray-700"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <label
+                            className={`text-base font-bold ${
+                              isDarkMode ? "text-white" : "text-gray-900"
+                            }`}
+                          >
+                            Quantity <span className="text-red-500">*</span>
+                          </label>
+                          {formData.ticketType && (
+                            <div className="text-right">
+                              <p
+                                className={`text-xs ${
+                                  isDarkMode ? "text-gray-400" : "text-gray-500"
+                                }`}
+                              >
+                                Subtotal
+                              </p>
+                              <p
+                                className={`text-sm font-semibold ${
+                                  isDarkMode ? "text-gray-300" : "text-gray-700"
+                                }`}
+                              >
+                                {getCurrency()}{" "}
+                                {getTotalPrice().toLocaleString()}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                          <button
+                            type="button"
+                            onClick={() => handleQuantityChange(-1)}
+                            disabled={formData.quantity <= 1}
+                            className={`p-4 rounded-lg border-2 transition-all flex-shrink-0 ${
+                              formData.quantity <= 1
+                                ? "opacity-40 cursor-not-allowed"
+                                : "hover:bg-[#4f0f69] hover:border-[#4f0f69] hover:text-white hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
+                            } ${
+                              isDarkMode
+                                ? "bg-gray-800 border-gray-600 text-gray-400"
+                                : "bg-white border-gray-300 text-gray-700"
+                            }`}
+                            aria-label="Decrease quantity"
+                          >
+                            <Minus className="w-6 h-6" />
+                          </button>
+
+                          <div className="flex-1">
+                            <div
+                              className={`relative border-2 text-center font-bold ${
+                                touchedFields.quantity &&
+                                validationErrors.quantity
+                                  ? "border-red-500"
+                                  : isDarkMode
+                                  ? "bg-gray-900/50 border-gray-600 text-white"
+                                  : "bg-white border-gray-300 text-gray-900 shadow-sm"
+                              }`}
+                            >
+                              <div className="py-6">
+                                <span
+                                  className={`text-5xl font-extrabold ${
+                                    isDarkMode ? "text-white" : "text-gray-900"
+                                  }`}
+                                >
+                                  {formData.quantity}
+                                </span>
+                              </div>
+                              <div
+                                className={`absolute bottom-2 left-0 right-0 text-xs font-normal ${
+                                  isDarkMode ? "text-gray-500" : "text-gray-400"
+                                }`}
+                              >
+                                {formData.quantity === 1 ? "ticket" : "tickets"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleQuantityChange(1)}
+                            disabled={formData.quantity >= 20}
+                            className={`p-4 rounded-lg border-2 transition-all flex-shrink-0 ${
+                              formData.quantity >= 20
+                                ? "opacity-40 cursor-not-allowed"
+                                : "hover:bg-[#4f0f69] hover:border-[#4f0f69] hover:text-white hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
+                            } ${
+                              isDarkMode
+                                ? "bg-gray-800 border-gray-600 text-gray-400"
+                                : "bg-white border-gray-300 text-gray-700"
+                            }`}
+                            aria-label="Increase quantity"
+                          >
+                            <Plus className="w-6 h-6" />
+                          </button>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between">
+                          <p
+                            className={`text-xs ${
+                              isDarkMode ? "text-gray-500" : "text-gray-400"
+                            }`}
+                          >
+                            Minimum: 1 ticket
+                          </p>
+                          <p
+                            className={`text-xs ${
+                              isDarkMode ? "text-gray-500" : "text-gray-400"
+                            }`}
+                          >
+                            Maximum: 20 tickets
+                          </p>
+                        </div>
+
+                        <AnimatePresence>
+                          {touchedFields.quantity &&
+                            validationErrors.quantity && (
+                              <motion.p
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="mt-3 text-sm text-red-500 flex items-center gap-2"
+                              >
+                                <AlertCircle className="w-4 h-4" />
+                                {validationErrors.quantity}
+                              </motion.p>
+                            )}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* Customer Information Section */}
+                      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <h3
+                          className={`text-lg font-bold mb-6 ${
+                            isDarkMode ? "text-white" : "text-gray-900"
+                          }`}
+                        >
+                          Your Information
+                        </h3>
+                      </div>
+
+                      <div ref={formRefs.fullName}>
+                        <label
+                          className={`block text-sm font-semibold mb-3 ${
+                            isDarkMode ? "text-gray-200" : "text-gray-800"
+                          }`}
+                        >
+                          Full Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          name="fullName"
+                          value={formData.fullName}
+                          onChange={handleInputChange}
+                          onBlur={handleBlur}
+                          placeholder="John Doe"
+                          className={`w-full px-4 py-3.5 border-2 transition-all ${
+                            touchedFields.fullName && validationErrors.fullName
+                              ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                              : isDarkMode
+                              ? "bg-gray-900/50 border-gray-600 text-white focus:ring-[#4f0f69]/50 focus:border-[#4f0f69] hover:border-gray-500"
+                              : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20 focus:border-[#4f0f69] hover:border-gray-400"
+                          } focus:ring-4`}
+                        />
+                        <AnimatePresence>
+                          {touchedFields.fullName &&
+                            validationErrors.fullName && (
+                              <motion.p
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="mt-2 text-sm text-red-500 flex items-center gap-1"
+                              >
+                                <AlertCircle className="w-4 h-4" />
+                                {validationErrors.fullName}
+                              </motion.p>
+                            )}
+                        </AnimatePresence>
+                        <p
+                          className={`mt-2 text-xs ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          Enter your full name (first and last)
+                        </p>
+                      </div>
+
+                      <div ref={formRefs.email}>
+                        <label
+                          className={`block text-sm font-semibold mb-3 ${
+                            isDarkMode ? "text-gray-200" : "text-gray-800"
+                          }`}
+                        >
+                          Email Address <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          onBlur={handleBlur}
+                          placeholder="john@example.com"
+                          className={`w-full px-4 py-3.5 border-2 transition-all ${
+                            touchedFields.email && validationErrors.email
+                              ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                              : isDarkMode
+                              ? "bg-gray-900/50 border-gray-600 text-white focus:ring-[#4f0f69]/50 focus:border-[#4f0f69] hover:border-gray-500"
+                              : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20 focus:border-[#4f0f69] hover:border-gray-400"
+                          } focus:ring-4`}
+                        />
+                        <AnimatePresence>
+                          {touchedFields.email && validationErrors.email && (
+                            <motion.p
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              className="mt-2 text-sm text-red-500 flex items-center gap-1"
+                            >
+                              <AlertCircle className="w-4 h-4" />
+                              {validationErrors.email}
+                            </motion.p>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      <div ref={formRefs.phone}>
+                        <label
+                          className={`block text-sm font-semibold mb-3 ${
+                            isDarkMode ? "text-gray-200" : "text-gray-800"
+                          }`}
+                        >
+                          Phone Number <span className="text-red-500">*</span>
+                        </label>
+                        <div className="flex gap-3">
+                          {/* Country Code Dropdown */}
+                          <div className="relative w-44">
+                            <select
+                              value={countryCode}
+                              onChange={(e) => setCountryCode(e.target.value)}
+                              className={`w-full px-3 py-3.5 border-2 appearance-none transition-all ${
+                                isDarkMode
+                                  ? "bg-gray-900/50 border-gray-600 text-white focus:ring-[#4f0f69]/50 focus:border-[#4f0f69] hover:border-gray-500"
+                                  : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20 focus:border-[#4f0f69] hover:border-gray-400"
+                              } focus:ring-4 pr-8 font-medium`}
+                            >
+                              {countryCodes.map((item) => (
+                                <option key={item.code} value={item.code}>
+                                  {item.flag} {item.code}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown
+                              className={`absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            />
+                          </div>
+
+                          {/* Phone Number Input */}
+                          <div className="flex-1">
+                            <input
+                              type="tel"
+                              name="phone"
+                              value={formData.phone}
+                              onChange={handleInputChange}
+                              onBlur={handleBlur}
+                              placeholder={
+                                countryCodes.find((c) => c.code === countryCode)
+                                  ?.placeholder || "712 345 678"
+                              }
+                              className={`w-full px-4 py-3.5 border-2 transition-all ${
+                                touchedFields.phone && validationErrors.phone
+                                  ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                                  : isDarkMode
+                                  ? "bg-gray-900/50 border-gray-600 text-white focus:ring-[#4f0f69]/50 focus:border-[#4f0f69] hover:border-gray-500"
+                                  : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20 focus:border-[#4f0f69] hover:border-gray-400"
+                              } focus:ring-4`}
+                            />
+                          </div>
+                        </div>
+                        <AnimatePresence>
+                          {touchedFields.phone && validationErrors.phone && (
+                            <motion.p
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              className="mt-2 text-sm text-red-500 flex items-center gap-1"
+                            >
+                              <AlertCircle className="w-4 h-4" />
+                              {validationErrors.phone}
+                            </motion.p>
+                          )}
+                        </AnimatePresence>
+                        <p
+                          className={`mt-2 text-xs ${
+                            isDarkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          {countryCode === "+1" || countryCode === "+44"
+                            ? "Enter 10 digits (e.g., 5551234567)"
+                            : "Enter 9 digits without the leading 0 (e.g., 712345678)"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Order Summary Sidebar - Takes 1 column */}
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="lg:col-span-1"
+                >
+                  <div className="sticky top-8">
+                    <div
+                      className={`relative overflow-hidden shadow-xl ${
+                        isDarkMode
+                          ? "bg-gradient-to-br from-gray-800/95 to-gray-900/95 border border-gray-700"
+                          : "bg-gradient-to-br from-white/95 to-gray-50/95 border border-gray-200"
+                      }`}
+                    >
+                      {/* Masonry Background */}
+                      <div className="absolute inset-0 z-0 opacity-30 dark:opacity-20 pointer-events-none">
+                        <FeaturedEventsMasonry
+                          baseOpacity={0.4}
+                          subtleAnimations={true}
                         />
                       </div>
-                      <p
-                        className={`mt-2 text-xs ${
-                          isDarkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
-                      >
-                        {event.ticketTypes.length} ticket type
-                        {event.ticketTypes.length > 1 ? "s" : ""} available
-                      </p>
-                    </>
-                  )}
-
-                  <AnimatePresence>
-                    {touchedFields.ticketType &&
-                      validationErrors.ticketType && (
-                        <motion.p
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="mt-2 text-sm text-red-500 flex items-center gap-1"
+                      {/* Content Overlay */}
+                      <div className="relative z-10 p-6 md:p-8">
+                        <h3
+                          className={`text-xl font-bold mb-6 ${
+                            isDarkMode ? "text-white" : "text-gray-900"
+                          }`}
                         >
-                          <AlertCircle className="w-4 h-4" />
-                          {validationErrors.ticketType}
-                        </motion.p>
-                      )}
-                  </AnimatePresence>
-                </div>
+                          Order Summary
+                        </h3>
 
-                {/* Quantity with +/- Buttons */}
-                <div ref={formRefs.quantity}>
-                  <label
-                    className={`block text-sm font-medium mb-2 ${
-                      isDarkMode ? "text-gray-300" : "text-gray-700"
-                    }`}
-                  >
-                    Quantity <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => handleQuantityChange(-1)}
-                      disabled={formData.quantity <= 1}
-                      className={`p-3 rounded-lg border transition-all ${
-                        formData.quantity <= 1
-                          ? "opacity-50 cursor-not-allowed"
-                          : "hover:bg-[#4f0f69]/10 dark:hover:bg-[#4f0f69]/20"
-                      } ${
-                        isDarkMode
-                          ? "bg-gray-900 border-gray-600 text-white"
-                          : "bg-white border-gray-300 text-gray-900"
-                      }`}
-                    >
-                      <Minus className="w-5 h-5" />
-                    </button>
-                    <div
-                      className={`flex-1 px-4 py-3 rounded-lg border text-center font-semibold text-xl ${
-                        isDarkMode
-                          ? "bg-gray-900 border-gray-600 text-white"
-                          : "bg-white border-gray-300 text-gray-900"
-                      }`}
-                    >
-                      {formData.quantity}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleQuantityChange(1)}
-                      disabled={formData.quantity >= 20}
-                      className={`p-3 rounded-lg border transition-all ${
-                        formData.quantity >= 20
-                          ? "opacity-50 cursor-not-allowed"
-                          : "hover:bg-[#4f0f69]/10 dark:hover:bg-[#4f0f69]/20"
-                      } ${
-                        isDarkMode
-                          ? "bg-gray-900 border-gray-600 text-white"
-                          : "bg-white border-gray-300 text-gray-900"
-                      }`}
-                    >
-                      <Plus className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <AnimatePresence>
-                    {touchedFields.quantity && validationErrors.quantity && (
-                      <motion.p
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="mt-2 text-sm text-red-500 flex items-center gap-1"
-                      >
-                        <AlertCircle className="w-4 h-4" />
-                        {validationErrors.quantity}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </div>
+                        {/* Price Breakdown */}
+                        <div className="space-y-4 mb-6">
+                          {formData.ticketType && (
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p
+                                  className={`font-semibold ${
+                                    isDarkMode
+                                      ? "text-gray-200"
+                                      : "text-gray-800"
+                                  }`}
+                                >
+                                  {formData.ticketType}
+                                </p>
+                                <p
+                                  className={`text-sm ${
+                                    isDarkMode
+                                      ? "text-gray-400"
+                                      : "text-gray-600"
+                                  }`}
+                                >
+                                  {formData.quantity} × {getCurrency()}{" "}
+                                  {getSelectedTicketPrice().toLocaleString()}
+                                </p>
+                              </div>
+                              <p
+                                className={`font-bold ${
+                                  isDarkMode ? "text-white" : "text-gray-900"
+                                }`}
+                              >
+                                {getCurrency()}{" "}
+                                {getTotalPrice().toLocaleString()}
+                              </p>
+                            </div>
+                          )}
+                        </div>
 
-                {/* Customer Information */}
-                <div ref={formRefs.fullName}>
-                  <label
-                    className={`block text-sm font-medium mb-2 ${
-                      isDarkMode ? "text-gray-300" : "text-gray-700"
-                    }`}
-                  >
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleInputChange}
-                    onBlur={handleBlur}
-                    placeholder="John Doe"
-                    className={`w-full px-4 py-3 rounded-lg border ${
-                      touchedFields.fullName && validationErrors.fullName
-                        ? "border-red-500 focus:ring-red-500"
-                        : isDarkMode
-                        ? "bg-gray-900 border-gray-600 text-white focus:ring-[#4f0f69]/50"
-                        : "bg-white border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20"
-                    } focus:ring-2 focus:border-[#4f0f69] transition-all`}
-                  />
-                  <AnimatePresence>
-                    {touchedFields.fullName && validationErrors.fullName && (
-                      <motion.p
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="mt-2 text-sm text-red-500 flex items-center gap-1"
-                      >
-                        <AlertCircle className="w-4 h-4" />
-                        {validationErrors.fullName}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                  <p
-                    className={`mt-2 text-xs ${
-                      isDarkMode ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    Enter your full name (first and last)
-                  </p>
-                </div>
+                        <div className="pt-6 border-t-2 border-gray-200 dark:border-gray-700">
+                          <div className="flex justify-between items-center mb-6">
+                            <p
+                              className={`text-lg font-semibold ${
+                                isDarkMode ? "text-gray-300" : "text-gray-700"
+                              }`}
+                            >
+                              Total Amount
+                            </p>
+                            <p
+                              className={`text-3xl font-bold ${
+                                isDarkMode ? "text-white" : "text-gray-900"
+                              }`}
+                            >
+                              {getCurrency()} {getTotalPrice().toLocaleString()}
+                            </p>
+                          </div>
 
-                <div ref={formRefs.email}>
-                  <label
-                    className={`block text-sm font-medium mb-2 ${
-                      isDarkMode ? "text-gray-300" : "text-gray-700"
-                    }`}
-                  >
-                    Email Address <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    onBlur={handleBlur}
-                    placeholder="john@example.com"
-                    className={`w-full px-4 py-3 rounded-lg border ${
-                      touchedFields.email && validationErrors.email
-                        ? "border-red-500 focus:ring-red-500"
-                        : isDarkMode
-                        ? "bg-gray-900 border-gray-600 text-white focus:ring-[#4f0f69]/50"
-                        : "bg-white border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20"
-                    } focus:ring-2 focus:border-[#4f0f69] transition-all`}
-                  />
-                  <AnimatePresence>
-                    {touchedFields.email && validationErrors.email && (
-                      <motion.p
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="mt-2 text-sm text-red-500 flex items-center gap-1"
-                      >
-                        <AlertCircle className="w-4 h-4" />
-                        {validationErrors.email}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </div>
+                          <div
+                            className={`p-4 mb-6 ${
+                              isDarkMode ? "bg-[#4f0f69]/20" : "bg-[#4f0f69]/10"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <ShoppingCart className="w-6 h-6 text-[#4f0f69] dark:text-[#8A4FFF]" />
+                              <p
+                                className={`text-sm ${
+                                  isDarkMode ? "text-gray-300" : "text-gray-700"
+                                }`}
+                              >
+                                {formData.quantity} ticket
+                                {formData.quantity > 1 ? "s" : ""} selected
+                              </p>
+                            </div>
+                          </div>
 
-                <div ref={formRefs.phone}>
-                  <label
-                    className={`block text-sm font-medium mb-2 ${
-                      isDarkMode ? "text-gray-300" : "text-gray-700"
-                    }`}
-                  >
-                    Phone Number <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex gap-2">
-                    {/* Country Code Dropdown */}
-                    <div className="relative w-40">
-                      <select
-                        value={countryCode}
-                        onChange={(e) => setCountryCode(e.target.value)}
-                        className={`w-full px-3 py-3 rounded-lg border appearance-none ${
-                          isDarkMode
-                            ? "bg-gray-900 border-gray-600 text-white focus:ring-[#4f0f69]/50"
-                            : "bg-white border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20"
-                        } focus:ring-2 focus:border-[#4f0f69] transition-all pr-8`}
-                      >
-                        {countryCodes.map((item) => (
-                          <option key={item.code} value={item.code}>
-                            {item.flag} {item.code}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown
-                        className={`absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none ${
-                          isDarkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
-                      />
-                    </div>
+                          {/* Error Message */}
+                          {error && (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className={`p-4 flex items-start gap-3 mb-6 ${
+                                isDarkMode
+                                  ? "bg-red-900/20 border border-red-500/30"
+                                  : "bg-red-50 border border-red-200"
+                              }`}
+                            >
+                              <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                              <p
+                                className={`text-sm ${
+                                  isDarkMode ? "text-red-400" : "text-red-600"
+                                }`}
+                              >
+                                {error}
+                              </p>
+                            </motion.div>
+                          )}
 
-                    {/* Phone Number Input */}
-                    <div className="flex-1">
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        onBlur={handleBlur}
-                        placeholder={
-                          countryCodes.find((c) => c.code === countryCode)
-                            ?.placeholder || "712 345 678"
-                        }
-                        className={`w-full px-4 py-3 rounded-lg border ${
-                          touchedFields.phone && validationErrors.phone
-                            ? "border-red-500 focus:ring-red-500"
-                            : isDarkMode
-                            ? "bg-gray-900 border-gray-600 text-white focus:ring-[#4f0f69]/50"
-                            : "bg-white border-gray-300 text-gray-900 focus:ring-[#4f0f69]/20"
-                        } focus:ring-2 focus:border-[#4f0f69] transition-all`}
-                      />
+                          {/* Powered by Tajilabs */}
+                          <div
+                            className={`flex flex-col items-center justify-center gap-2 p-4 mb-6 ${
+                              isDarkMode
+                                ? "bg-gray-800/50 border border-gray-700"
+                                : "bg-gray-50 border border-gray-200"
+                            }`}
+                          >
+                            <p
+                              className={`text-xs ${
+                                isDarkMode ? "text-gray-400" : "text-gray-500"
+                              }`}
+                            >
+                              Powered by
+                            </p>
+                            <a
+                              href="https://tajilabs.co.ke"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:opacity-80 transition-opacity"
+                            >
+                              <img
+                                src={tajilabsLogo}
+                                alt="Tajilabs"
+                                className="h-8 object-contain"
+                                onError={(e) => {
+                                  e.target.style.display = "none";
+                                }}
+                              />
+                            </a>
+                          </div>
+
+                          {/* Submit Button */}
+                          <button
+                            type="submit"
+                            disabled={submitting || success}
+                            className={`w-full py-4 rounded-lg font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-lg ${
+                              submitting || success
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] hover:from-[#6b1a8a] hover:to-[#8A4FFF] text-white transform hover:scale-[1.02] hover:shadow-2xl active:scale-[0.98]"
+                            }`}
+                          >
+                            {submitting ? (
+                              <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                Processing...
+                              </>
+                            ) : success ? (
+                              <>
+                                <CheckCircle className="w-5 h-5" />
+                                Order Created!
+                              </>
+                            ) : (
+                              <>
+                                <CreditCard className="w-5 h-5" />
+                                Proceed to Payment
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <AnimatePresence>
-                    {touchedFields.phone && validationErrors.phone && (
-                      <motion.p
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="mt-2 text-sm text-red-500 flex items-center gap-1"
-                      >
-                        <AlertCircle className="w-4 h-4" />
-                        {validationErrors.phone}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                  <p
-                    className={`mt-2 text-xs ${
-                      isDarkMode ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    {countryCode === "+1" || countryCode === "+44"
-                      ? "Enter 10 digits (e.g., 5551234567)"
-                      : "Enter 9 digits without the leading 0 (e.g., 712345678)"}
-                  </p>
-                </div>
-
-                {/* Price Summary */}
-                <div
-                  className={`p-6 rounded-xl border-2 ${
-                    isDarkMode
-                      ? "bg-[#4f0f69]/10 border-[#4f0f69]/30"
-                      : "bg-[#4f0f69]/5 border-[#4f0f69]/20"
-                  }`}
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p
-                        className={`text-sm font-semibold uppercase tracking-wide ${
-                          isDarkMode ? "text-gray-400" : "text-gray-600"
-                        }`}
-                      >
-                        Total Amount
-                      </p>
-                      <p
-                        className={`text-4xl font-bold mt-2 ${
-                          isDarkMode ? "text-white" : "text-gray-900"
-                        }`}
-                      >
-                        {getCurrency()} {getTotalPrice().toLocaleString()}
-                      </p>
-                      <p
-                        className={`text-sm mt-2 ${
-                          isDarkMode ? "text-gray-400" : "text-gray-600"
-                        }`}
-                      >
-                        {formData.quantity} ticket
-                        {formData.quantity > 1 ? "s" : ""} × {getCurrency()}{" "}
-                        {getSelectedTicketPrice().toLocaleString()}
-                      </p>
-                    </div>
-                    <div
-                      className={`p-4 rounded-xl ${
-                        isDarkMode ? "bg-[#4f0f69]/20" : "bg-[#4f0f69]/10"
-                      }`}
-                    >
-                      <ShoppingCart className="w-10 h-10 text-[#4f0f69] dark:text-[#8A4FFF]" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Error Message */}
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className={`p-4 rounded-lg flex items-center gap-3 ${
-                      isDarkMode
-                        ? "bg-red-900/20 border border-red-500/30"
-                        : "bg-red-50 border border-red-200"
-                    }`}
-                  >
-                    <AlertCircle className="w-5 h-5 text-red-500" />
-                    <p className={isDarkMode ? "text-red-400" : "text-red-600"}>
-                      {error}
-                    </p>
-                  </motion.div>
-                )}
-
-                {/* PayHero Branding */}
-                <div
-                  className={`flex items-center justify-center gap-2 p-3 rounded-lg ${
-                    isDarkMode
-                      ? "bg-gray-800/50 border border-gray-700"
-                      : "bg-gray-50 border border-gray-200"
-                  }`}
-                >
-                  <Shield
-                    className={`w-4 h-4 ${
-                      isDarkMode ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  />
-                  <span
-                    className={`text-xs ${
-                      isDarkMode ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    Secured by
-                  </span>
-                  <img
-                    src={payheroLogo}
-                    alt="PayHero"
-                    className="h-8 object-contain opacity-80"
-                  />
-                  <span
-                    className={`text-xs font-medium ${
-                      isDarkMode ? "text-gray-300" : "text-gray-600"
-                    }`}
-                  >
-                    Payment Service Provider
-                  </span>
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={submitting || success}
-                  className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-lg ${
-                    submitting || success
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] hover:from-[#6b1a8a] hover:to-[#8A4FFF] text-white transform hover:scale-[1.02] hover:shadow-xl"
-                  }`}
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Processing...
-                    </>
-                  ) : success ? (
-                    <>
-                      <CheckCircle className="w-5 h-5" />
-                      Order Created!
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-5 h-5" />
-                      Proceed to Payment
-                    </>
-                  )}
-                </button>
-              </form>
-            </motion.div>
+                </motion.div>
+              </div>
+            </form>
           </div>
         </div>
       </div>
