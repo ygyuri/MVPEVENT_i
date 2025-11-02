@@ -13,10 +13,12 @@ import {
   ChevronDown,
   Plus,
   Minus,
+  Shield,
 } from "lucide-react";
 import api from "../utils/api";
 import { useTheme } from "../contexts/ThemeContext";
 import { Helmet } from "react-helmet-async";
+import payheroLogo from "../assets/payhero-logo.png";
 
 const DirectCheckout = () => {
   const { slug } = useParams();
@@ -1023,6 +1025,40 @@ const DirectCheckout = () => {
                     </p>
                   </motion.div>
                 )}
+
+                {/* PayHero Branding */}
+                <div
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg ${
+                    isDarkMode
+                      ? "bg-gray-800/50 border border-gray-700"
+                      : "bg-gray-50 border border-gray-200"
+                  }`}
+                >
+                  <Shield
+                    className={`w-4 h-4 ${
+                      isDarkMode ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  />
+                  <span
+                    className={`text-xs ${
+                      isDarkMode ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  >
+                    Secured by
+                  </span>
+                  <img
+                    src={payheroLogo}
+                    alt="PayHero"
+                    className="h-8 object-contain opacity-80"
+                  />
+                  <span
+                    className={`text-xs font-medium ${
+                      isDarkMode ? "text-gray-300" : "text-gray-600"
+                    }`}
+                  >
+                    Payment Service Provider
+                  </span>
+                </div>
 
                 {/* Submit Button */}
                 <button

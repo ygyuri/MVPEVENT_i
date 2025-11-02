@@ -29,6 +29,7 @@ require("./models/ReferralConversion");
 require("./models/AffiliatePayout");
 require("./models/AffiliatePerformanceCache");
 require("./models/FraudDetectionLog");
+require("./models/TransactionFee");
 
 // Inspect runtime schema to verify 'tags' type once models are loaded
 try {
@@ -416,6 +417,9 @@ app.use("/api/auth", authRoutes);
 // Admin routes (protected)
 const adminRoutes = require("./routes/admin");
 app.use("/api/admin", adminRoutes);
+
+const transactionFeeRoutes = require("./routes/transactionFees");
+app.use("/api/admin/transaction-fees", transactionFeeRoutes);
 
 // Organizer routes (protected)
 const organizerRoutes = require("./routes/organizer");

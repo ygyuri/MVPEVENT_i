@@ -310,14 +310,33 @@ const AdminOrders = () => {
                     </div>
                     <div className="flex items-center gap-1">
                       <DollarSign className="w-4 h-4" />
-                      <span className="font-semibold text-gray-900 dark:text-white">
-                        {order.pricing?.currency || "KES"}{" "}
-                        {(
-                          order.totalAmount ||
-                          order.pricing?.total ||
-                          0
-                        ).toLocaleString()}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {order.pricing?.currency || "KES"}{" "}
+                          {(
+                            order.totalAmount ||
+                            order.pricing?.total ||
+                            0
+                          ).toLocaleString()}
+                        </span>
+                        {order.pricing?.transactionFee &&
+                          order.pricing.transactionFee > 0 && (
+                            <span className="text-xs text-gray-400 dark:text-gray-500">
+                              Subtotal:{" "}
+                              {(order.pricing.subtotal || 0).toLocaleString()} +
+                              Fee:{" "}
+                              {order.pricing.transactionFee.toLocaleString()}
+                              {order.pricing.transactionFeeDetails
+                                ?.tierName && (
+                                <span className="ml-1">
+                                  (
+                                  {order.pricing.transactionFeeDetails.tierName}
+                                  )
+                                </span>
+                              )}
+                            </span>
+                          )}
+                      </div>
                     </div>
                   </div>
                 </div>
