@@ -115,12 +115,36 @@ router.post(
         });
       }
 
-      // Check if user already exists
-      const existingUser = await User.findOne({
-        $or: [{ email }, { username }],
+      // Preserve original email format (don't remove dots from Gmail)
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Check if user already exists - handle Gmail variations
+      let existingUser = await User.findOne({
+        $or: [{ email: normalizedEmail }, { username }],
       });
+
+      // For Gmail addresses, also check variations with/without dots
+      if (!existingUser && normalizedEmail.includes("@gmail.com")) {
+        const localPart = normalizedEmail.split("@")[0];
+        const domain = normalizedEmail.split("@")[1];
+        
+        // Try without dots if email has dots
+        if (localPart.includes(".")) {
+          const withoutDots = localPart.replace(/\./g, "") + "@" + domain;
+          existingUser = await User.findOne({ email: withoutDots });
+        } else {
+          // Try with dots (search for any Gmail variation)
+          const escapedLocalPart = localPart.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const gmailRegex = new RegExp(`^${escapedLocalPart}(\\.|)@gmail\\.com$`, "i");
+          const users = await User.find({ email: { $regex: gmailRegex } });
+          existingUser = users.find((u) => u.email.includes(".")) || users[0];
+        }
+      }
+
       if (existingUser) {
-        if (existingUser.email === email) {
+        if (existingUser.email === normalizedEmail || 
+            (normalizedEmail.includes("@gmail.com") && 
+             existingUser.email.replace(/\./g, "") === normalizedEmail.replace(/\./g, ""))) {
           return res.status(409).json({
             error:
               "An account with this email already exists. Please try logging in instead.",
@@ -135,8 +159,9 @@ router.post(
       }
 
       // Create user with name field (firstName/lastName will be synced by pre-save middleware)
+      // Use normalized email (lowercased, but preserving dots)
       const userData = {
-        email,
+        email: normalizedEmail, // Preserve original format, just lowercased
         username,
         walletAddress: walletAddress || null,
         emailVerified: false,
@@ -201,7 +226,6 @@ router.post(
   [
     body("email")
       .isEmail()
-      .normalizeEmail()
       .withMessage("Please provide a valid email address"),
     body("password").notEmpty().withMessage("Password is required"),
   ],
@@ -227,8 +251,8 @@ router.post(
         emailLength: email?.length,
       });
 
-      // Note: normalizeEmail() from express-validator may have removed dots from Gmail addresses
-      // We need to try both with and without dots to find the correct user
+      // Preserve original email format (don't remove dots from Gmail)
+      // We need to try both with and without dots to find the correct user for Gmail
       const normalizedEmail = email.toLowerCase().trim();
       console.log("[LOGIN] Normalized email:", normalizedEmail);
 
