@@ -6,8 +6,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    lowercase: true,
-    trim: true
+    lowercase: true, // Normalize to lowercase on save
+    trim: true, // Remove whitespace
   },
   passwordHash: {
     type: String,

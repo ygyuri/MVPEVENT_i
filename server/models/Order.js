@@ -18,8 +18,8 @@ const orderSchema = new mongoose.Schema(
       email: {
         type: String,
         required: false, // Made optional for guest checkout
-        lowercase: true,
-        trim: true,
+        lowercase: true, // Normalize to lowercase on save
+        trim: true, // Remove whitespace
       },
       name: {
         type: String,

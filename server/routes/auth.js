@@ -47,7 +47,6 @@ router.post(
   [
     body("email")
       .isEmail()
-      .normalizeEmail()
       .withMessage("Please provide a valid email address"),
     body("password")
       .isLength({ min: 8 })
@@ -115,36 +114,48 @@ router.post(
         });
       }
 
-      // Preserve original email format (don't remove dots from Gmail)
-      const normalizedEmail = email.toLowerCase().trim();
-
-      // Check if user already exists - handle Gmail variations
+      // Normalize email to lowercase for lookup (will be saved as lowercase by model)
+      const emailLower = email.toLowerCase().trim();
+      
+      // Check if user already exists - case-insensitive lookup
+      // Since emails are stored lowercase, we can do direct comparison with lowercase version
       let existingUser = await User.findOne({
-        $or: [{ email: normalizedEmail }, { username }],
+        $or: [{ email: emailLower }, { username }],
       });
 
       // For Gmail addresses, also check variations with/without dots
-      if (!existingUser && normalizedEmail.includes("@gmail.com")) {
-        const localPart = normalizedEmail.split("@")[0];
-        const domain = normalizedEmail.split("@")[1];
-        
+      if (!existingUser && emailLower.includes("@gmail.com")) {
+        const localPart = emailLower.split("@")[0];
+        const domain = emailLower.split("@")[1];
+
         // Try without dots if email has dots
         if (localPart.includes(".")) {
           const withoutDots = localPart.replace(/\./g, "") + "@" + domain;
           existingUser = await User.findOne({ email: withoutDots });
         } else {
           // Try with dots (search for any Gmail variation)
-          const escapedLocalPart = localPart.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const gmailRegex = new RegExp(`^${escapedLocalPart}(\\.|)@gmail\\.com$`, "i");
+          const escapedLocalPart = localPart.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+          );
+          const gmailRegex = new RegExp(
+            `^${escapedLocalPart}(\\.|)@gmail\\.com$`,
+            "i"
+          );
           const users = await User.find({ email: { $regex: gmailRegex } });
           existingUser = users.find((u) => u.email.includes(".")) || users[0];
         }
       }
 
       if (existingUser) {
-        if (existingUser.email === normalizedEmail || 
-            (normalizedEmail.includes("@gmail.com") && 
-             existingUser.email.replace(/\./g, "") === normalizedEmail.replace(/\./g, ""))) {
+        // Check if emails match (accounting for Gmail dot equivalence)
+        const existingEmailLower = existingUser.email.toLowerCase();
+        if (
+          existingEmailLower === emailLower ||
+          (emailLower.includes("@gmail.com") &&
+            existingEmailLower.replace(/\./g, "") ===
+              emailLower.replace(/\./g, ""))
+        ) {
           return res.status(409).json({
             error:
               "An account with this email already exists. Please try logging in instead.",
@@ -159,9 +170,9 @@ router.post(
       }
 
       // Create user with name field (firstName/lastName will be synced by pre-save middleware)
-      // Use normalized email (lowercased, but preserving dots)
+      // Email will be lowercased automatically by Mongoose schema (lowercase: true)
       const userData = {
-        email: normalizedEmail, // Preserve original format, just lowercased
+        email: email, // Will be normalized to lowercase on save by model
         username,
         walletAddress: walletAddress || null,
         emailVerified: false,
@@ -224,9 +235,7 @@ router.post(
   "/login",
   loginRateLimit,
   [
-    body("email")
-      .isEmail()
-      .withMessage("Please provide a valid email address"),
+    body("email").isEmail().withMessage("Please provide a valid email address"),
     body("password").notEmpty().withMessage("Password is required"),
   ],
   async (req, res) => {
@@ -251,22 +260,23 @@ router.post(
         emailLength: email?.length,
       });
 
-      // Preserve original email format (don't remove dots from Gmail)
-      // We need to try both with and without dots to find the correct user for Gmail
-      const normalizedEmail = email.toLowerCase().trim();
-      console.log("[LOGIN] Normalized email:", normalizedEmail);
+      // Normalize email to lowercase for lookup (emails are stored lowercase)
+      // This allows case-insensitive lookup while emails are normalized in storage
+      const emailLower = email.toLowerCase().trim();
+      console.log("[LOGIN] Email received:", email, "-> normalized:", emailLower);
 
       let user = null;
 
-      // For Gmail addresses, try both versions (with and without dots) since Gmail treats them as the same
-      if (normalizedEmail.includes("@gmail.com")) {
-        const localPart = normalizedEmail.split("@")[0];
-        const domain = normalizedEmail.split("@")[1];
+      // Since emails are stored lowercase, we can do direct comparison with lowercase version
+      // For Gmail addresses, also check variations with/without dots
+      if (emailLower.includes("@gmail.com")) {
+        const localPart = emailLower.split("@")[0];
+        const domain = emailLower.split("@")[1];
 
-        // Try exact match first
-        user = await User.findOne({ email: normalizedEmail });
+        // Try exact match first (since stored as lowercase)
+        user = await User.findOne({ email: emailLower });
 
-        // If not found and normalized email has no dots, search for any version with dots
+        // If not found and email has no dots, search for any version with dots
         if (!user && !localPart.includes(".")) {
           // Search for any email matching this Gmail account (with or without dots in local part)
           const escapedLocalPart = localPart.replace(
@@ -282,18 +292,17 @@ router.post(
           // Prioritize user with dots (usually the original registered email)
           user = users.find((u) => u.email.includes(".")) || users[0];
         } else if (!user && localPart.includes(".")) {
-          // If normalized has dots, also try without dots
+          // If email has dots, also try without dots
           const withoutDots = localPart.replace(/\./g, "") + "@" + domain;
           console.log("[LOGIN] Trying without dots:", withoutDots);
           user = await User.findOne({ email: withoutDots });
         }
       } else {
-        // For non-Gmail, just use exact match
-        user = await User.findOne({ email: normalizedEmail });
+        // For non-Gmail, use direct comparison (since stored as lowercase)
+        user = await User.findOne({ email: emailLower });
       }
 
       if (!user) {
-        console.log("[LOGIN] ❌ User not found for email:", normalizedEmail);
         return res.status(401).json({
           error:
             "Invalid email or password. Please check your credentials and try again.",

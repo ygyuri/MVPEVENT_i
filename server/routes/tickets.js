@@ -211,15 +211,18 @@ router.post(
       }
 
       // ========== STEP 2: Handle User (Create or Use Existing) ==========
-      // Preserve original email format (don't remove dots from Gmail)
-      const normalizedEmail = email.toLowerCase().trim();
-      let user = await User.findOne({ email: normalizedEmail });
+      // Normalize email to lowercase for lookup (emails are stored lowercase)
+      // This allows case-insensitive lookup while emails are normalized in storage
+      const emailLower = email.toLowerCase().trim();
+      
+      // Since emails are stored lowercase, we can do direct comparison
+      let user = await User.findOne({ email: emailLower });
 
       // For Gmail addresses, also check variations with/without dots
-      if (!user && normalizedEmail.includes("@gmail.com")) {
-        const localPart = normalizedEmail.split("@")[0];
-        const domain = normalizedEmail.split("@")[1];
-
+      if (!user && emailLower.includes("@gmail.com")) {
+        const localPart = emailLower.split("@")[0];
+        const domain = emailLower.split("@")[1];
+        
         // Try without dots if email has dots
         if (localPart.includes(".")) {
           const withoutDots = localPart.replace(/\./g, "") + "@" + domain;
@@ -251,7 +254,7 @@ router.post(
         tempPassword = crypto.randomBytes(4).toString("hex").toUpperCase();
 
         // Generate unique username from email (preserve dots for uniqueness)
-        const baseUsername = normalizedEmail
+        const baseUsername = email
           .split("@")[0]
           .replace(/[^a-zA-Z0-9.]/g, "");
         let username = baseUsername;
@@ -265,9 +268,9 @@ router.post(
         }
 
         // Create user with pending activation status
-        // Preserve original email format as entered by user
+        // Email will be lowercased automatically by Mongoose schema (lowercase: true)
         user = new User({
-          email: normalizedEmail, // Use original format, just lowercased
+          email: email, // Will be normalized to lowercase on save by model
           username,
           name: `${firstName} ${lastName}`.trim(), // Set name field explicitly
           firstName,
