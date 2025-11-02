@@ -270,17 +270,18 @@ router.post(
 
       let user = null;
 
-      // Since emails are stored lowercase, we can do direct comparison with lowercase version
+      // Try case-insensitive lookup first (handles existing users with mixed-case emails)
+      // New users are saved lowercase, but existing users might have mixed case
+      const emailRegex = new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+      user = await User.findOne({ email: { $regex: emailRegex } });
+
       // For Gmail addresses, also check variations with/without dots
-      if (emailLower.includes("@gmail.com")) {
+      if (!user && emailLower.includes("@gmail.com")) {
         const localPart = emailLower.split("@")[0];
         const domain = emailLower.split("@")[1];
 
-        // Try exact match first (since stored as lowercase)
-        user = await User.findOne({ email: emailLower });
-
         // If not found and email has no dots, search for any version with dots
-        if (!user && !localPart.includes(".")) {
+        if (!localPart.includes(".")) {
           // Search for any email matching this Gmail account (with or without dots in local part)
           const escapedLocalPart = localPart.replace(
             /[.*+?^${}()|[\]\\]/g,
@@ -293,16 +294,15 @@ router.post(
           console.log("[LOGIN] Searching with regex for Gmail variations");
           const users = await User.find({ email: { $regex: gmailRegex } });
           // Prioritize user with dots (usually the original registered email)
-          user = users.find((u) => u.email.includes(".")) || users[0];
-        } else if (!user && localPart.includes(".")) {
-          // If email has dots, also try without dots
+          user = users.find((u) => u.email.toLowerCase().includes(".")) || users[0];
+        } else {
+          // If email has dots, also try without dots (case-insensitive)
           const withoutDots = localPart.replace(/\./g, "") + "@" + domain;
           console.log("[LOGIN] Trying without dots:", withoutDots);
-          user = await User.findOne({ email: withoutDots });
+          user = await User.findOne({ 
+            email: { $regex: new RegExp(`^${withoutDots.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } 
+          });
         }
-      } else {
-        // For non-Gmail, use direct comparison (since stored as lowercase)
-        user = await User.findOne({ email: emailLower });
       }
 
       if (!user) {
@@ -321,7 +321,7 @@ router.post(
       });
 
       if (!user.isActive) {
-        console.log("[LOGIN] ❌ Account deactivated for:", normalizedEmail);
+        console.log("[LOGIN] ❌ Account deactivated for:", emailLower);
         return res.status(401).json({
           error:
             "Your account has been deactivated. Please contact support for assistance.",
@@ -334,7 +334,7 @@ router.post(
       const isValidPassword = await user.verifyPassword(password);
       console.log("[LOGIN] Password verification:", isValidPassword);
       if (!isValidPassword) {
-        console.log("[LOGIN] ❌ Invalid password for:", normalizedEmail);
+        console.log("[LOGIN] ❌ Invalid password for:", emailLower);
         return res.status(401).json({
           error:
             "Invalid email or password. Please check your credentials and try again.",
@@ -343,7 +343,7 @@ router.post(
         });
       }
 
-      console.log("[LOGIN] ✅ Password verified for:", normalizedEmail);
+      console.log("[LOGIN] ✅ Password verified for:", emailLower);
 
       // Generate tokens
       const { accessToken, refreshToken } = generateTokens(user._id);
