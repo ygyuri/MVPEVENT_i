@@ -1196,7 +1196,10 @@ class EmailService {
     try {
       const colors = getBrandColors();
 
-      // Generate ticket HTML rows
+      // Prepare attachments array for QR code images
+      const attachments = [];
+
+      // Generate ticket HTML rows with QR code references
       const ticketRows = tickets
         .map((ticket, index) => {
           const event = ticket.eventId;
@@ -1223,6 +1226,34 @@ class EmailService {
               if (event.location.address) parts.push(event.location.address);
               if (event.location.city) parts.push(event.location.city);
               locationText = parts.length > 0 ? parts.join(", ") : "TBD";
+            }
+          }
+
+          // Generate unique Content-ID for this ticket's QR code
+          const qrCid = `ticket-qr-${ticket._id || index}`;
+
+          // Convert base64 data URL to Buffer and add as attachment
+          if (ticket.qrCodeUrl) {
+            try {
+              // Extract base64 data from data URL (format: "data:image/png;base64,<base64-data>")
+              const base64Match = ticket.qrCodeUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+              if (base64Match) {
+                const imageType = base64Match[1] || "png";
+                const base64Data = base64Match[2];
+                
+                // Convert base64 to Buffer
+                const imageBuffer = Buffer.from(base64Data, "base64");
+                
+                // Add as inline attachment with Content-ID
+                attachments.push({
+                  filename: `qr-${ticket.ticketNumber || index}.${imageType}`,
+                  content: imageBuffer,
+                  contentType: `image/${imageType}`,
+                  cid: qrCid, // Content-ID for inline embedding
+                });
+              }
+            } catch (qrError) {
+              console.error(`Error processing QR code for ticket ${ticket.ticketNumber}:`, qrError);
             }
           }
 
@@ -1272,7 +1303,7 @@ class EmailService {
               }; font-size: 13px;">Entry QR Code</p>
               ${
                 ticket.qrCodeUrl
-                  ? `<img src="${ticket.qrCodeUrl}" alt="QR Code for ${ticket.ticketNumber}" style="max-width: 180px; border: 2px solid ${colors.primary}; border-radius: 6px; padding: 8px; background: white;" />`
+                  ? `<img src="cid:${qrCid}" alt="QR Code for ${ticket.ticketNumber}" style="max-width: 180px; border: 2px solid ${colors.primary}; border-radius: 6px; padding: 8px; background: white; display: block; margin: 0 auto;" />`
                   : `<p style="color: ${colors.textMuted}; font-size: 12px;">QR Code pending</p>`
               }
               <p style="margin: 12px 0 0 0; font-size: 11px; color: ${
@@ -1388,11 +1419,12 @@ class EmailService {
         to: customerEmail,
         subject: `Your Tickets - Order #${order.orderNumber}`,
         html,
+        attachments: attachments.length > 0 ? attachments : undefined,
         headers: this.getSecurityHeaders(),
       };
 
       const result = await this.transporter.sendMail(mailOptions);
-      console.log("✅ Ticket email sent:", result.messageId);
+      console.log(`✅ Ticket email sent with ${attachments.length} QR code(s):`, result.messageId);
       return result;
     } catch (error) {
       console.error("❌ Error sending ticket email:", error);

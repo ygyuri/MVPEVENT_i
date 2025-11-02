@@ -93,6 +93,9 @@ class MergedTicketReceiptService {
       // Get app URL
       const appUrl = process.env.CLIENT_URL || "http://localhost:3000";
 
+      // Prepare attachments array for QR code images
+      const attachments = [];
+
       // Generate ticket rows with QR codes
       const ticketRows = tickets
         .map((ticket, index) => {
@@ -102,6 +105,34 @@ class MergedTicketReceiptService {
           const price = ticket.price || 0;
           const currency = order.pricing?.currency || "KES";
 
+          // Generate unique Content-ID for this ticket's QR code
+          const qrCid = `ticket-qr-${ticket._id || index}`;
+
+          // Convert base64 data URL to Buffer and add as attachment
+          if (ticket.qrCodeUrl) {
+            try {
+              // Extract base64 data from data URL (format: "data:image/png;base64,<base64-data>")
+              const base64Match = ticket.qrCodeUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+              if (base64Match) {
+                const imageType = base64Match[1] || "png";
+                const base64Data = base64Match[2];
+                
+                // Convert base64 to Buffer
+                const imageBuffer = Buffer.from(base64Data, "base64");
+                
+                // Add as inline attachment with Content-ID
+                attachments.push({
+                  filename: `qr-${ticketNumber || index}.${imageType}`,
+                  content: imageBuffer,
+                  contentType: `image/${imageType}`,
+                  cid: qrCid, // Content-ID for inline embedding
+                });
+              }
+            } catch (qrError) {
+              console.error(`Error processing QR code for ticket ${ticketNumber}:`, qrError);
+            }
+          }
+
           return `
           <tr>
             <td style="padding: 24px; border-bottom: 1px solid #E5E7EB;">
@@ -110,7 +141,7 @@ class MergedTicketReceiptService {
                   <td width="200" style="vertical-align: top; padding-right: 20px;">
                     <!-- QR Code -->
                     <div style="background: #FFFFFF; padding: 12px; border-radius: 12px; border: 2px solid #3A7DFF; display: inline-block;">
-                      <img src="${qrCodeUrl}" alt="Ticket QR Code" style="width: 180px; height: 180px; display: block;" />
+                      ${qrCodeUrl ? `<img src="cid:${qrCid}" alt="Ticket QR Code" style="width: 180px; height: 180px; display: block;" />` : '<p style="color: #6B7280; font-size: 12px;">QR Code pending</p>'}
                     </div>
                   </td>
                   <td style="vertical-align: top;">
@@ -416,11 +447,12 @@ class MergedTicketReceiptService {
           event?.title || "Event"
         } (Order #${order.orderNumber})`,
         html,
+        attachments: attachments.length > 0 ? attachments : undefined,
         headers: this.getSecurityHeaders(),
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      console.log("✅ Merged ticket & receipt email sent:", info.messageId);
+      console.log(`✅ Merged ticket & receipt email sent with ${attachments.length} QR code(s):`, info.messageId);
 
       return {
         success: true,
