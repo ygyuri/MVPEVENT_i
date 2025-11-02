@@ -62,18 +62,36 @@ const handleValidation = (req, res) => {
 
 /**
  * Event ownership validation helper
+ * Supports impersonation: when admin impersonates, userId should be the impersonated organizer's ID
  */
-const validateEventOwnership = async (eventId, userId, userRole) => {
+const validateEventOwnership = async (eventId, userId, userRole, impersonatedOrganizerId = null) => {
   const event = await Event.findById(eventId);
   if (!event) {
     throw new Error('Event not found');
   }
   
-  const isOwner = String(event.organizer) === String(userId);
+  // If admin is impersonating, check ownership against impersonated organizer
+  const targetOrganizerId = (userRole === 'admin' && impersonatedOrganizerId) 
+    ? impersonatedOrganizerId 
+    : userId;
+  
+  const isOwner = String(event.organizer) === String(targetOrganizerId);
   const isAdmin = userRole === 'admin';
   
-  if (!isOwner && !isAdmin) {
-    throw new Error('Access denied - not event owner');
+  // Admins can access any event when not impersonating, but when impersonating must be event owner
+  if (userRole === 'admin' && impersonatedOrganizerId) {
+    // When impersonating, must be event owner
+    if (!isOwner) {
+      throw new Error('Access denied - event does not belong to impersonated organizer');
+    }
+  } else if (userRole === 'admin' && !impersonatedOrganizerId) {
+    // Admin not impersonating - allow access to any event
+    // (isAdmin check will pass)
+  } else {
+    // Regular organizer - must be event owner
+    if (!isOwner) {
+      throw new Error('Access denied - not event owner');
+    }
   }
   
   return event;
@@ -92,8 +110,13 @@ router.get('/updates/:eventId', verifyToken, requireRole(['organizer', 'admin'])
     
     const { eventId } = req.params;
     
+    // Get impersonated organizer ID if admin is impersonating
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
+      ? req.query.organizerId 
+      : null;
+    
     // Validate event ownership
-    await validateEventOwnership(eventId, req.user._id, req.user.role);
+    await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
     
     // Get update analytics data
     const updateAnalytics = await analyticsService.getUpdateAnalytics(eventId);
@@ -133,7 +156,13 @@ router.get('/updates/:eventId', verifyToken, requireRole(['organizer', 'admin'])
  */
 router.get('/dashboard-overview', verifyToken, requireRole(['organizer', 'admin']), async (req, res) => {
   try {
-    const overview = await analyticsService.getDashboardOverview(req.user._id);
+    // Allow admins to view organizer analytics by passing organizerId
+    const organizerId =
+      req.user.role === 'admin' && req.query.organizerId
+        ? req.query.organizerId
+        : req.user._id;
+    
+    const overview = await analyticsService.getDashboardOverview(organizerId);
     
     res.json({
       success: true,
@@ -166,8 +195,13 @@ router.get('/sales-chart/:eventId', analyticsRateLimit, verifyToken, requireRole
     const { eventId } = req.params;
     const { period, startDate, endDate, ticketType } = req.query;
     
+    // Get impersonated organizer ID if admin is impersonating
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
+      ? req.query.organizerId 
+      : null;
+    
     // Validate event ownership
-    await validateEventOwnership(eventId, req.user._id, req.user.role);
+    await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
     
     const options = { period, startDate, endDate, ticketType };
     const salesData = await analyticsService.getSalesChart(eventId, options);
@@ -213,8 +247,13 @@ router.get('/revenue-overview/:eventId', verifyToken, requireRole(['organizer', 
     
     const { eventId } = req.params;
     
+    // Get impersonated organizer ID if admin is impersonating
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
+      ? req.query.organizerId 
+      : null;
+    
     // Validate event ownership
-    await validateEventOwnership(eventId, req.user._id, req.user.role);
+    await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
     
     const revenueData = await analyticsService.getRevenueOverview(eventId);
     
@@ -278,8 +317,14 @@ router.get('/revenue-trends', verifyToken, requireRole(['organizer', 'admin']), 
       }
     }
     
+    // Allow admins to view organizer revenue trends by passing organizerId
+    const organizerId =
+      req.user.role === 'admin' && req.query.organizerId
+        ? req.query.organizerId
+        : req.user._id;
+    
     const options = { period, startDate, endDate, eventIds: parsedEventIds };
-    const trendsData = await analyticsService.getRevenueTrends(req.user._id, options);
+    const trendsData = await analyticsService.getRevenueTrends(organizerId, options);
     
     res.json({
       success: true,
@@ -313,8 +358,13 @@ router.get('/export/attendees/:eventId', exportRateLimit, verifyToken, requireRo
     const { eventId } = req.params;
     const { format, status, ticketType, dateFrom, dateTo } = req.query;
     
+    // Get impersonated organizer ID if admin is impersonating
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
+      ? req.query.organizerId 
+      : null;
+    
     // Validate event ownership
-    await validateEventOwnership(eventId, req.user._id, req.user.role);
+    await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
     
     const filters = { status, ticketType, dateFrom, dateTo };
     const options = { format, filters };
@@ -404,8 +454,13 @@ router.post('/export/attendees/:eventId', verifyToken, requireRole(['organizer',
     const { eventId } = req.params;
     const { format, filters = {}, fields = [] } = req.body;
     
+    // Get impersonated organizer ID if admin is impersonating
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
+      ? req.query.organizerId 
+      : null;
+    
     // Validate event ownership
-    await validateEventOwnership(eventId, req.user._id, req.user.role);
+    await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
     
     // For large exports, you would typically queue this job
     // For now, process immediately
@@ -460,8 +515,13 @@ router.get('/events/:eventId/summary', verifyToken, requireRole(['organizer', 'a
     
     const { eventId } = req.params;
     
+    // Get impersonated organizer ID if admin is impersonating
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
+      ? req.query.organizerId 
+      : null;
+    
     // Validate event ownership
-    await validateEventOwnership(eventId, req.user._id, req.user.role);
+    await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
     
     const [salesSummary, revenueOverview] = await Promise.all([
       analyticsService.getSalesChart(eventId, { period: 'daily' }),
@@ -535,8 +595,13 @@ router.get('/cache/clear/:eventId', verifyToken, requireRole(['organizer', 'admi
     
     const { eventId } = req.params;
     
+    // Get impersonated organizer ID if admin is impersonating
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
+      ? req.query.organizerId 
+      : null;
+    
     // Validate event ownership
-    await validateEventOwnership(eventId, req.user._id, req.user.role);
+    await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
     
     analyticsService.clearEventCache(eventId);
     
@@ -582,8 +647,13 @@ router.get('/download/:eventId/:format', verifyToken, requireRole(['organizer', 
     
     const { eventId, format } = req.params;
     
+    // Get impersonated organizer ID if admin is impersonating
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
+      ? req.query.organizerId 
+      : null;
+    
     // Validate event ownership
-    await validateEventOwnership(eventId, req.user._id, req.user.role);
+    await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
     
     // Generate filename
     const filename = exportService.generateFilename(eventId, format);

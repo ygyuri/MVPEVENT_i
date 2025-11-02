@@ -2,30 +2,37 @@ import api from './api';
 
 const analyticsAPI = {
   // Dashboard overview
-  getDashboardOverview: () => api.get('/api/organizer/analytics/dashboard-overview'),
+  getDashboardOverview: (organizerId = null) => {
+    const params = organizerId ? `?organizerId=${organizerId}` : '';
+    return api.get(`/api/organizer/analytics/dashboard-overview${params}`);
+  },
   
   // Sales chart
-  getSalesChart: (eventId, options = {}) => {
+  getSalesChart: (eventId, options = {}, organizerId = null) => {
     const params = new URLSearchParams();
     if (options.period) params.append('period', options.period);
     if (options.startDate) params.append('startDate', options.startDate);
     if (options.endDate) params.append('endDate', options.endDate);
     if (options.ticketType) params.append('ticketType', options.ticketType);
+    if (organizerId) params.append('organizerId', organizerId);
     
     return api.get(`/api/organizer/analytics/sales-chart/${eventId}?${params}`);
   },
   
   // Revenue overview
-  getRevenueOverview: (eventId) => 
-    api.get(`/api/organizer/analytics/revenue-overview/${eventId}`),
+  getRevenueOverview: (eventId, organizerId = null) => {
+    const params = organizerId ? `?organizerId=${organizerId}` : '';
+    return api.get(`/api/organizer/analytics/revenue-overview/${eventId}${params}`);
+  },
   
   // Revenue trends
-  getRevenueTrends: (options = {}) => {
+  getRevenueTrends: (options = {}, organizerId = null) => {
     const params = new URLSearchParams();
     if (options.period) params.append('period', options.period);
     if (options.startDate) params.append('startDate', options.startDate);
     if (options.endDate) params.append('endDate', options.endDate);
     if (options.eventIds) params.append('eventIds', JSON.stringify(options.eventIds));
+    if (organizerId) params.append('organizerId', organizerId);
     
     return api.get(`/api/organizer/analytics/revenue-trends?${params}`);
   },

@@ -18,6 +18,8 @@ import {
   ShoppingBag,
   Users,
   Clock,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -46,8 +48,15 @@ import { fetchMyEvents } from "../store/slices/organizerSlice";
 
 const AnalyticsDashboard = () => {
   const dispatch = useDispatch();
-  const { user } = useSelector((state) => state.auth);
+  const {
+    user,
+    isAuthenticated,
+    loading: authLoading,
+  } = useSelector((state) => state.auth);
   const { events } = useSelector((state) => state.organizer);
+
+  // Get impersonation state
+  const isImpersonating = localStorage.getItem("impersonatingUserId");
 
   const {
     dashboardData,
@@ -95,15 +104,41 @@ const AnalyticsDashboard = () => {
 
   // Load dashboard data on mount
   useEffect(() => {
+    // Only load data if user is authenticated and user data is loaded
+    if (!isAuthenticated || !user || authLoading) {
+      return;
+    }
+
+    // Check if user is an organizer OR admin impersonating an organizer
+    const canAccess =
+      user.role === "organizer" || (user.role === "admin" && isImpersonating);
+
+    if (!canAccess) {
+      return;
+    }
+
     dispatch(fetchDashboardOverview());
-  }, [dispatch]);
+  }, [dispatch, isAuthenticated, user, authLoading, isImpersonating]);
 
   // Ensure organizer events are loaded for the dropdown
   useEffect(() => {
+    // Only load events if user is authenticated
+    if (!isAuthenticated || !user || authLoading) {
+      return;
+    }
+
+    // Check if user is an organizer OR admin impersonating an organizer
+    const canAccess =
+      user.role === "organizer" || (user.role === "admin" && isImpersonating);
+
+    if (!canAccess) {
+      return;
+    }
+
     if (!events || events.length === 0) {
       dispatch(fetchMyEvents({ page: 1, pageSize: 50 }));
     }
-  }, [dispatch, events]);
+  }, [dispatch, events, isAuthenticated, user, authLoading, isImpersonating]);
 
   // Load analytics data when event or filters change
   useEffect(() => {
@@ -218,8 +253,70 @@ const AnalyticsDashboard = () => {
     return new Intl.NumberFormat("en-KE").format(num);
   };
 
+  // Show loading state while authentication is in progress
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if user is not an organizer and not admin impersonating
+  const canAccess =
+    user?.role === "organizer" || (user?.role === "admin" && isImpersonating);
+  if (user && !canAccess) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Access Denied
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            You need organizer privileges to access this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Impersonation Banner */}
+      {isImpersonating && user?.role === "admin" && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 rounded-lg p-4 m-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+              <div>
+                <p className="font-semibold text-yellow-900 dark:text-yellow-200">
+                  Viewing Analytics as Organizer
+                </p>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  You are currently viewing analytics for the impersonated
+                  organizer
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem("impersonatingUserId");
+                localStorage.removeItem("impersonatingUserEmail");
+                localStorage.removeItem("originalUserId");
+                window.location.href = "/admin";
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-lg hover:bg-yellow-200 dark:hover:bg-yellow-800 transition-colors"
+            >
+              <X className="w-4 h-4" />
+              Stop Impersonating
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

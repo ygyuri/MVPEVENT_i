@@ -4,9 +4,15 @@ import analyticsAPI from '../../utils/analyticsAPI';
 // Async thunks for analytics functionality
 export const fetchDashboardOverview = createAsyncThunk(
   'analytics/fetchDashboardOverview',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, getState }) => {
     try {
-      const response = await analyticsAPI.getDashboardOverview();
+      // Check if admin is impersonating an organizer
+      const state = getState();
+      const impersonatingUserId = localStorage.getItem('impersonatingUserId');
+      const isAdmin = state.auth.user?.role === 'admin';
+      
+      const organizerId = isAdmin && impersonatingUserId ? impersonatingUserId : null;
+      const response = await analyticsAPI.getDashboardOverview(organizerId);
       return response.data?.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch dashboard');
@@ -16,9 +22,15 @@ export const fetchDashboardOverview = createAsyncThunk(
 
 export const fetchSalesChart = createAsyncThunk(
   'analytics/fetchSalesChart',
-  async ({ eventId, options }, { rejectWithValue }) => {
+  async ({ eventId, options }, { rejectWithValue, getState }) => {
     try {
-      const response = await analyticsAPI.getSalesChart(eventId, options);
+      // Check if admin is impersonating an organizer
+      const state = getState();
+      const impersonatingUserId = localStorage.getItem('impersonatingUserId');
+      const isAdmin = state.auth.user?.role === 'admin';
+      
+      const organizerId = isAdmin && impersonatingUserId ? impersonatingUserId : null;
+      const response = await analyticsAPI.getSalesChart(eventId, options, organizerId);
       return response.data?.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch sales data');
@@ -28,9 +40,15 @@ export const fetchSalesChart = createAsyncThunk(
 
 export const fetchRevenueOverview = createAsyncThunk(
   'analytics/fetchRevenueOverview',
-  async ({ eventId }, { rejectWithValue }) => {
+  async ({ eventId }, { rejectWithValue, getState }) => {
     try {
-      const response = await analyticsAPI.getRevenueOverview(eventId);
+      // Check if admin is impersonating an organizer
+      const state = getState();
+      const impersonatingUserId = localStorage.getItem('impersonatingUserId');
+      const isAdmin = state.auth.user?.role === 'admin';
+      
+      const organizerId = isAdmin && impersonatingUserId ? impersonatingUserId : null;
+      const response = await analyticsAPI.getRevenueOverview(eventId, organizerId);
       return response.data?.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch revenue data');
@@ -40,9 +58,15 @@ export const fetchRevenueOverview = createAsyncThunk(
 
 export const fetchRevenueTrends = createAsyncThunk(
   'analytics/fetchRevenueTrends',
-  async (options, { rejectWithValue }) => {
+  async (options, { rejectWithValue, getState }) => {
     try {
-      const response = await analyticsAPI.getRevenueTrends(options);
+      // Check if admin is impersonating an organizer
+      const state = getState();
+      const impersonatingUserId = localStorage.getItem('impersonatingUserId');
+      const isAdmin = state.auth.user?.role === 'admin';
+      
+      const organizerId = isAdmin && impersonatingUserId ? impersonatingUserId : null;
+      const response = await analyticsAPI.getRevenueTrends(options, organizerId);
       return response.data?.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch revenue trends');
