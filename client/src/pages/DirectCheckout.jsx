@@ -370,9 +370,28 @@ const DirectCheckout = () => {
       const fullPhone = `${countryCode}${cleanPhone}`;
 
       // Split full name into firstName and lastName for backend compatibility
+      // Ensure both fields are always provided (required by Ticket model)
       const nameParts = formData.fullName.trim().split(/\s+/);
       const firstName = nameParts[0] || "";
-      const lastName = nameParts.slice(1).join(" ") || "";
+      // If no last name provided, use first name as fallback to satisfy required field
+      const lastName = nameParts.slice(1).join(" ") || firstName || "";
+
+      // Validate that we have at least a first name
+      if (!firstName) {
+        setValidationErrors((prev) => ({
+          ...prev,
+          fullName: "Please enter your full name",
+        }));
+        setError("Please enter your full name");
+        formRefs.fullName.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+        formRefs.fullName.current?.focus();
+        isSubmittingRef.current = false;
+        setSubmitting(false);
+        return;
+      }
 
       const purchaseData = {
         eventId: event.id,

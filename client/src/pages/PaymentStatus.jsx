@@ -14,6 +14,7 @@ import {
 import { useTheme } from "../contexts/ThemeContext";
 import api from "../utils/api";
 import payheroLogo from "../assets/payhero-logo.png";
+import tajilabsLogo from "../assets/tajilabs-logo-horizontal.png";
 
 const PaymentStatus = () => {
   const { orderId } = useParams();
@@ -126,11 +127,11 @@ const PaymentStatus = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center max-w-2xl mx-auto"
+        className="text-center max-w-3xl mx-auto"
       >
         {/* Main status */}
         <div className="mb-8">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 mb-6 animate-pulse">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 mb-6 animate-pulse shadow-lg">
             <Clock className="w-12 h-12 text-white" />
           </div>
           <h1
@@ -156,48 +157,44 @@ const PaymentStatus = () => {
           </p>
         </div>
 
-        {/* PayHero Branding */}
+        {/* Powered by Tajilabs */}
         <div
-          className={`flex items-center justify-center gap-3 mb-6 p-4 rounded-xl ${
+          className={`flex flex-col items-center justify-center gap-2 mb-6 p-4 ${
             isDarkMode
               ? "bg-gray-800/50 border border-gray-700"
               : "bg-gray-50 border border-gray-200"
           }`}
         >
-          <div className="flex items-center gap-2">
-            <Shield
-              className={`w-5 h-5 ${
-                isDarkMode ? "text-gray-400" : "text-gray-500"
-              }`}
-            />
-            <span
-              className={`text-sm ${
-                isDarkMode ? "text-gray-400" : "text-gray-500"
-              }`}
-            >
-              Secured by
-            </span>
-          </div>
-          <img
-            src={payheroLogo}
-            alt="PayHero"
-            className="h-10 object-contain opacity-80 hover:opacity-100 transition-opacity"
-          />
-          <span
-            className={`text-sm font-medium ${
-              isDarkMode ? "text-gray-300" : "text-gray-600"
+          <p
+            className={`text-xs ${
+              isDarkMode ? "text-gray-400" : "text-gray-500"
             }`}
           >
-            Payment Service Provider
-          </span>
+            Powered by
+          </p>
+          <a
+            href="https://tajilabs.co.ke"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:opacity-80 transition-opacity"
+          >
+            <img
+              src={tajilabsLogo}
+              alt="Tajilabs"
+              className="h-8 object-contain"
+              onError={(e) => {
+                e.target.style.display = "none";
+              }}
+            />
+          </a>
         </div>
 
         {/* Progress Steps */}
         <div
-          className={`p-6 rounded-xl mb-6 ${
+          className={`p-6 mb-6 shadow-xl ${
             isDarkMode
               ? "bg-gray-800 border border-gray-700"
-              : "bg-gray-50 border border-gray-200"
+              : "bg-white border border-gray-200"
           }`}
         >
           <h3
@@ -256,7 +253,7 @@ const PaymentStatus = () => {
 
         {/* Helpful tip */}
         <div
-          className={`p-4 rounded-lg ${
+          className={`p-4 ${
             isDarkMode
               ? "bg-blue-900/20 border border-blue-500/30"
               : "bg-blue-50 border border-blue-200"
@@ -317,11 +314,11 @@ const PaymentStatus = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center max-w-2xl mx-auto"
+        className="text-center max-w-3xl mx-auto"
       >
         {/* Main status */}
         <div className="mb-8">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 mb-6">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 mb-6 shadow-lg">
             <Loader2 className="w-12 h-12 text-white animate-spin" />
           </div>
           <h1
@@ -347,48 +344,44 @@ const PaymentStatus = () => {
           </p>
         </div>
 
-        {/* PayHero Branding */}
+        {/* Powered by Tajilabs */}
         <div
-          className={`flex items-center justify-center gap-3 mb-6 p-4 rounded-xl ${
+          className={`flex flex-col items-center justify-center gap-2 mb-6 p-4 ${
             isDarkMode
               ? "bg-gray-800/50 border border-gray-700"
               : "bg-gray-50 border border-gray-200"
           }`}
         >
-          <div className="flex items-center gap-2">
-            <Shield
-              className={`w-5 h-5 ${
-                isDarkMode ? "text-gray-400" : "text-gray-500"
-              }`}
-            />
-            <span
-              className={`text-sm ${
-                isDarkMode ? "text-gray-400" : "text-gray-500"
-              }`}
-            >
-              Secured by
-            </span>
-          </div>
-          <img
-            src={payheroLogo}
-            alt="PayHero"
-            className="h-10 object-contain opacity-80 hover:opacity-100 transition-opacity"
-          />
-          <span
-            className={`text-sm font-medium ${
-              isDarkMode ? "text-gray-300" : "text-gray-600"
+          <p
+            className={`text-xs ${
+              isDarkMode ? "text-gray-400" : "text-gray-500"
             }`}
           >
-            Payment Service Provider
-          </span>
+            Powered by
+          </p>
+          <a
+            href="https://tajilabs.co.ke"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:opacity-80 transition-opacity"
+          >
+            <img
+              src={tajilabsLogo}
+              alt="Tajilabs"
+              className="h-8 object-contain"
+              onError={(e) => {
+                e.target.style.display = "none";
+              }}
+            />
+          </a>
         </div>
 
         {/* Progress Steps */}
         <div
-          className={`p-6 rounded-xl mb-6 ${
+          className={`p-6 mb-6 shadow-xl ${
             isDarkMode
               ? "bg-gray-800 border border-gray-700"
-              : "bg-gray-50 border border-gray-200"
+              : "bg-white border border-gray-200"
           }`}
         >
           <h3
@@ -447,7 +440,7 @@ const PaymentStatus = () => {
 
         {/* Reassurance */}
         <div
-          className={`p-4 rounded-lg ${
+          className={`p-4 ${
             isDarkMode
               ? "bg-green-900/20 border border-green-500/30"
               : "bg-green-50 border border-green-200"
@@ -473,11 +466,11 @@ const PaymentStatus = () => {
       transition={{ type: "spring", stiffness: 200, damping: 15 }}
       className="text-center"
     >
-      <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 dark:bg-green-900/20 mb-6">
+      <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 dark:bg-green-900/20 mb-6 shadow-lg">
         <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400" />
       </div>
       <h1
-        className={`text-3xl font-bold mb-4 ${
+        className={`text-3xl md:text-4xl font-bold mb-4 ${
           isDarkMode ? "text-white" : "text-gray-900"
         }`}
       >
@@ -491,39 +484,44 @@ const PaymentStatus = () => {
         Your tickets have been purchased successfully
       </p>
 
-      {/* PayHero Branding */}
+      {/* Powered by Tajilabs */}
       <div
-        className={`flex items-center justify-center gap-3 mb-6 p-3 rounded-lg ${
+        className={`flex flex-col items-center justify-center gap-2 mb-6 p-4 ${
           isDarkMode
             ? "bg-gray-800/30 border border-gray-700"
             : "bg-gray-50 border border-gray-200"
         }`}
       >
-        <Shield
-          className={`w-4 h-4 ${
-            isDarkMode ? "text-gray-400" : "text-gray-500"
-          }`}
-        />
-        <span
+        <p
           className={`text-xs ${
             isDarkMode ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          Secured by
-        </span>
-        <img
-          src={payheroLogo}
-          alt="PayHero"
-          className="h-10 object-contain opacity-75"
-        />
+          Powered by
+        </p>
+        <a
+          href="https://tajilabs.co.ke"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:opacity-80 transition-opacity"
+        >
+          <img
+            src={tajilabsLogo}
+            alt="Tajilabs"
+            className="h-8 object-contain"
+            onError={(e) => {
+              e.target.style.display = "none";
+            }}
+          />
+        </a>
       </div>
 
       {orderStatus && (
         <div
-          className={`p-6 rounded-xl mb-6 ${
+          className={`p-6 mb-6 shadow-xl ${
             isDarkMode
               ? "bg-gray-800 border border-gray-700"
-              : "bg-gray-50 border border-gray-200"
+              : "bg-white border border-gray-200"
           }`}
         >
           <div className="flex items-center justify-between mb-4">
@@ -567,7 +565,7 @@ const PaymentStatus = () => {
       )}
 
       <div
-        className={`p-4 rounded-lg mb-6 ${
+        className={`p-4 mb-6 ${
           isDarkMode
             ? "bg-blue-900/20 border border-blue-500/30"
             : "bg-blue-50 border border-blue-200"
@@ -605,7 +603,7 @@ const PaymentStatus = () => {
         </button> */}
         <button
           onClick={() => navigate("/events")}
-          className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+          className={`px-6 py-3 rounded-lg font-semibold transition-all shadow-lg ${
             isDarkMode
               ? "bg-gray-800 hover:bg-gray-700 text-white border border-gray-600"
               : "bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"
@@ -621,9 +619,9 @@ const PaymentStatus = () => {
     <motion.div
       initial={{ scale: 0 }}
       animate={{ scale: 1 }}
-      className="text-center"
+      className="text-center max-w-3xl mx-auto"
     >
-      <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-yellow-100 dark:bg-yellow-900/20 mb-6">
+      <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-yellow-100 dark:bg-yellow-900/20 mb-6 shadow-lg">
         <Clock className="w-12 h-12 text-yellow-600 dark:text-yellow-400" />
       </div>
       <h1
@@ -641,47 +639,43 @@ const PaymentStatus = () => {
         We couldn't confirm your payment status. This might mean:
       </p>
 
-      {/* PayHero Branding */}
+      {/* Powered by Tajilabs */}
       <div
-        className={`flex items-center justify-center gap-3 mb-6 p-4 rounded-xl ${
+        className={`flex flex-col items-center justify-center gap-2 mb-6 p-4 ${
           isDarkMode
             ? "bg-gray-800/50 border border-gray-700"
             : "bg-gray-50 border border-gray-200"
         }`}
       >
-        <div className="flex items-center gap-2">
-          <Shield
-            className={`w-5 h-5 ${
-              isDarkMode ? "text-gray-400" : "text-gray-500"
-            }`}
-          />
-          <span
-            className={`text-sm ${
-              isDarkMode ? "text-gray-400" : "text-gray-500"
-            }`}
-          >
-            Powered by
-          </span>
-        </div>
-        <img
-          src={payheroLogo}
-          alt="PayHero"
-          className="h-10 object-contain opacity-80 hover:opacity-100 transition-opacity"
-        />
-        <span
-          className={`text-sm font-medium ${
-            isDarkMode ? "text-gray-300" : "text-gray-600"
+        <p
+          className={`text-xs ${
+            isDarkMode ? "text-gray-400" : "text-gray-500"
           }`}
         >
-          Payment Service Provider
-        </span>
+          Powered by
+        </p>
+        <a
+          href="https://tajilabs.co.ke"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:opacity-80 transition-opacity"
+        >
+          <img
+            src={tajilabsLogo}
+            alt="Tajilabs"
+            className="h-8 object-contain"
+            onError={(e) => {
+              e.target.style.display = "none";
+            }}
+          />
+        </a>
       </div>
 
       <div
-        className={`p-6 rounded-xl mb-6 text-left ${
+        className={`p-6 mb-6 shadow-xl text-left ${
           isDarkMode
             ? "bg-gray-800 border border-gray-700"
-            : "bg-gray-50 border border-gray-200"
+            : "bg-white border border-gray-200"
         }`}
       >
         <ul className="space-y-3">
@@ -710,7 +704,7 @@ const PaymentStatus = () => {
       </div>
 
       <div
-        className={`p-4 rounded-lg mb-6 ${
+        className={`p-4 mb-6 ${
           isDarkMode
             ? "bg-blue-900/20 border border-blue-500/30"
             : "bg-blue-50 border border-blue-200"
@@ -762,14 +756,14 @@ const PaymentStatus = () => {
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
         <button
           onClick={() => navigate("/wallet")}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all shadow-lg flex items-center justify-center gap-2"
         >
           <Receipt className="w-5 h-5" />
           Check My Wallet
         </button>
         <button
           onClick={() => window.location.reload()}
-          className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+          className={`px-6 py-3 rounded-lg font-semibold transition-all shadow-lg flex items-center justify-center gap-2 ${
             isDarkMode
               ? "bg-gray-800 hover:bg-gray-700 text-white border border-gray-600"
               : "bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"
@@ -792,7 +786,7 @@ const PaymentStatus = () => {
         </button>
         <button
           onClick={() => navigate(-1)}
-          className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+          className={`px-6 py-3 rounded-lg font-semibold transition-all shadow-lg ${
             isDarkMode
               ? "bg-gray-700 hover:bg-gray-600 text-white"
               : "bg-gray-200 hover:bg-gray-300 text-gray-900"
@@ -849,11 +843,11 @@ const PaymentStatus = () => {
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        className="text-center"
+        className="text-center max-w-3xl mx-auto"
       >
         {/* Icon - Dynamic based on failure type */}
         <div
-          className={`inline-flex items-center justify-center w-24 h-24 rounded-full ${bgColor} mb-6`}
+          className={`inline-flex items-center justify-center w-24 h-24 rounded-full ${bgColor} mb-6 shadow-lg`}
         >
           <span className="text-5xl" role="img" aria-label="status icon">
             {failureIcon}
@@ -892,10 +886,10 @@ const PaymentStatus = () => {
         {/* Order Details */}
         {orderStatus && (
           <div
-            className={`p-6 rounded-xl mb-6 ${
+            className={`p-6 mb-6 shadow-xl ${
               isDarkMode
                 ? "bg-gray-800 border border-gray-700"
-                : "bg-gray-50 border border-gray-200"
+                : "bg-white border border-gray-200"
             }`}
           >
             <div className="flex items-center justify-between mb-4">
@@ -960,7 +954,7 @@ const PaymentStatus = () => {
           )}
           <button
             onClick={() => navigate("/wallet")}
-            className={`px-6 py-4 rounded-lg font-semibold transition-all ${
+            className={`px-6 py-4 rounded-lg font-semibold transition-all shadow-lg ${
               isDarkMode
                 ? "bg-gray-800 hover:bg-gray-700 text-white border border-gray-600"
                 : "bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"
@@ -970,7 +964,7 @@ const PaymentStatus = () => {
           </button>
           <button
             onClick={() => navigate("/events")}
-            className={`px-6 py-4 rounded-lg font-semibold transition-all ${
+            className={`px-6 py-4 rounded-lg font-semibold transition-all shadow-lg ${
               isDarkMode
                 ? "bg-gray-700 hover:bg-gray-600 text-gray-300"
                 : "bg-gray-100 hover:bg-gray-200 text-gray-700"
@@ -983,7 +977,7 @@ const PaymentStatus = () => {
         {/* Help Text for Specific Failure Types */}
         {suggestedAction === "TOPUP" && (
           <div
-            className={`mt-6 p-4 rounded-lg ${
+            className={`mt-6 p-4 ${
               isDarkMode
                 ? "bg-blue-900/20 border border-blue-500/30"
                 : "bg-blue-50 border border-blue-200"
@@ -1009,7 +1003,7 @@ const PaymentStatus = () => {
 
         {suggestedAction === "CHECK_PHONE" && (
           <div
-            className={`mt-6 p-4 rounded-lg ${
+            className={`mt-6 p-4 ${
               isDarkMode
                 ? "bg-orange-900/20 border border-orange-500/30"
                 : "bg-orange-50 border border-orange-200"
@@ -1038,29 +1032,27 @@ const PaymentStatus = () => {
 
   // Always show status UI (StatusPending has its own loading states)
   return (
-    <div
-      className={`min-h-screen py-12 px-4 ${
-        isDarkMode ? "bg-gray-900" : "bg-gray-50"
-      }`}
-    >
-      <div className="max-w-2xl mx-auto">
-        <AnimatePresence mode="wait">
-          {error === "timeout" && <StatusTimeout key="timeout" />}
-          {(orderStatus?.paymentStatus === "completed" ||
-            orderStatus?.paymentStatus === "paid") &&
-            !error && <StatusSuccess key="success" />}
-          {orderStatus?.paymentStatus === "failed" && !error && (
-            <StatusFailed key="failed" />
-          )}
-          {orderStatus?.paymentStatus === "cancelled" && !error && (
-            <StatusFailed key="cancelled" />
-          )}
-          {orderStatus?.paymentStatus === "processing" && !error && (
-            <StatusProcessing key="processing" />
-          )}
-          {(orderStatus?.paymentStatus === "pending" || !orderStatus) &&
-            !error && <StatusPending key="pending" />}
-        </AnimatePresence>
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="section-modern py-8 md:py-12">
+        <div className="container-modern max-w-7xl">
+          <AnimatePresence mode="wait">
+            {error === "timeout" && <StatusTimeout key="timeout" />}
+            {(orderStatus?.paymentStatus === "completed" ||
+              orderStatus?.paymentStatus === "paid") &&
+              !error && <StatusSuccess key="success" />}
+            {orderStatus?.paymentStatus === "failed" && !error && (
+              <StatusFailed key="failed" />
+            )}
+            {orderStatus?.paymentStatus === "cancelled" && !error && (
+              <StatusFailed key="cancelled" />
+            )}
+            {orderStatus?.paymentStatus === "processing" && !error && (
+              <StatusProcessing key="processing" />
+            )}
+            {(orderStatus?.paymentStatus === "pending" || !orderStatus) &&
+              !error && <StatusPending key="pending" />}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

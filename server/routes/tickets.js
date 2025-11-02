@@ -423,6 +423,11 @@ router.post(
       });
 
       // ========== STEP 6: Create Ticket Records ==========
+      // Use firstName and lastName from request body (already validated)
+      // Fall back to user object if needed, but prefer request body
+      const holderFirstName = firstName || user.firstName || "";
+      const holderLastName = lastName || user.lastName || "";
+
       const tickets = [];
       for (let i = 0; i < quantity; i++) {
         const ticket = new Ticket({
@@ -430,8 +435,8 @@ router.post(
           eventId: event._id,
           ownerUserId: user._id,
           holder: {
-            firstName: user.firstName,
-            lastName: user.lastName,
+            firstName: holderFirstName,
+            lastName: holderLastName,
             name: fullName, // Add full name field
             email: user.email,
             phone,
