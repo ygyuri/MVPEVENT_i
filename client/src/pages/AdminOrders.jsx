@@ -16,6 +16,7 @@ import {
   User,
   Mail,
   QrCode,
+  Ticket,
 } from "lucide-react";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
