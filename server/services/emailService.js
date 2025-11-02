@@ -1194,6 +1194,8 @@ class EmailService {
    */
   async sendTicketEmail({ order, tickets, customerEmail, customerName }) {
     try {
+      const colors = getBrandColors();
+
       // Generate ticket HTML rows
       const ticketRows = tickets
         .map((ticket, index) => {
@@ -1209,38 +1211,73 @@ class EmailService {
               })
             : "Date TBD";
 
+          // Format location
+          let locationText = "TBD";
+          if (event?.location) {
+            if (typeof event.location === "string") {
+              locationText = event.location;
+            } else {
+              const parts = [];
+              if (event.location.venueName)
+                parts.push(event.location.venueName);
+              if (event.location.address) parts.push(event.location.address);
+              if (event.location.city) parts.push(event.location.city);
+              locationText = parts.length > 0 ? parts.join(", ") : "TBD";
+            }
+          }
+
           return `
-          <div style="background: white; border: 1px solid #667eea; border-radius: 6px; padding: 16px; margin: 12px 0;">
-            <div style="margin-bottom: 12px;">
-              <h3 style="margin: 0 0 4px 0; color: #333; font-size: 14px;">
-                ${ticket.ticketNumber}
-              </h3>
-              <p style="margin: 0; font-size: 14px; font-weight: 600; color: #667eea;">
-                ${event?.title || "Event"}
-              </p>
-              <p style="margin: 3px 0; color: #666; font-size: 12px;">
-                ${ticket.ticketType}
-              </p>
+          <div class="card" style="margin-bottom: 16px;">
+            <h3 style="margin: 0 0 8px 0; color: ${
+              colors.primary
+            }; font-size: 14px; font-weight: 700;">
+              ${ticket.ticketNumber}
+            </h3>
+            <p style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: ${
+              colors.text
+            };">
+              ${event?.title || "Event"}
+            </p>
+            <p style="margin: 0 0 12px 0; color: ${
+              colors.textSecondary
+            }; font-size: 13px;">
+              ${ticket.ticketType}
+            </p>
+            
+            <div style="background: ${
+              colors.backgroundLight
+            }; padding: 12px; border-radius: 6px; margin-bottom: 12px; border: 1px solid ${
+            colors.border
+          };">
+              <p style="margin: 4px 0; color: ${
+                colors.textSecondary
+              }; font-size: 12px;"><strong>Date:</strong> ${eventDate}</p>
+              <p style="margin: 4px 0; color: ${
+                colors.textSecondary
+              }; font-size: 12px;"><strong>Venue:</strong> ${locationText}</p>
+              <p style="margin: 4px 0; color: ${
+                colors.textSecondary
+              }; font-size: 12px;"><strong>Attendee:</strong> ${
+            ticket.holder?.firstName || ""
+          } ${ticket.holder?.lastName || ""}</p>
             </div>
             
-            <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 12px;">
-              <p style="margin: 3px 0; color: #666; font-size: 12px;"><strong>Date:</strong> ${eventDate}</p>
-              <p style="margin: 3px 0; color: #666; font-size: 12px;"><strong>Venue:</strong> ${
-                event?.location?.venueName || "TBD"
-              }</p>
-              <p style="margin: 3px 0; color: #666; font-size: 12px;"><strong>Attendee:</strong> ${
-                ticket.holder.firstName
-              } ${ticket.holder.lastName}</p>
-            </div>
-            
-            <div style="text-align: center; background: #fafafa; padding: 12px; border-radius: 4px;">
-              <p style="margin: 0 0 8px 0; font-weight: 600; color: #333; font-size: 12px;">Entry QR Code</p>
+            <div style="text-align: center; background: ${
+              colors.backgroundLight
+            }; padding: 16px; border-radius: 6px; border: 1px solid ${
+            colors.border
+          };">
+              <p style="margin: 0 0 12px 0; font-weight: 600; color: ${
+                colors.text
+              }; font-size: 13px;">Entry QR Code</p>
               ${
                 ticket.qrCodeUrl
-                  ? `<img src="${ticket.qrCodeUrl}" alt="QR Code" style="max-width: 160px; border: 1px solid #667eea; border-radius: 4px;" />`
-                  : '<p style="color: #666; font-size: 12px;">QR Code pending</p>'
+                  ? `<img src="${ticket.qrCodeUrl}" alt="QR Code for ${ticket.ticketNumber}" style="max-width: 180px; border: 2px solid ${colors.primary}; border-radius: 6px; padding: 8px; background: white;" />`
+                  : `<p style="color: ${colors.textMuted}; font-size: 12px;">QR Code pending</p>`
               }
-              <p style="margin: 8px 0 0 0; font-size: 11px; color: #888;">
+              <p style="margin: 12px 0 0 0; font-size: 11px; color: ${
+                colors.textMuted
+              };">
                 Show this code at the entrance
               </p>
             </div>
@@ -1249,136 +1286,102 @@ class EmailService {
         })
         .join("");
 
-      const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Your Event Tickets</title>
-        <style>
-          body { 
-            font-family: Arial, sans-serif; 
-            line-height: 1.6; 
-            color: #333; 
-            margin: 0; 
-            padding: 0; 
-          }
-          .container { 
-            max-width: 600px; 
-            margin: 0 auto; 
-            background: white; 
-          }
-          .header { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            color: white; 
-            padding: 24px 20px; 
-            text-align: center; 
-          }
-          .content { 
-            padding: 24px 20px; 
-          }
-          .footer { 
-            text-align: center; 
-            padding: 20px; 
-            color: #666; 
-            font-size: 12px; 
-            background: #f8f9fa;
-          }
-          .btn { 
-            display: inline-block; 
-            padding: 10px 24px; 
-            background: #667eea; 
-            color: white; 
-            text-decoration: none; 
-            border-radius: 6px; 
-            font-weight: 600;
-            font-size: 14px;
-            margin: 16px 0;
-          }
-          .info-box {
-            background: #e3f2fd;
-            border-left: 3px solid #2196f3;
-            padding: 12px;
-            margin: 16px 0;
-            border-radius: 4px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1 style="margin: 0; font-size: 22px;">Event Tickets</h1>
-            <p style="margin: 6px 0; font-size: 13px;">Order #${
-              order.orderNumber
-            }</p>
-          </div>
+      const frontendUrl =
+        process.env.FRONTEND_URL ||
+        process.env.CLIENT_URL ||
+        process.env.BASE_URL ||
+        "https://event-i.co.ke";
+
+      // Build content using branding functions
+      const content = `
+        ${getEmailHeader(
+          "🎫 Your Event Tickets",
+          `Order #${order.orderNumber}`
+        )}
+        
+        <div class="content">
+          <div class="greeting">Hi ${customerName},</div>
           
-          <div class="content">
-            <p style="font-size: 14px; margin: 0 0 12px 0;">Hi ${customerName},</p>
-            
-            <p style="font-size: 14px; margin: 0 0 16px 0;">Your tickets are attached below. Present the QR code at the event entrance.</p>
-            
-            <div class="info-box" style="font-size: 12px;">
-              <p style="margin: 0; font-weight: 600;">Order #${
-                order.orderNumber
-              }</p>
-              ${
-                order.payment?.mpesaReceiptNumber
-                  ? `<p style="margin: 4px 0 0 0;">M-PESA Receipt: ${order.payment.mpesaReceiptNumber}</p>`
-                  : ""
-              }
-              <p style="margin: 4px 0 0 0;">Amount: ${
+          <p class="intro-text">
+            Your tickets are attached below. Present the QR code at the event entrance for entry.
+          </p>
+          
+          <div class="card">
+            <h3 style="margin: 0 0 12px 0; color: ${
+              colors.primary
+            }; font-size: 16px; font-weight: 700;">
+              Order Details
+            </h3>
+            <p style="margin: 4px 0; color: ${
+              colors.textSecondary
+            }; font-size: 13px;">
+              <strong>Order #:</strong> ${order.orderNumber}
+            </p>
+            ${
+              order.payment?.mpesaReceiptNumber
+                ? `<p style="margin: 4px 0; color: ${colors.textSecondary}; font-size: 13px;">
+                    <strong>M-PESA Receipt:</strong> ${order.payment.mpesaReceiptNumber}
+                   </p>`
+                : ""
+            }
+            <p style="margin: 4px 0; color: ${
+              colors.textSecondary
+            }; font-size: 13px;">
+              <strong>Amount Paid:</strong> ${
                 order.pricing?.currency || "KES"
-              } ${order.totalAmount || order.pricing?.total}</p>
-              <p style="margin: 4px 0 0 0;">Tickets: ${tickets.length} × ${
-        tickets[0]?.ticketType
-      }</p>
-            </div>
-            
-            <h2 style="color: #667eea; margin: 20px 0 12px 0; font-size: 16px;">Tickets</h2>
-            
-            ${ticketRows}
-            
-            <div style="background: #f8f9fa; border-left: 3px solid #667eea; padding: 12px; margin: 20px 0; border-radius: 4px;">
-              <p style="margin: 0 0 8px 0; font-weight: 600; font-size: 12px;">Entry Instructions</p>
-              <ul style="margin: 0; padding-left: 18px; font-size: 12px;">
-                <li style="margin: 4px 0;">Present your QR code at the entrance</li>
-                <li style="margin: 4px 0;">Have your ticket number ready as backup</li>
-                <li style="margin: 4px 0;">Each ticket allows one entry</li>
-              </ul>
-            </div>
-            
-            <div style="text-align: center; margin: 20px 0;">
-              <a href="${
-                process.env.FRONTEND_URL ||
-                process.env.CLIENT_URL ||
-                process.env.BASE_URL ||
-                "http://localhost:3001"
-              }/wallet" class="btn">
-                View Tickets Online
-              </a>
-            </div>
-            
-            <p style="font-size: 13px; margin: 12px 0 0 0;">Questions? Contact us at the details below.</p>
-            <p style="margin-top: 8px; font-size: 13px;">Event-i</p>
+              } ${(
+        order.totalAmount ||
+        order.pricing?.total ||
+        0
+      ).toLocaleString()}
+            </p>
+            <p style="margin: 4px 0; color: ${
+              colors.textSecondary
+            }; font-size: 13px;">
+              <strong>Tickets:</strong> ${tickets.length} × ${
+        tickets[0]?.ticketType || "Ticket"
+      }
+            </p>
           </div>
           
-          <div class="footer">
-            <div style="padding: 10px; background: rgba(58, 125, 255, 0.05); border-radius: 6px; display: inline-block; margin-bottom: 12px;">
-              <p style="margin: 3px 0; font-weight: 600; font-size: 11px;">Support</p>
-              <p style="margin: 3px 0; font-size: 11px;"><a href="mailto:gideonyuri15@gmail.com" style="color: #3A7DFF; text-decoration: none;">gideonyuri15@gmail.com</a></p>
-              <p style="margin: 3px 0; font-size: 11px;"><a href="tel:+254703328938" style="color: #3A7DFF; text-decoration: none;">+254 703 328 938</a></p>
-            </div>
-            <p style="margin-top: 12px; font-size: 11px;">Order #${
-              order.orderNumber
-            }</p>
-            <p style="font-size: 11px;">© ${new Date().getFullYear()} Event-i</p>
+          <h2 style="color: ${
+            colors.primary
+          }; margin: 24px 0 16px 0; font-size: 18px; font-weight: 700;">
+            Your Tickets
+          </h2>
+          
+          ${ticketRows}
+          
+          <div class="highlight-box">
+            <h4>Entry Instructions</h4>
+            <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: ${
+              colors.textSecondary
+            }; line-height: 1.8;">
+              <li>Present your QR code at the entrance</li>
+              <li>Have your ticket number ready as backup</li>
+              <li>Each ticket allows one entry</li>
+              <li>Arrive on time for the best experience</li>
+            </ul>
           </div>
+          
+          <div class="btn-container">
+            <a href="${frontendUrl}/wallet" class="btn">
+              View Tickets Online
+            </a>
+          </div>
+          
+          <p class="intro-text" style="margin-top: 24px;">
+            Questions about your tickets? Contact our support team using the details below.
+          </p>
         </div>
-      </body>
-      </html>
+        
+        ${getEmailFooter()}
       `;
+
+      const html = wrapEmailTemplate(
+        content,
+        `Your Tickets - Order #${order.orderNumber}`
+      );
 
       const mailOptions = {
         from: `"Event-i" <${process.env.SMTP_USER}>`,

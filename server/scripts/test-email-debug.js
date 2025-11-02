@@ -195,118 +195,183 @@ async function runDiagnostics() {
       );
       const uptime = Math.round(process.uptime());
 
+      // Import email branding functions
+      const {
+        getBrandColors,
+        getEmailHeader,
+        getEmailFooter,
+        wrapEmailTemplate,
+      } = require("../services/emailBranding");
+
+      const colors = getBrandColors();
+
+      // Build diagnostic email content using branding functions
+      const content = `
+        ${getEmailHeader(
+          "✅ SMTP Configuration Verified",
+          "Diagnostic test successful"
+        )}
+        
+        <div class="content">
+          <div class="greeting">SMTP Diagnostic Test Results</div>
+          
+          <p class="intro-text">
+            Your SMTP configuration has been successfully verified and is working correctly.
+          </p>
+          
+          <div class="card">
+            <h3>Working Configuration</h3>
+            <table class="table">
+              <tr>
+                <th>Configuration</th>
+                <td>${config.name}</td>
+              </tr>
+              <tr>
+                <th>Host</th>
+                <td>${config.host}:${config.port}</td>
+              </tr>
+              <tr>
+                <th>Secure Connection</th>
+                <td>${config.secure ? "Yes (SSL/TLS)" : "No (STARTTLS)"}</td>
+              </tr>
+              <tr>
+                <th>SMTP User</th>
+                <td>${smtpUser}</td>
+              </tr>
+            </table>
+          </div>
+          
+          <div class="card">
+            <h3>Environment Information</h3>
+            <table class="table">
+              <tr>
+                <th>NODE_ENV</th>
+                <td>${nodeEnv}</td>
+              </tr>
+              <tr>
+                <th>SMTP Host</th>
+                <td>${process.env.SMTP_HOST || "not set"}</td>
+              </tr>
+              <tr>
+                <th>SMTP Port</th>
+                <td>${process.env.SMTP_PORT || "not set"}</td>
+              </tr>
+              <tr>
+                <th>SMTP Secure</th>
+                <td>${process.env.SMTP_SECURE || "not set"}</td>
+              </tr>
+              <tr>
+                <th>Email From</th>
+                <td>${emailFrom}</td>
+              </tr>
+              <tr>
+                <th>App URL</th>
+                <td>${appUrl}</td>
+              </tr>
+              <tr>
+                <th>Client URL</th>
+                <td>${clientUrl}</td>
+              </tr>
+            </table>
+          </div>
+          
+          <div class="card">
+            <h3>System Information</h3>
+            <table class="table">
+              <tr>
+                <th>Node Version</th>
+                <td>${nodeVersion}</td>
+              </tr>
+              <tr>
+                <th>Platform</th>
+                <td>${platform} (${arch})</td>
+              </tr>
+              <tr>
+                <th>Project ID</th>
+                <td>${projectId}</td>
+              </tr>
+              <tr>
+                <th>Memory Usage</th>
+                <td>${usedMemory} MB / ${totalMemory} MB</td>
+              </tr>
+              <tr>
+                <th>Process Uptime</th>
+                <td>${Math.floor(uptime / 60)} minutes</td>
+              </tr>
+              <tr>
+                <th>Test Time</th>
+                <td>${timestamp.toLocaleString()}</td>
+              </tr>
+            </table>
+          </div>
+          
+          ${
+            dnsInfo || databaseUrl || redisUrl
+              ? `
+          <div class="card">
+            <h3>DNS & Network</h3>
+            <table class="table">
+              ${
+                dnsInfo
+                  ? `
+              <tr>
+                <th>DNS Resolution</th>
+                <td>${dnsInfo}</td>
+              </tr>
+              `
+                  : ""
+              }
+              ${
+                databaseUrl && databaseUrl !== "not set"
+                  ? `
+              <tr>
+                <th>Database</th>
+                <td>${databaseUrl}</td>
+              </tr>
+              `
+                  : ""
+              }
+              ${
+                redisUrl && redisUrl !== "not set"
+                  ? `
+              <tr>
+                <th>Redis</th>
+                <td>${redisUrl}</td>
+              </tr>
+              `
+                  : ""
+              }
+            </table>
+          </div>
+          `
+              : ""
+          }
+          
+          <div class="highlight-box">
+            <h4>✅ Status</h4>
+            <p style="margin: 0; color: ${colors.success}; font-weight: 600;">
+              SMTP connection is working correctly. All emails will be sent using this configuration.
+            </p>
+          </div>
+          
+          <p class="intro-text" style="margin-top: 24px;">
+            This is an automated diagnostic test. If you receive this email, your SMTP configuration is working properly.
+          </p>
+        </div>
+        
+        ${getEmailFooter()}
+      `;
+
+      const html = wrapEmailTemplate(
+        content,
+        "SMTP Diagnostic Test - Configuration Verified"
+      );
+
       const testEmail = await transporter.sendMail({
         from: `"Event-i System" <${emailFrom}>`,
         to: "jeffomondi.eng@gmail.com, gideonyuri15@gmail.com",
         subject: "✅ SMTP Diagnostic Test - Configuration Verified",
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #2ecc71;">✅ SMTP Configuration Verified</h1>
-            
-            <h2 style="color: #3498db;">Working Configuration</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Configuration</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${
-                  config.name
-                }</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Host</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${
-                  config.host
-                }:${config.port}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Secure Connection</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${
-                  config.secure ? "Yes (SSL/TLS)" : "No (STARTTLS)"
-                }</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">SMTP User</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${smtpUser}</td>
-              </tr>
-            </table>
-            
-            <h2 style="color: #3498db;">Environment Information</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">NODE_ENV</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${nodeEnv}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Node Version</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${nodeVersion}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Platform</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${platform} (${arch})</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Project ID</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${projectId}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Email From</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${emailFrom}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">App URL</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${appUrl}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Client URL</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${clientUrl}</td>
-              </tr>
-            </table>
-            
-            <h2 style="color: #3498db;">DNS & Network</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">DNS Resolution</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${dnsInfo}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Database</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${databaseUrl}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Redis</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${redisUrl}</td>
-              </tr>
-            </table>
-            
-            <h2 style="color: #3498db;">System Resources</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Memory Usage</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${usedMemory} MB / ${totalMemory} MB</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Process Uptime</td>
-                <td style="padding: 8px; border: 1px solid #ddd;">${uptime} seconds</td>
-              </tr>
-            </table>
-            
-            <h2 style="color: #3498db;">Test Results</h2>
-            <div style="background-color: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; margin: 10px 0;">
-              <p style="margin: 0; color: #155724;">✅ SMTP connection verified successfully</p>
-              <p style="margin: 0; color: #155724;">✅ Email sending capability confirmed</p>
-            </div>
-            
-            <h2 style="color: #3498db;">Timestamps</h2>
-            <p><strong>Local Time:</strong> ${timestamp.toLocaleString()}</p>
-            <p><strong>UTC Time:</strong> ${timestamp.toUTCString()}</p>
-            <p><strong>ISO:</strong> ${timestamp.toISOString()}</p>
-            
-            <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-            <p style="color: #7f8c8d; font-size: 12px;">
-              This is an automated diagnostic test from the Event-i production server.<br>
-              If you received this email, your SMTP configuration is working correctly.
-            </p>
-          </div>
-        `,
+        html,
       });
 
       console.log("✅ Test email sent successfully!");
