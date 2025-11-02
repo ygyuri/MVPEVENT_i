@@ -272,7 +272,10 @@ router.post(
 
       // Try case-insensitive lookup first (handles existing users with mixed-case emails)
       // New users are saved lowercase, but existing users might have mixed case
-      const emailRegex = new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+      const emailRegex = new RegExp(
+        `^${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        "i"
+      );
       user = await User.findOne({ email: { $regex: emailRegex } });
 
       // For Gmail addresses, also check variations with/without dots
@@ -294,13 +297,19 @@ router.post(
           console.log("[LOGIN] Searching with regex for Gmail variations");
           const users = await User.find({ email: { $regex: gmailRegex } });
           // Prioritize user with dots (usually the original registered email)
-          user = users.find((u) => u.email.toLowerCase().includes(".")) || users[0];
+          user =
+            users.find((u) => u.email.toLowerCase().includes(".")) || users[0];
         } else {
           // If email has dots, also try without dots (case-insensitive)
           const withoutDots = localPart.replace(/\./g, "") + "@" + domain;
           console.log("[LOGIN] Trying without dots:", withoutDots);
-          user = await User.findOne({ 
-            email: { $regex: new RegExp(`^${withoutDots.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } 
+          user = await User.findOne({
+            email: {
+              $regex: new RegExp(
+                `^${withoutDots.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+                "i"
+              ),
+            },
           });
         }
       }
