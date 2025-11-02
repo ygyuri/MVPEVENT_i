@@ -1,29 +1,34 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Download, 
-  RefreshCw, 
+import React, { useEffect, useState, useCallback } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  BarChart3,
+  TrendingUp,
+  Download,
+  RefreshCw,
   Calendar,
   Filter,
   Settings,
   Eye,
   EyeOff,
   ChevronDown,
-  ChevronUp
-} from 'lucide-react';
-import { toast } from 'react-hot-toast';
+  ChevronUp,
+  Ticket,
+  DollarSign,
+  ShoppingBag,
+  Users,
+  Clock,
+} from "lucide-react";
+import { toast } from "react-hot-toast";
 
 // Analytics components
-import SalesChart from '../components/analytics/SalesChart';
-import RevenueOverview from '../components/analytics/RevenueOverview';
-import AttendeeExport from '../components/analytics/AttendeeExport';
-import EventSelector from '../components/analytics/EventSelector';
-import DateRangePicker from '../components/analytics/DateRangePicker';
-import AnalyticsFilters from '../components/analytics/AnalyticsFilters';
-import PollAnalyticsDashboard from '../components/organizer/PollAnalyticsDashboard'
+import SalesChart from "../components/analytics/SalesChart";
+import RevenueOverview from "../components/analytics/RevenueOverview";
+import AttendeeExport from "../components/analytics/AttendeeExport";
+import EventSelector from "../components/analytics/EventSelector";
+import DateRangePicker from "../components/analytics/DateRangePicker";
+import AnalyticsFilters from "../components/analytics/AnalyticsFilters";
+import PollAnalyticsDashboard from "../components/organizer/PollAnalyticsDashboard";
 
 // Redux actions
 import {
@@ -35,15 +40,15 @@ import {
   setPeriod,
   setFilters,
   clearAnalyticsError,
-  updateLastUpdated
-} from '../store/slices/analyticsSlice';
-import { fetchMyEvents } from '../store/slices/organizerSlice';
+  updateLastUpdated,
+} from "../store/slices/analyticsSlice";
+import { fetchMyEvents } from "../store/slices/organizerSlice";
 
 const AnalyticsDashboard = () => {
   const dispatch = useDispatch();
-  const { user } = useSelector(state => state.auth);
-  const { events } = useSelector(state => state.organizer);
-  
+  const { user } = useSelector((state) => state.auth);
+  const { events } = useSelector((state) => state.organizer);
+
   const {
     dashboardData,
     dashboardLoading,
@@ -58,11 +63,11 @@ const AnalyticsDashboard = () => {
     dateRange,
     period,
     filters,
-    lastUpdated
-  } = useSelector(state => state.analytics);
+    lastUpdated,
+  } = useSelector((state) => state.analytics);
 
   // Local state
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState("overview");
   const [showFilters, setShowFilters] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState(null);
@@ -130,7 +135,7 @@ const AnalyticsDashboard = () => {
       period,
       startDate: dateRange.start,
       endDate: dateRange.end,
-      ...filters
+      ...filters,
     };
 
     dispatch(fetchSalesChart({ eventId: selectedEvent._id, options }));
@@ -143,38 +148,50 @@ const AnalyticsDashboard = () => {
       loadAnalyticsData();
     }
     dispatch(updateLastUpdated());
-    toast.success('Data refreshed');
+    toast.success("Data refreshed");
   }, [dispatch, selectedEvent, loadAnalyticsData]);
 
-  const handleEventSelect = useCallback((event) => {
-    dispatch(setSelectedEvent(event));
-    try {
-      if (event?._id) {
-        localStorage.setItem('analyticsSelectedEventId', event._id);
-      }
-    } catch (_) {}
-    toast.success(`Analytics loaded for ${event.title}`);
-  }, [dispatch]);
+  const handleEventSelect = useCallback(
+    (event) => {
+      dispatch(setSelectedEvent(event));
+      try {
+        if (event?._id) {
+          localStorage.setItem("analyticsSelectedEventId", event._id);
+        }
+      } catch (_) {}
+      toast.success(`Analytics loaded for ${event.title}`);
+    },
+    [dispatch]
+  );
 
-  const handleDateRangeChange = useCallback((range) => {
-    dispatch(setDateRange(range));
-  }, [dispatch]);
+  const handleDateRangeChange = useCallback(
+    (range) => {
+      dispatch(setDateRange(range));
+    },
+    [dispatch]
+  );
 
-  const handlePeriodChange = useCallback((newPeriod) => {
-    dispatch(setPeriod(newPeriod));
-  }, [dispatch]);
+  const handlePeriodChange = useCallback(
+    (newPeriod) => {
+      dispatch(setPeriod(newPeriod));
+    },
+    [dispatch]
+  );
 
-  const handleFiltersChange = useCallback((newFilters) => {
-    dispatch(setFilters(newFilters));
-  }, [dispatch]);
+  const handleFiltersChange = useCallback(
+    (newFilters) => {
+      dispatch(setFilters(newFilters));
+    },
+    [dispatch]
+  );
 
   // Restore selected event after refresh if available in localStorage
   useEffect(() => {
     if (selectedEvent || !events || events.length === 0) return;
     try {
-      const savedId = localStorage.getItem('analyticsSelectedEventId');
+      const savedId = localStorage.getItem("analyticsSelectedEventId");
       if (savedId) {
-        const match = events.find(e => e._id === savedId);
+        const match = events.find((e) => e._id === savedId);
         if (match) {
           dispatch(setSelectedEvent(match));
         }
@@ -183,22 +200,22 @@ const AnalyticsDashboard = () => {
   }, [dispatch, events, selectedEvent]);
 
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'sales', label: 'Sales Chart', icon: TrendingUp },
-    { id: 'revenue', label: 'Revenue', icon: TrendingUp },
-    { id: 'export', label: 'Export', icon: Download },
-    { id: 'polls', label: 'Polls', icon: TrendingUp }
+    { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "sales", label: "Sales Chart", icon: TrendingUp },
+    { id: "revenue", label: "Revenue", icon: TrendingUp },
+    { id: "export", label: "Export", icon: Download },
+    { id: "polls", label: "Polls", icon: TrendingUp },
   ];
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-KE', {
-      style: 'currency',
-      currency: 'KES'
+    return new Intl.NumberFormat("en-KE", {
+      style: "currency",
+      currency: "KES",
     }).format(amount);
   };
 
   const formatNumber = (num) => {
-    return new Intl.NumberFormat('en-KE').format(num);
+    return new Intl.NumberFormat("en-KE").format(num);
   };
 
   return (
@@ -214,11 +231,14 @@ const AnalyticsDashboard = () => {
                   Analytics Dashboard
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {lastUpdated && `Last updated: ${new Date(lastUpdated).toLocaleTimeString()}`}
+                  {lastUpdated &&
+                    `Last updated: ${new Date(
+                      lastUpdated
+                    ).toLocaleTimeString()}`}
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               {/* Affiliate quick links */}
               <div className="hidden sm:flex items-center space-x-2">
@@ -241,22 +261,30 @@ const AnalyticsDashboard = () => {
               <button
                 onClick={() => setAutoRefresh(!autoRefresh)}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  autoRefresh 
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                  autoRefresh
+                    ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                    : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
                 }`}
               >
-                {autoRefresh ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                {autoRefresh ? (
+                  <Eye className="h-4 w-4" />
+                ) : (
+                  <EyeOff className="h-4 w-4" />
+                )}
                 <span>Auto-refresh</span>
               </button>
-              
+
               {/* Manual refresh */}
               <button
                 onClick={handleRefresh}
                 disabled={dashboardLoading}
                 className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <RefreshCw className={`h-4 w-4 ${dashboardLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 ${
+                    dashboardLoading ? "animate-spin" : ""
+                  }`}
+                />
                 <span>Refresh</span>
               </button>
             </div>
@@ -317,7 +345,11 @@ const AnalyticsDashboard = () => {
               >
                 <Filter className="h-4 w-4" />
                 <span>Filters</span>
-                {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                {showFilters ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
               </button>
             </div>
 
@@ -326,7 +358,7 @@ const AnalyticsDashboard = () => {
               {showFilters && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
+                  animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2 }}
                   className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
@@ -344,66 +376,181 @@ const AnalyticsDashboard = () => {
         {/* Dashboard Overview */}
         {dashboardData && (
           <div className="mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Events Count */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                    <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Events</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {formatNumber(dashboardData.eventsCount)}
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              📊 Key Metrics
+            </h2>
+
+            {/* Primary Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              {/* Total Events */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Total Events
                     </p>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                      {formatNumber(dashboardData.eventsCount || 0)}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+                    <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
                 </div>
               </div>
 
               {/* Total Revenue */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center">
-                  <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                    <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Revenue</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {formatCurrency(dashboardData.totalRevenue)}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Total Revenue
                     </p>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                      {formatCurrency(dashboardData.totalRevenue || 0)}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
+                    <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
                 </div>
               </div>
 
               {/* Tickets Sold */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                    <Download className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Tickets Sold</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {formatNumber(dashboardData.totalTicketsSold)}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Tickets Sold
                     </p>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                      {formatNumber(dashboardData.totalTicketsSold || 0)}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                    <Ticket className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                   </div>
                 </div>
               </div>
 
               {/* Upcoming Events */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                <div className="flex items-center">
-                  <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
-                    <Calendar className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Upcoming Events</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      Upcoming Events
+                    </p>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
                       {formatNumber(dashboardData.upcomingEvents?.length || 0)}
                     </p>
                   </div>
+                  <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                    <Calendar className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                  </div>
                 </div>
               </div>
+            </div>
+
+            {/* Additional Insights */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Total Orders */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Total Orders
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {formatNumber(dashboardData.totalOrders || 0)}
+                    </p>
+                  </div>
+                  <div className="p-2 bg-pink-100 dark:bg-pink-900/20 rounded-lg">
+                    <ShoppingBag className="h-5 w-5 text-pink-600 dark:text-pink-400" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Average Ticket Price */}
+              {dashboardData.totalTicketsSold > 0 &&
+                dashboardData.totalRevenue > 0 && (
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Avg. Ticket Price
+                        </p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                          {formatCurrency(
+                            Math.round(
+                              (dashboardData.totalRevenue || 0) /
+                                (dashboardData.totalTicketsSold || 1)
+                            )
+                          )}
+                        </p>
+                      </div>
+                      <div className="p-2 bg-teal-100 dark:bg-teal-900/20 rounded-lg">
+                        <TrendingUp className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              {/* This Month Revenue */}
+              {dashboardData.thisMonthRevenue !== undefined && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        This Month Revenue
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {formatCurrency(dashboardData.thisMonthRevenue || 0)}
+                      </p>
+                    </div>
+                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/20 rounded-lg">
+                      <DollarSign className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* This Month Tickets */}
+              {dashboardData.thisMonthTickets !== undefined && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Tickets This Month
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {formatNumber(dashboardData.thisMonthTickets || 0)}
+                      </p>
+                    </div>
+                    <div className="p-2 bg-cyan-100 dark:bg-cyan-900/20 rounded-lg">
+                      <Ticket className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Recent Sales Count */}
+              {dashboardData.recentSales && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Recent Sales
+                      </p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {formatNumber(dashboardData.recentSales?.length || 0)}
+                      </p>
+                    </div>
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/20 rounded-lg">
+                      <Clock className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -420,8 +567,8 @@ const AnalyticsDashboard = () => {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                       activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                        ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                        : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -442,7 +589,7 @@ const AnalyticsDashboard = () => {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'overview' && (
+            {activeTab === "overview" && (
               <div className="space-y-6">
                 {selectedEvent ? (
                   <>
@@ -466,14 +613,15 @@ const AnalyticsDashboard = () => {
                       Select an Event
                     </h3>
                     <p className="text-gray-500 dark:text-gray-400">
-                      Choose an event from the dropdown above to view detailed analytics.
+                      Choose an event from the dropdown above to view detailed
+                      analytics.
                     </p>
                   </div>
                 )}
               </div>
             )}
 
-            {activeTab === 'sales' && (
+            {activeTab === "sales" && (
               <SalesChart
                 data={salesChartData}
                 loading={salesChartLoading}
@@ -483,7 +631,7 @@ const AnalyticsDashboard = () => {
               />
             )}
 
-            {activeTab === 'revenue' && (
+            {activeTab === "revenue" && (
               <RevenueOverview
                 data={revenueData}
                 loading={revenueLoading}
@@ -491,7 +639,7 @@ const AnalyticsDashboard = () => {
               />
             )}
 
-            {activeTab === 'export' && (
+            {activeTab === "export" && (
               <AttendeeExport
                 eventId={selectedEvent?._id}
                 eventTitle={selectedEvent?.title}
@@ -500,7 +648,7 @@ const AnalyticsDashboard = () => {
               />
             )}
 
-            {activeTab === 'polls' && selectedEvent && (
+            {activeTab === "polls" && selectedEvent && (
               <PollAnalyticsDashboard eventId={selectedEvent._id} />
             )}
           </motion.div>
@@ -511,5 +659,3 @@ const AnalyticsDashboard = () => {
 };
 
 export default AnalyticsDashboard;
-
-

@@ -13,6 +13,9 @@ import {
   CheckCircle,
   AlertTriangle,
   X,
+  Ticket,
+  DollarSign,
+  ShoppingBag,
 } from "lucide-react";
 import EnhancedButton from "../components/EnhancedButton";
 import EventStatusBadge from "../components/organizer/EventStatusBadge";
@@ -182,31 +185,62 @@ const OrganizerDashboard = () => {
     },
     {
       label: "Published Events",
-      value: events.filter((event) => event.status === "published").length,
+      value: overview.publishedEventsCount || 0,
       icon: Eye,
       color: "text-green-600 dark:text-green-400",
       bgColor: "bg-green-50 dark:bg-green-900/20",
     },
     {
+      label: "Total Tickets Sold",
+      value: (overview.totalTicketsSold || 0).toLocaleString(),
+      icon: Ticket,
+      color: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-50 dark:bg-purple-900/20",
+    },
+    {
+      label: "Total Revenue",
+      value: `KES ${(overview.totalRevenue || 0).toLocaleString()}`,
+      icon: DollarSign,
+      color: "text-emerald-600 dark:text-emerald-400",
+      bgColor: "bg-emerald-50 dark:bg-emerald-900/20",
+    },
+  ];
+
+  const additionalStats = [
+    {
       label: "Draft Events",
-      value: events.filter((event) => event.status === "draft").length,
+      value: overview.draftEventsCount || 0,
       icon: Users,
       color: "text-yellow-600 dark:text-yellow-400",
       bgColor: "bg-yellow-50 dark:bg-yellow-900/20",
     },
     {
-      label: "This Month",
-      value: events.filter((event) => {
-        const eventDate = new Date(event.dates?.startDate);
-        const now = new Date();
-        return (
-          eventDate.getMonth() === now.getMonth() &&
-          eventDate.getFullYear() === now.getFullYear()
-        );
-      }).length,
+      label: "Upcoming Events",
+      value: overview.upcomingEventsCount || 0,
+      icon: Clock,
+      color: "text-indigo-600 dark:text-indigo-400",
+      bgColor: "bg-indigo-50 dark:bg-indigo-900/20",
+    },
+    {
+      label: "Total Orders",
+      value: (overview.totalOrders || 0).toLocaleString(),
+      icon: ShoppingBag,
+      color: "text-pink-600 dark:text-pink-400",
+      bgColor: "bg-pink-50 dark:bg-pink-900/20",
+    },
+    {
+      label: "This Month Revenue",
+      value: `KES ${(overview.thisMonthRevenue || 0).toLocaleString()}`,
       icon: TrendingUp,
-      color: "text-purple-600 dark:text-purple-400",
-      bgColor: "bg-purple-50 dark:bg-purple-900/20",
+      color: "text-teal-600 dark:text-teal-400",
+      bgColor: "bg-teal-50 dark:bg-teal-900/20",
+    },
+    {
+      label: "Tickets This Month",
+      value: (overview.thisMonthTickets || 0).toLocaleString(),
+      icon: Ticket,
+      color: "text-cyan-600 dark:text-cyan-400",
+      bgColor: "bg-cyan-50 dark:bg-cyan-900/20",
     },
   ];
 
@@ -300,12 +334,12 @@ const OrganizerDashboard = () => {
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Primary Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
           <div
             key={index}
-            className="bg-web3-card rounded-xl p-6 hover:bg-web3-card-hover transition-all duration-200"
+            className="bg-web3-card rounded-xl p-6 hover:bg-web3-card-hover transition-all duration-200 shadow-sm"
           >
             <div className="flex items-center justify-between">
               <div>
@@ -323,6 +357,37 @@ const OrganizerDashboard = () => {
           </div>
         ))}
       </div>
+
+      {/* Additional Insights Grid */}
+      {overview && Object.keys(overview).length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            📊 Additional Insights
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {additionalStats.map((stat, index) => (
+              <div
+                key={index}
+                className="bg-web3-card rounded-xl p-5 hover:bg-web3-card-hover transition-all duration-200 shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      {stat.label}
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {stat.value}
+                    </p>
+                  </div>
+                  <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Recent Events */}

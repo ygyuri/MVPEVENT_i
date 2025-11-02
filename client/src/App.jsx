@@ -102,8 +102,10 @@ function App() {
                     path="/organizer/events/:eventId/commission-setup"
                     element={<OrganizerCommissionSetup />}
                   />
-                  {/* Analytics feature - temporarily hidden for production */}
-                  {/* <Route path="/organizer/analytics" element={<AnalyticsDashboard />} /> */}
+                  <Route
+                    path="/organizer/analytics"
+                    element={<AnalyticsDashboard />}
+                  />
                   {/* Affiliate features - temporarily hidden for production */}
                   {/* <Route path="/affiliate-analytics" element={<AffiliateAnalytics />} /> */}
                   {/* <Route path="/affiliate/referral-links" element={<ReferralLinksManager />} /> */}

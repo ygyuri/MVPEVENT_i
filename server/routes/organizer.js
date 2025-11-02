@@ -292,17 +292,141 @@ router.get(
   requireRole(["organizer", "admin"]),
   async (req, res) => {
     try {
+      const Order = require("../models/Order");
+      const Ticket = require("../models/Ticket");
+
       // Allow admins to view organizer overview by passing organizerId
       const organizerId =
         req.user.role === "admin" && req.query.organizerId
           ? req.query.organizerId
           : req.user._id;
 
-      const myEventsCount = await Event.countDocuments({
-        organizer: organizerId,
+      // Get organizer's events
+      const organizerEvents = await Event.find({ organizer: organizerId })
+        .select("_id status dates.startDate")
+        .lean();
+
+      const eventIds = organizerEvents.map((e) => e._id);
+
+      // Calculate insights
+      const [
+        myEventsCount,
+        publishedEventsCount,
+        draftEventsCount,
+        upcomingEventsCount,
+        totalTicketsSold,
+        totalRevenue,
+        totalOrders,
+        thisMonthRevenue,
+        thisMonthTickets,
+      ] = await Promise.all([
+        // Total events
+        organizerEvents.length,
+
+        // Published events
+        organizerEvents.filter((e) => e.status === "published").length,
+
+        // Draft events
+        organizerEvents.filter((e) => e.status === "draft").length,
+
+        // Upcoming events (published and startDate in future)
+        organizerEvents.filter(
+          (e) =>
+            e.status === "published" &&
+            e.dates?.startDate &&
+            new Date(e.dates.startDate) > new Date()
+        ).length,
+
+        // Total tickets sold (paid orders only)
+        Ticket.countDocuments({
+          eventId: { $in: eventIds },
+          orderId: { $exists: true },
+        }),
+
+        // Total revenue from paid orders
+        eventIds.length > 0
+          ? Order.aggregate([
+              {
+                $match: {
+                  "items.eventId": { $in: eventIds },
+                  status: "completed",
+                  paymentStatus: { $in: ["paid", "completed"] },
+                },
+              },
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: "$totalAmount" },
+                },
+              },
+            ])
+          : Promise.resolve([{ total: 0 }]),
+
+        // Total orders
+        eventIds.length > 0
+          ? Order.countDocuments({
+              "items.eventId": { $in: eventIds },
+            })
+          : 0,
+
+        // This month's revenue
+        eventIds.length > 0
+          ? (() => {
+              const startOfMonth = new Date();
+              startOfMonth.setDate(1);
+              startOfMonth.setHours(0, 0, 0, 0);
+              return Order.aggregate([
+                {
+                  $match: {
+                    "items.eventId": { $in: eventIds },
+                    status: "completed",
+                    paymentStatus: { $in: ["paid", "completed"] },
+                    createdAt: { $gte: startOfMonth },
+                  },
+                },
+                {
+                  $group: {
+                    _id: null,
+                    total: { $sum: "$totalAmount" },
+                  },
+                },
+              ]);
+            })()
+          : Promise.resolve([{ total: 0 }]),
+
+        // This month's tickets sold
+        eventIds.length > 0
+          ? (() => {
+              const startOfMonth = new Date();
+              startOfMonth.setDate(1);
+              startOfMonth.setHours(0, 0, 0, 0);
+              return Ticket.countDocuments({
+                eventId: { $in: eventIds },
+                createdAt: { $gte: startOfMonth },
+              });
+            })()
+          : 0,
+      ]);
+
+      const totalRevenueAmount = totalRevenue[0]?.total || 0;
+      const thisMonthRevenueAmount = thisMonthRevenue[0]?.total || 0;
+
+      res.json({
+        ok: true,
+        overview: {
+          myEventsCount,
+          publishedEventsCount,
+          draftEventsCount,
+          upcomingEventsCount,
+          totalTicketsSold,
+          totalRevenue: totalRevenueAmount,
+          totalOrders,
+          thisMonthRevenue: thisMonthRevenueAmount,
+          thisMonthTickets,
+        },
       });
-      res.json({ ok: true, overview: { myEventsCount } });
     } catch (error) {
+      console.error("Organizer overview error:", error);
       res.status(500).json({ error: "Failed to load organizer overview" });
     }
   }

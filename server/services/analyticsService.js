@@ -1,10 +1,10 @@
-const Order = require('../models/Order');
-const Ticket = require('../models/Ticket');
-const Event = require('../models/Event');
-const EventUpdate = require('../models/EventUpdate');
-const EventUpdateReaction = require('../models/EventUpdateReaction');
-const EventUpdateRead = require('../models/EventUpdateRead');
-const mongoose = require('mongoose');
+const Order = require("../models/Order");
+const Ticket = require("../models/Ticket");
+const Event = require("../models/Event");
+const EventUpdate = require("../models/EventUpdate");
+const EventUpdateReaction = require("../models/EventUpdateReaction");
+const EventUpdateRead = require("../models/EventUpdateRead");
+const mongoose = require("mongoose");
 
 /**
  * Analytics Service for Organizer Dashboard
@@ -29,20 +29,22 @@ class AnalyticsService {
 
       // Get total updates count
       const totalUpdates = await EventUpdate.countDocuments({ eventId });
-      
+
       // Get updates by priority
       const updatesByPriority = await EventUpdate.aggregate([
         { $match: { eventId: mongoose.Types.ObjectId(eventId) } },
-        { $group: { _id: '$priority', count: { $sum: 1 } } }
+        { $group: { _id: "$priority", count: { $sum: 1 } } },
       ]);
 
       // Get total reactions count
-      const totalReactions = await EventUpdateReaction.countDocuments({ eventId });
-      
+      const totalReactions = await EventUpdateReaction.countDocuments({
+        eventId,
+      });
+
       // Get reactions by type
       const reactionsByType = await EventUpdateReaction.aggregate([
         { $match: { eventId: mongoose.Types.ObjectId(eventId) } },
-        { $group: { _id: '$reactionType', count: { $sum: 1 } } }
+        { $group: { _id: "$reactionType", count: { $sum: 1 } } },
       ]);
 
       // Get total reads count
@@ -50,13 +52,16 @@ class AnalyticsService {
 
       // Get engagement rate (reads / total possible reads)
       const totalTickets = await Ticket.countDocuments({ eventId });
-      const engagementRate = totalTickets > 0 ? (totalReads / (totalUpdates * totalTickets)) * 100 : 0;
+      const engagementRate =
+        totalTickets > 0
+          ? (totalReads / (totalUpdates * totalTickets)) * 100
+          : 0;
 
       // Get recent updates (last 10)
       const recentUpdates = await EventUpdate.find({ eventId })
         .sort({ createdAt: -1 })
         .limit(10)
-        .select('content priority createdAt')
+        .select("content priority createdAt")
         .lean();
 
       const result = {
@@ -64,7 +69,7 @@ class AnalyticsService {
           totalUpdates,
           totalReactions,
           totalReads,
-          engagementRate: Math.round(engagementRate * 100) / 100
+          engagementRate: Math.round(engagementRate * 100) / 100,
         },
         updatesByPriority: updatesByPriority.reduce((acc, item) => {
           acc[item._id] = item.count;
@@ -75,13 +80,13 @@ class AnalyticsService {
           return acc;
         }, {}),
         recentUpdates,
-        lastUpdated: new Date()
+        lastUpdated: new Date(),
       };
 
       this.setCachedData(cacheKey, result);
       return result;
     } catch (error) {
-      console.error('Update analytics error:', error);
+      console.error("Update analytics error:", error);
       throw error;
     }
   }
@@ -93,39 +98,44 @@ class AnalyticsService {
    * @returns {Object} Sales chart data
    */
   async getSalesChart(eventId, options = {}) {
-    const { period = 'daily', startDate, endDate, ticketType } = options;
-    
+    const { period = "daily", startDate, endDate, ticketType } = options;
+
     try {
       // Validate event ownership
       await this.validateEventAccess(eventId);
-      
+
       const cacheKey = `sales_chart_${eventId}_${period}_${startDate}_${endDate}_${ticketType}`;
       const cached = this.getCachedData(cacheKey);
       if (cached) return cached;
 
-      const matchStage = this.buildSalesMatchStage(eventId, startDate, endDate, ticketType);
-      const unwindStage = { $unwind: '$items' };
+      const matchStage = this.buildSalesMatchStage(
+        eventId,
+        startDate,
+        endDate,
+        ticketType
+      );
+      const unwindStage = { $unwind: "$items" };
       const groupStage = this.buildSalesGroupStage(period);
-      const sortStage = { $sort: { '_id.date': 1 } };
+      const sortStage = { $sort: { "_id.date": 1 } };
 
       const pipeline = [matchStage, unwindStage, groupStage, sortStage];
 
       const salesData = await Order.aggregate(pipeline);
-      
+
       // Get summary statistics
       const summary = await this.getSalesSummary(eventId, startDate, endDate);
-      
+
       const result = {
         chartData: salesData,
         summary,
         period,
-        dateRange: { startDate, endDate }
+        dateRange: { startDate, endDate },
       };
 
       this.setCachedData(cacheKey, result);
       return result;
     } catch (error) {
-      console.error('Analytics Service - Sales Chart Error:', error);
+      console.error("Analytics Service - Sales Chart Error:", error);
       throw error;
     }
   }
@@ -139,7 +149,7 @@ class AnalyticsService {
   async getRevenueOverview(eventId, options = {}) {
     try {
       await this.validateEventAccess(eventId);
-      
+
       const cacheKey = `revenue_overview_${eventId}`;
       const cached = this.getCachedData(cacheKey);
       if (cached) return cached;
@@ -149,13 +159,13 @@ class AnalyticsService {
         paymentMethodBreakdown,
         refundMetrics,
         ticketTypeRevenue,
-        dailyRevenue
+        dailyRevenue,
       ] = await Promise.all([
         this.getRevenueMetrics(eventId),
         this.getPaymentMethodBreakdown(eventId),
         this.getRefundMetrics(eventId),
         this.getTicketTypeRevenue(eventId),
-        this.getDailyRevenue(eventId)
+        this.getDailyRevenue(eventId),
       ]);
 
       const result = {
@@ -163,13 +173,13 @@ class AnalyticsService {
         paymentMethods: paymentMethodBreakdown,
         refunds: refundMetrics,
         ticketTypes: ticketTypeRevenue,
-        dailyTrend: dailyRevenue
+        dailyTrend: dailyRevenue,
       };
 
       this.setCachedData(cacheKey, result);
       return result;
     } catch (error) {
-      console.error('Analytics Service - Revenue Overview Error:', error);
+      console.error("Analytics Service - Revenue Overview Error:", error);
       throw error;
     }
   }
@@ -181,8 +191,8 @@ class AnalyticsService {
    * @returns {Object} Revenue trends data
    */
   async getRevenueTrends(organizerId, options = {}) {
-    const { period = 'monthly', startDate, endDate, eventIds } = options;
-    
+    const { period = "monthly", startDate, endDate, eventIds } = options;
+
     try {
       const cacheKey = `revenue_trends_${organizerId}_${period}_${startDate}_${endDate}`;
       const cached = this.getCachedData(cacheKey);
@@ -191,43 +201,49 @@ class AnalyticsService {
       // Auto-fetch organizer's events if not provided
       let targetEventIds = eventIds;
       if (!targetEventIds || targetEventIds.length === 0) {
-        const events = await Event.find({ organizer: organizerId }).select('_id');
-        targetEventIds = events.map(e => e._id);
+        const events = await Event.find({ organizer: organizerId }).select(
+          "_id"
+        );
+        targetEventIds = events.map((e) => e._id);
       }
 
       const matchStage = {
         $match: {
-          'items.eventId': { $in: targetEventIds },
-          status: { $in: ['paid', 'confirmed'] },
-          ...(startDate && endDate && {
-            createdAt: {
-              $gte: new Date(startDate),
-              $lte: new Date(endDate)
-            }
-          })
-        }
+          "items.eventId": { $in: targetEventIds },
+          status: { $in: ["paid", "confirmed"] },
+          ...(startDate &&
+            endDate && {
+              createdAt: {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate),
+              },
+            }),
+        },
       };
 
       const groupStage = this.buildRevenueTrendsGroupStage(period);
-      const sortStage = { $sort: { '_id.period': 1 } };
+      const sortStage = { $sort: { "_id.period": 1 } };
 
       const pipeline = [matchStage, groupStage, sortStage];
       const trendsData = await Order.aggregate(pipeline);
 
       // Get event-wise breakdown
-      const eventBreakdown = await this.getEventRevenueBreakdown(organizerId, eventIds);
+      const eventBreakdown = await this.getEventRevenueBreakdown(
+        organizerId,
+        eventIds
+      );
 
       const result = {
         trends: trendsData,
         eventBreakdown,
         period,
-        dateRange: { startDate, endDate }
+        dateRange: { startDate, endDate },
       };
 
       this.setCachedData(cacheKey, result);
       return result;
     } catch (error) {
-      console.error('Analytics Service - Revenue Trends Error:', error);
+      console.error("Analytics Service - Revenue Trends Error:", error);
       throw error;
     }
   }
@@ -239,39 +255,39 @@ class AnalyticsService {
    * @returns {Object} Export data
    */
   async exportAttendees(eventId, options = {}) {
-    const { format = 'csv', filters = {}, fields = [] } = options;
-    
+    const { format = "csv", filters = {}, fields = [] } = options;
+
     try {
       await this.validateEventAccess(eventId);
-      
+
       const matchStage = {
         $match: {
           eventId: new mongoose.Types.ObjectId(eventId),
-          ...this.buildTicketFilters(filters)
-        }
+          ...this.buildTicketFilters(filters),
+        },
       };
 
       const lookupStage = {
         $lookup: {
-          from: 'orders',
-          localField: 'orderId',
-          foreignField: '_id',
-          as: 'order'
-        }
+          from: "orders",
+          localField: "orderId",
+          foreignField: "_id",
+          as: "order",
+        },
       };
 
-      const unwindStage = { $unwind: '$order' };
+      const unwindStage = { $unwind: "$order" };
 
       const lookupEventStage = {
         $lookup: {
-          from: 'events',
-          localField: 'eventId',
-          foreignField: '_id',
-          as: 'event'
-        }
+          from: "events",
+          localField: "eventId",
+          foreignField: "_id",
+          as: "event",
+        },
       };
 
-      const unwindEventStage = { $unwind: '$event' };
+      const unwindEventStage = { $unwind: "$event" };
 
       const projectStage = {
         $project: {
@@ -281,18 +297,18 @@ class AnalyticsService {
           status: 1,
           createdAt: 1,
           usedAt: 1,
-          'holder.firstName': 1,
-          'holder.lastName': 1,
-          'holder.email': 1,
-          'holder.phone': 1,
-          'order.orderNumber': 1,
-          'order.createdAt': 1,
-          'order.payment.method': 1,
-          'order.payment.status': 1,
-          'event.title': 1,
-          'event.dates.startDate': 1,
-          'event.dates.endDate': 1
-        }
+          "holder.firstName": 1,
+          "holder.lastName": 1,
+          "holder.email": 1,
+          "holder.phone": 1,
+          "order.orderNumber": 1,
+          "order.createdAt": 1,
+          "order.payment.method": 1,
+          "order.payment.status": 1,
+          "event.title": 1,
+          "event.dates.startDate": 1,
+          "event.dates.endDate": 1,
+        },
       };
 
       const sortStage = { $sort: { createdAt: -1 } };
@@ -304,20 +320,20 @@ class AnalyticsService {
         lookupEventStage,
         unwindEventStage,
         projectStage,
-        sortStage
+        sortStage,
       ];
 
       const attendees = await Ticket.aggregate(pipeline);
-      
+
       return {
         data: attendees,
         format,
         totalCount: attendees.length,
         exportedAt: new Date(),
-        filters
+        filters,
       };
     } catch (error) {
-      console.error('Analytics Service - Export Attendees Error:', error);
+      console.error("Analytics Service - Export Attendees Error:", error);
       throw error;
     }
   }
@@ -333,19 +349,67 @@ class AnalyticsService {
       const cached = this.getCachedData(cacheKey);
       if (cached) return cached;
 
+      // Get organizer's events for additional calculations
+      const organizerEvents = await Event.find({ organizer: organizerId })
+        .select("_id")
+        .lean();
+      const eventIds = organizerEvents.map((e) => e._id);
+
+      // Calculate this month's date range
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
       const [
         eventsCount,
         totalRevenue,
         totalTicketsSold,
         upcomingEvents,
-        recentSales
+        recentSales,
+        totalOrders,
+        thisMonthRevenue,
+        thisMonthTickets,
       ] = await Promise.all([
         this.getEventsCount(organizerId),
         this.getTotalRevenue(organizerId),
         this.getTotalTicketsSold(organizerId),
         this.getUpcomingEvents(organizerId),
-        this.getRecentSales(organizerId)
+        this.getRecentSales(organizerId),
+        // Total orders
+        eventIds.length > 0
+          ? Order.countDocuments({
+              "items.eventId": { $in: eventIds },
+            })
+          : 0,
+        // This month's revenue
+        eventIds.length > 0
+          ? Order.aggregate([
+              {
+                $match: {
+                  "items.eventId": { $in: eventIds },
+                  status: "completed",
+                  paymentStatus: { $in: ["paid", "completed"] },
+                  createdAt: { $gte: startOfMonth },
+                },
+              },
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: "$totalAmount" },
+                },
+              },
+            ])
+          : Promise.resolve([{ total: 0 }]),
+        // This month's tickets
+        eventIds.length > 0
+          ? Ticket.countDocuments({
+              eventId: { $in: eventIds },
+              createdAt: { $gte: startOfMonth },
+            })
+          : 0,
       ]);
+
+      const thisMonthRevenueAmount = thisMonthRevenue[0]?.total || 0;
 
       const result = {
         eventsCount,
@@ -353,13 +417,16 @@ class AnalyticsService {
         totalTicketsSold,
         upcomingEvents,
         recentSales,
-        lastUpdated: new Date()
+        totalOrders,
+        thisMonthRevenue: thisMonthRevenueAmount,
+        thisMonthTickets,
+        lastUpdated: new Date(),
       };
 
       this.setCachedData(cacheKey, result);
       return result;
     } catch (error) {
-      console.error('Analytics Service - Dashboard Overview Error:', error);
+      console.error("Analytics Service - Dashboard Overview Error:", error);
       throw error;
     }
   }
@@ -372,7 +439,7 @@ class AnalyticsService {
   async validateEventAccess(eventId) {
     const event = await Event.findById(eventId);
     if (!event) {
-      throw new Error('Event not found');
+      throw new Error("Event not found");
     }
     return event;
   }
@@ -382,19 +449,19 @@ class AnalyticsService {
    */
   buildSalesMatchStage(eventId, startDate, endDate, ticketType) {
     const match = {
-      'items.eventId': new mongoose.Types.ObjectId(eventId),
-      status: { $in: ['paid', 'confirmed'] }
+      "items.eventId": new mongoose.Types.ObjectId(eventId),
+      status: { $in: ["paid", "confirmed"] },
     };
 
     if (startDate && endDate) {
       match.createdAt = {
         $gte: new Date(startDate),
-        $lte: new Date(endDate)
+        $lte: new Date(endDate),
       };
     }
 
     if (ticketType) {
-      match['items.ticketType'] = ticketType;
+      match["items.ticketType"] = ticketType;
     }
 
     return { $match: match };
@@ -404,22 +471,23 @@ class AnalyticsService {
    * Build group stage for sales aggregation
    */
   buildSalesGroupStage(period) {
-    const dateFormat = {
-      daily: '%Y-%m-%d',
-      weekly: '%Y-%U',
-      monthly: '%Y-%m'
-    }[period] || '%Y-%m-%d';
+    const dateFormat =
+      {
+        daily: "%Y-%m-%d",
+        weekly: "%Y-%U",
+        monthly: "%Y-%m",
+      }[period] || "%Y-%m-%d";
 
     return {
       $group: {
         _id: {
-          date: { $dateToString: { format: dateFormat, date: '$createdAt' } },
-          ticketType: '$items.ticketType'
+          date: { $dateToString: { format: dateFormat, date: "$createdAt" } },
+          ticketType: "$items.ticketType",
         },
-        count: { $sum: '$items.quantity' },
-        revenue: { $sum: '$items.subtotal' },
-        orders: { $sum: 1 }
-      }
+        count: { $sum: "$items.quantity" },
+        revenue: { $sum: "$items.subtotal" },
+        orders: { $sum: 1 },
+      },
     };
   }
 
@@ -427,21 +495,22 @@ class AnalyticsService {
    * Build group stage for revenue trends
    */
   buildRevenueTrendsGroupStage(period) {
-    const dateFormat = {
-      daily: '%Y-%m-%d',
-      weekly: '%Y-%U',
-      monthly: '%Y-%m'
-    }[period] || '%Y-%m';
+    const dateFormat =
+      {
+        daily: "%Y-%m-%d",
+        weekly: "%Y-%U",
+        monthly: "%Y-%m",
+      }[period] || "%Y-%m";
 
     return {
       $group: {
         _id: {
-          period: { $dateToString: { format: dateFormat, date: '$createdAt' } }
+          period: { $dateToString: { format: dateFormat, date: "$createdAt" } },
         },
-        totalRevenue: { $sum: '$pricing.total' },
+        totalRevenue: { $sum: "$pricing.total" },
         totalOrders: { $sum: 1 },
-        avgOrderValue: { $avg: '$pricing.total' }
-      }
+        avgOrderValue: { $avg: "$pricing.total" },
+      },
     };
   }
 
@@ -450,19 +519,19 @@ class AnalyticsService {
    */
   buildTicketFilters(filters) {
     const ticketFilters = {};
-    
+
     if (filters.status) {
       ticketFilters.status = filters.status;
     }
-    
+
     if (filters.ticketType) {
       ticketFilters.ticketType = filters.ticketType;
     }
-    
+
     if (filters.dateFrom && filters.dateTo) {
       ticketFilters.createdAt = {
         $gte: new Date(filters.dateFrom),
-        $lte: new Date(filters.dateTo)
+        $lte: new Date(filters.dateTo),
       };
     }
 
@@ -474,28 +543,30 @@ class AnalyticsService {
    */
   async getSalesSummary(eventId, startDate, endDate) {
     const matchStage = this.buildSalesMatchStage(eventId, startDate, endDate);
-    
+
     const summaryPipeline = [
       matchStage,
-      { $unwind: '$items' },
+      { $unwind: "$items" },
       {
         $group: {
           _id: null,
-          totalTicketsSold: { $sum: '$items.quantity' },
-          totalRevenue: { $sum: '$items.subtotal' },
+          totalTicketsSold: { $sum: "$items.quantity" },
+          totalRevenue: { $sum: "$items.subtotal" },
           totalOrders: { $sum: 1 },
-          avgOrderValue: { $avg: '$pricing.total' }
-        }
-      }
+          avgOrderValue: { $avg: "$pricing.total" },
+        },
+      },
     ];
 
     const [summary] = await Order.aggregate(summaryPipeline);
-    return summary || {
-      totalTicketsSold: 0,
-      totalRevenue: 0,
-      totalOrders: 0,
-      avgOrderValue: 0
-    };
+    return (
+      summary || {
+        totalTicketsSold: 0,
+        totalRevenue: 0,
+        totalOrders: 0,
+        avgOrderValue: 0,
+      }
+    );
   }
 
   /**
@@ -505,30 +576,32 @@ class AnalyticsService {
     const pipeline = [
       {
         $match: {
-          'items.eventId': new mongoose.Types.ObjectId(eventId),
-          status: { $in: ['paid', 'confirmed'] }
-        }
+          "items.eventId": new mongoose.Types.ObjectId(eventId),
+          status: { $in: ["paid", "confirmed"] },
+        },
       },
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: '$pricing.subtotal' },
-          totalFees: { $sum: '$pricing.serviceFee' },
-          netRevenue: { $sum: '$pricing.total' },
+          totalRevenue: { $sum: "$pricing.subtotal" },
+          totalFees: { $sum: "$pricing.serviceFee" },
+          netRevenue: { $sum: "$pricing.total" },
           orderCount: { $sum: 1 },
-          avgOrderValue: { $avg: '$pricing.total' }
-        }
-      }
+          avgOrderValue: { $avg: "$pricing.total" },
+        },
+      },
     ];
 
     const [metrics] = await Order.aggregate(pipeline);
-    return metrics || {
-      totalRevenue: 0,
-      totalFees: 0,
-      netRevenue: 0,
-      orderCount: 0,
-      avgOrderValue: 0
-    };
+    return (
+      metrics || {
+        totalRevenue: 0,
+        totalFees: 0,
+        netRevenue: 0,
+        orderCount: 0,
+        avgOrderValue: 0,
+      }
+    );
   }
 
   /**
@@ -538,17 +611,17 @@ class AnalyticsService {
     const pipeline = [
       {
         $match: {
-          'items.eventId': new mongoose.Types.ObjectId(eventId),
-          status: 'paid'
-        }
+          "items.eventId": new mongoose.Types.ObjectId(eventId),
+          status: "paid",
+        },
       },
       {
         $group: {
-          _id: '$payment.method',
+          _id: "$payment.method",
           count: { $sum: 1 },
-          revenue: { $sum: '$pricing.total' }
-        }
-      }
+          revenue: { $sum: "$pricing.total" },
+        },
+      },
     ];
 
     return await Order.aggregate(pipeline);
@@ -561,17 +634,17 @@ class AnalyticsService {
     const pipeline = [
       {
         $match: {
-          'items.eventId': new mongoose.Types.ObjectId(eventId),
-          status: 'refunded'
-        }
+          "items.eventId": new mongoose.Types.ObjectId(eventId),
+          status: "refunded",
+        },
       },
       {
         $group: {
           _id: null,
           refundCount: { $sum: 1 },
-          refundAmount: { $sum: '$pricing.total' }
-        }
-      }
+          refundAmount: { $sum: "$pricing.total" },
+        },
+      },
     ];
 
     const [refunds] = await Order.aggregate(pipeline);
@@ -585,18 +658,18 @@ class AnalyticsService {
     const pipeline = [
       {
         $match: {
-          'items.eventId': new mongoose.Types.ObjectId(eventId),
-          status: { $in: ['paid', 'confirmed'] }
-        }
+          "items.eventId": new mongoose.Types.ObjectId(eventId),
+          status: { $in: ["paid", "confirmed"] },
+        },
       },
-      { $unwind: '$items' },
+      { $unwind: "$items" },
       {
         $group: {
-          _id: '$items.ticketType',
-          count: { $sum: '$items.quantity' },
-          revenue: { $sum: '$items.subtotal' }
-        }
-      }
+          _id: "$items.ticketType",
+          count: { $sum: "$items.quantity" },
+          revenue: { $sum: "$items.subtotal" },
+        },
+      },
     ];
 
     return await Order.aggregate(pipeline);
@@ -609,20 +682,20 @@ class AnalyticsService {
     const pipeline = [
       {
         $match: {
-          'items.eventId': new mongoose.Types.ObjectId(eventId),
-          status: { $in: ['paid', 'confirmed'] }
-        }
+          "items.eventId": new mongoose.Types.ObjectId(eventId),
+          status: { $in: ["paid", "confirmed"] },
+        },
       },
       {
         $group: {
           _id: {
-            date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }
+            date: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
           },
-          revenue: { $sum: '$pricing.total' },
-          orders: { $sum: 1 }
-        }
+          revenue: { $sum: "$pricing.total" },
+          orders: { $sum: 1 },
+        },
       },
-      { $sort: { '_id.date': 1 } }
+      { $sort: { "_id.date": 1 } },
     ];
 
     return await Order.aggregate(pipeline);
@@ -635,28 +708,28 @@ class AnalyticsService {
     const pipeline = [
       {
         $match: {
-          'items.eventId': { $in: eventIds || [] },
-          status: { $in: ['paid', 'confirmed'] }
-        }
+          "items.eventId": { $in: eventIds || [] },
+          status: { $in: ["paid", "confirmed"] },
+        },
       },
-      { $unwind: '$items' },
+      { $unwind: "$items" },
       {
         $lookup: {
-          from: 'events',
-          localField: 'items.eventId',
-          foreignField: '_id',
-          as: 'event'
-        }
+          from: "events",
+          localField: "items.eventId",
+          foreignField: "_id",
+          as: "event",
+        },
       },
-      { $unwind: '$event' },
+      { $unwind: "$event" },
       {
         $group: {
-          _id: '$items.eventId',
-          eventTitle: { $first: '$event.title' },
-          revenue: { $sum: '$items.subtotal' },
-          ticketsSold: { $sum: '$items.quantity' }
-        }
-      }
+          _id: "$items.eventId",
+          eventTitle: { $first: "$event.title" },
+          revenue: { $sum: "$items.subtotal" },
+          ticketsSold: { $sum: "$items.quantity" },
+        },
+      },
     ];
 
     return await Order.aggregate(pipeline);
@@ -676,25 +749,25 @@ class AnalyticsService {
     const pipeline = [
       {
         $lookup: {
-          from: 'events',
-          localField: 'items.eventId',
-          foreignField: '_id',
-          as: 'event'
-        }
+          from: "events",
+          localField: "items.eventId",
+          foreignField: "_id",
+          as: "event",
+        },
       },
-      { $unwind: '$event' },
+      { $unwind: "$event" },
       {
         $match: {
-          'event.organizer': new mongoose.Types.ObjectId(organizerId),
-          status: { $in: ['paid', 'confirmed'] }
-        }
+          "event.organizer": new mongoose.Types.ObjectId(organizerId),
+          status: { $in: ["paid", "confirmed"] },
+        },
       },
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: '$pricing.total' }
-        }
-      }
+          totalRevenue: { $sum: "$pricing.total" },
+        },
+      },
     ];
 
     const [result] = await Order.aggregate(pipeline);
@@ -708,25 +781,25 @@ class AnalyticsService {
     const pipeline = [
       {
         $lookup: {
-          from: 'events',
-          localField: 'eventId',
-          foreignField: '_id',
-          as: 'event'
-        }
+          from: "events",
+          localField: "eventId",
+          foreignField: "_id",
+          as: "event",
+        },
       },
-      { $unwind: '$event' },
+      { $unwind: "$event" },
       {
         $match: {
-          'event.organizer': new mongoose.Types.ObjectId(organizerId),
-          status: 'active'
-        }
+          "event.organizer": new mongoose.Types.ObjectId(organizerId),
+          status: "active",
+        },
       },
       {
         $group: {
           _id: null,
-          totalTickets: { $sum: 1 }
-        }
-      }
+          totalTickets: { $sum: 1 },
+        },
+      },
     ];
 
     const [result] = await Ticket.aggregate(pipeline);
@@ -739,13 +812,13 @@ class AnalyticsService {
   async getUpcomingEvents(organizerId) {
     return await Event.find({
       organizer: organizerId,
-      status: 'published',
-      'dates.startDate': { $gt: new Date() }
+      status: "published",
+      "dates.startDate": { $gt: new Date() },
     })
-    .sort({ 'dates.startDate': 1 })
-    .limit(5)
-    .select('title dates.startDate capacity currentAttendees')
-    .lean();
+      .sort({ "dates.startDate": 1 })
+      .limit(5)
+      .select("title dates.startDate capacity currentAttendees")
+      .lean();
   }
 
   /**
@@ -755,35 +828,35 @@ class AnalyticsService {
     const pipeline = [
       {
         $lookup: {
-          from: 'events',
-          localField: 'items.eventId',
-          foreignField: '_id',
-          as: 'event'
-        }
+          from: "events",
+          localField: "items.eventId",
+          foreignField: "_id",
+          as: "event",
+        },
       },
-      { $unwind: '$event' },
+      { $unwind: "$event" },
       {
         $match: {
-          'event.organizer': new mongoose.Types.ObjectId(organizerId),
-          status: { $in: ['paid', 'confirmed'] }
-        }
+          "event.organizer": new mongoose.Types.ObjectId(organizerId),
+          status: { $in: ["paid", "confirmed"] },
+        },
       },
       {
-        $sort: { createdAt: -1 }
+        $sort: { createdAt: -1 },
       },
       {
-        $limit: 10
+        $limit: 10,
       },
       {
         $project: {
           orderNumber: 1,
           createdAt: 1,
-          'pricing.total': 1,
-          'event.title': 1,
-          'items.ticketType': 1,
-          'items.quantity': 1
-        }
-      }
+          "pricing.total": 1,
+          "event.title": 1,
+          "items.ticketType": 1,
+          "items.quantity": 1,
+        },
+      },
     ];
 
     return await Order.aggregate(pipeline);
@@ -804,7 +877,7 @@ class AnalyticsService {
   setCachedData(key, data) {
     this.cache.set(key, {
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   }
 
