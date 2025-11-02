@@ -12,7 +12,7 @@ const pesapalService = require('../services/pesapalService');
 
 // Validation middleware
 const validateOrderData = [
-  body('customer.email').isEmail().normalizeEmail(),
+  body('customer.email').isEmail(),
   body('customer.firstName').trim().isLength({ min: 1, max: 50 }),
   body('customer.lastName').trim().isLength({ min: 1, max: 50 }),
   body('customer.phone').trim().isLength({ min: 10, max: 15 }),

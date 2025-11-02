@@ -78,7 +78,6 @@ router.post(
       .withMessage("Quantity must be between 1 and 20"),
     body("email")
       .isEmail()
-      .normalizeEmail()
       .withMessage("Valid email is required"),
     body("phone")
       .isMobilePhone("any")
@@ -216,7 +215,29 @@ router.post(
       }
 
       // ========== STEP 2: Handle User (Create or Use Existing) ==========
-      let user = await User.findOne({ email: email.toLowerCase() });
+      // Preserve original email format (don't remove dots from Gmail)
+      const normalizedEmail = email.toLowerCase().trim();
+      let user = await User.findOne({ email: normalizedEmail });
+
+      // For Gmail addresses, also check variations with/without dots
+      if (!user && normalizedEmail.includes("@gmail.com")) {
+        const localPart = normalizedEmail.split("@")[0];
+        const domain = normalizedEmail.split("@")[1];
+        
+        // Try without dots if email has dots
+        if (localPart.includes(".")) {
+          const withoutDots = localPart.replace(/\./g, "") + "@" + domain;
+          user = await User.findOne({ email: withoutDots });
+        } else {
+          // Try with dots (search for any Gmail variation)
+          const escapedLocalPart = localPart.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const gmailRegex = new RegExp(`^${escapedLocalPart}(\\.|)@gmail\\.com$`, "i");
+          const users = await User.find({ email: { $regex: gmailRegex } });
+          // Prioritize user with dots (usually the original registered email)
+          user = users.find((u) => u.email.includes(".")) || users[0];
+        }
+      }
+
       let isNewUser = false;
       let tempPassword = null;
 
@@ -227,8 +248,8 @@ router.post(
         // Generate temporary password (8 chars: letters + numbers)
         tempPassword = crypto.randomBytes(4).toString("hex").toUpperCase();
 
-        // Generate unique username from email
-        const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "");
+        // Generate unique username from email (preserve dots for uniqueness)
+        const baseUsername = normalizedEmail.split("@")[0].replace(/[^a-zA-Z0-9.]/g, "");
         let username = baseUsername;
         let usernameExists = await User.findOne({ username });
         let counter = 1;
@@ -240,8 +261,9 @@ router.post(
         }
 
         // Create user with pending activation status
+        // Preserve original email format as entered by user
         user = new User({
-          email: email.toLowerCase(),
+          email: normalizedEmail, // Use original format, just lowercased
           username,
           name: `${firstName} ${lastName}`.trim(), // Set name field explicitly
           firstName,

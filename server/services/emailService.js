@@ -1236,14 +1236,16 @@ class EmailService {
           if (ticket.qrCodeUrl) {
             try {
               // Extract base64 data from data URL (format: "data:image/png;base64,<base64-data>")
-              const base64Match = ticket.qrCodeUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+              const base64Match = ticket.qrCodeUrl.match(
+                /^data:image\/(\w+);base64,(.+)$/
+              );
               if (base64Match) {
                 const imageType = base64Match[1] || "png";
                 const base64Data = base64Match[2];
-                
+
                 // Convert base64 to Buffer
                 const imageBuffer = Buffer.from(base64Data, "base64");
-                
+
                 // Add as inline attachment with Content-ID
                 attachments.push({
                   filename: `qr-${ticket.ticketNumber || index}.${imageType}`,
@@ -1253,7 +1255,10 @@ class EmailService {
                 });
               }
             } catch (qrError) {
-              console.error(`Error processing QR code for ticket ${ticket.ticketNumber}:`, qrError);
+              console.error(
+                `Error processing QR code for ticket ${ticket.ticketNumber}:`,
+                qrError
+              );
             }
           }
 
@@ -1424,7 +1429,10 @@ class EmailService {
       };
 
       const result = await this.transporter.sendMail(mailOptions);
-      console.log(`✅ Ticket email sent with ${attachments.length} QR code(s):`, result.messageId);
+      console.log(
+        `✅ Ticket email sent with ${attachments.length} QR code(s):`,
+        result.messageId
+      );
       return result;
     } catch (error) {
       console.error("❌ Error sending ticket email:", error);
