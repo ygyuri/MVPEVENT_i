@@ -45,13 +45,11 @@ const router = express.Router();
 function handleValidation(req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        error: "Validation failed",
-        details: errors.array(),
-      });
+    return res.status(400).json({
+      success: false,
+      error: "Validation failed",
+      details: errors.array(),
+    });
   }
 }
 
@@ -76,9 +74,7 @@ router.post(
     body("quantity")
       .isInt({ min: 1, max: 20 })
       .withMessage("Quantity must be between 1 and 20"),
-    body("email")
-      .isEmail()
-      .withMessage("Valid email is required"),
+    body("email").isEmail().withMessage("Valid email is required"),
     body("phone")
       .isMobilePhone("any")
       .withMessage("Valid phone number is required"),
@@ -223,15 +219,21 @@ router.post(
       if (!user && normalizedEmail.includes("@gmail.com")) {
         const localPart = normalizedEmail.split("@")[0];
         const domain = normalizedEmail.split("@")[1];
-        
+
         // Try without dots if email has dots
         if (localPart.includes(".")) {
           const withoutDots = localPart.replace(/\./g, "") + "@" + domain;
           user = await User.findOne({ email: withoutDots });
         } else {
           // Try with dots (search for any Gmail variation)
-          const escapedLocalPart = localPart.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-          const gmailRegex = new RegExp(`^${escapedLocalPart}(\\.|)@gmail\\.com$`, "i");
+          const escapedLocalPart = localPart.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+          );
+          const gmailRegex = new RegExp(
+            `^${escapedLocalPart}(\\.|)@gmail\\.com$`,
+            "i"
+          );
           const users = await User.find({ email: { $regex: gmailRegex } });
           // Prioritize user with dots (usually the original registered email)
           user = users.find((u) => u.email.includes(".")) || users[0];
@@ -249,7 +251,9 @@ router.post(
         tempPassword = crypto.randomBytes(4).toString("hex").toUpperCase();
 
         // Generate unique username from email (preserve dots for uniqueness)
-        const baseUsername = normalizedEmail.split("@")[0].replace(/[^a-zA-Z0-9.]/g, "");
+        const baseUsername = normalizedEmail
+          .split("@")[0]
+          .replace(/[^a-zA-Z0-9.]/g, "");
         let username = baseUsername;
         let usernameExists = await User.findOne({ username });
         let counter = 1;
@@ -779,15 +783,13 @@ router.post(
           result: "already_used",
           device,
         });
-        return res
-          .status(409)
-          .json({
-            success: true,
-            valid: false,
-            code: "ALREADY_USED",
-            usedAt: result.ticket?.usedAt || ticket.usedAt,
-            usedBy: result.ticket?.usedBy || ticket.usedBy,
-          });
+        return res.status(409).json({
+          success: true,
+          valid: false,
+          code: "ALREADY_USED",
+          usedAt: result.ticket?.usedAt || ticket.usedAt,
+          usedBy: result.ticket?.usedBy || ticket.usedBy,
+        });
       }
 
       await ScanLog.create({
