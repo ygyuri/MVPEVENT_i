@@ -692,4 +692,115 @@ router.post(
   }
 );
 
+// Resend ticket email for an order (admin only)
+router.post(
+  "/orders/:orderId/resend-tickets",
+  verifyToken,
+  requireRole("admin"),
+  [param("orderId").isMongoId().withMessage("Invalid order ID")],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid order ID",
+          details: errors.array(),
+        });
+      }
+
+      const { orderId } = req.params;
+      const Order = require("../models/Order");
+      const Ticket = require("../models/Ticket");
+      const Event = require("../models/Event");
+
+      // Find order
+      const order = await Order.findById(orderId).lean();
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          error: "Order not found",
+        });
+      }
+
+      // Verify order is paid
+      const isPaid =
+        order.paymentStatus === "paid" ||
+        order.paymentStatus === "completed" ||
+        (order.status === "completed" && order.paymentStatus !== "pending");
+
+      if (!isPaid) {
+        return res.status(400).json({
+          success: false,
+          error: "Cannot resend tickets for unpaid order",
+          details: `Order payment status: ${order.paymentStatus}`,
+        });
+      }
+
+      // Check for customer email
+      if (!order.customer?.email) {
+        return res.status(400).json({
+          success: false,
+          error: "No customer email found for this order",
+        });
+      }
+
+      // Fetch tickets
+      const tickets = await Ticket.find({ orderId })
+        .populate("eventId", "title dates location")
+        .lean();
+
+      if (!tickets || tickets.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "No tickets found for this order",
+        });
+      }
+
+      // Send ticket email
+      try {
+        await emailService.sendTicketEmail({
+          order,
+          tickets,
+          customerEmail: order.customer.email,
+          customerName:
+            `${order.customer.firstName || ""} ${
+              order.customer.lastName || ""
+            }`.trim() ||
+            order.customer.name ||
+            "Customer",
+        });
+
+        console.log(
+          `✅ Ticket email resent successfully to: ${order.customer.email} (Order: ${order.orderNumber}, ${tickets.length} tickets)`
+        );
+
+        res.json({
+          success: true,
+          message: `Ticket email resent successfully to ${order.customer.email}`,
+          data: {
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            email: order.customer.email,
+            ticketsCount: tickets.length,
+          },
+        });
+      } catch (emailError) {
+        console.error("❌ Failed to resend ticket email:", emailError);
+        res.status(500).json({
+          success: false,
+          error: "Failed to send ticket email",
+          details: emailError.message,
+        });
+      }
+    } catch (error) {
+      console.error("Resend tickets error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to resend tickets",
+      });
+    }
+  }
+);
+
 module.exports = router;

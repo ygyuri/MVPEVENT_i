@@ -33,6 +33,7 @@ const AdminOrders = () => {
   const [total, setTotal] = useState(0);
   const [limit] = useState(20);
   const [sendingReminders, setSendingReminders] = useState({});
+  const [resendingTickets, setResendingTickets] = useState({});
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
 
@@ -137,6 +138,41 @@ const AdminOrders = () => {
       toast.error(err.response?.data?.error || "Failed to send reminders");
     } finally {
       setSendingReminders({ ...sendingReminders, [orderId]: false });
+    }
+  };
+
+  const handleResendTickets = async (orderId) => {
+    if (
+      !window.confirm(
+        "Resend ticket email to the customer? This will send all tickets for this order."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setResendingTickets({ ...resendingTickets, [orderId]: true });
+      const response = await api.post(
+        `/api/admin/orders/${orderId}/resend-tickets`
+      );
+
+      if (response.data?.success) {
+        toast.success(
+          response.data.message ||
+            `Ticket email resent to ${response.data.data?.email || "customer"}`
+        );
+      } else {
+        toast.error(response.data?.error || "Failed to resend tickets");
+      }
+    } catch (err) {
+      console.error("Failed to resend tickets:", err);
+      toast.error(
+        err.response?.data?.error ||
+          err.response?.data?.details ||
+          "Failed to resend tickets"
+      );
+    } finally {
+      setResendingTickets({ ...resendingTickets, [orderId]: false });
     }
   };
 
@@ -355,6 +391,30 @@ const AdminOrders = () => {
                     <QrCode className="w-4 h-4" />
                     View Tickets
                   </button>
+                  {/* Resend Tickets - Only show for paid orders */}
+                  {(order.paymentStatus === "paid" ||
+                    order.paymentStatus === "completed" ||
+                    (order.status === "completed" &&
+                      order.paymentStatus !== "pending")) && (
+                    <button
+                      onClick={() => handleResendTickets(order._id)}
+                      disabled={resendingTickets[order._id]}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Resend ticket email to customer"
+                    >
+                      {resendingTickets[order._id] ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Ticket className="w-4 h-4" />
+                          Resend Tickets
+                        </>
+                      )}
+                    </button>
+                  )}
                   {/* Show button for any order - backend will validate if tickets exist */}
                   <button
                     onClick={() => handleSendReminders(order._id)}
