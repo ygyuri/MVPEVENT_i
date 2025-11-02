@@ -214,7 +214,7 @@ router.post(
       // Normalize email to lowercase for lookup (emails are stored lowercase)
       // This allows case-insensitive lookup while emails are normalized in storage
       const emailLower = email.toLowerCase().trim();
-      
+
       // Since emails are stored lowercase, we can do direct comparison
       let user = await User.findOne({ email: emailLower });
 
@@ -222,7 +222,7 @@ router.post(
       if (!user && emailLower.includes("@gmail.com")) {
         const localPart = emailLower.split("@")[0];
         const domain = emailLower.split("@")[1];
-        
+
         // Try without dots if email has dots
         if (localPart.includes(".")) {
           const withoutDots = localPart.replace(/\./g, "") + "@" + domain;
@@ -254,9 +254,7 @@ router.post(
         tempPassword = crypto.randomBytes(4).toString("hex").toUpperCase();
 
         // Generate unique username from email (preserve dots for uniqueness)
-        const baseUsername = email
-          .split("@")[0]
-          .replace(/[^a-zA-Z0-9.]/g, "");
+        const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9.]/g, "");
         let username = baseUsername;
         let usernameExists = await User.findOne({ username });
         let counter = 1;

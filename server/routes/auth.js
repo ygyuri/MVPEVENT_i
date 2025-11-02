@@ -45,9 +45,7 @@ router.post(
   "/register",
   registrationRateLimit,
   [
-    body("email")
-      .isEmail()
-      .withMessage("Please provide a valid email address"),
+    body("email").isEmail().withMessage("Please provide a valid email address"),
     body("password")
       .isLength({ min: 8 })
       .withMessage("Password must be at least 8 characters long"),
@@ -116,7 +114,7 @@ router.post(
 
       // Normalize email to lowercase for lookup (will be saved as lowercase by model)
       const emailLower = email.toLowerCase().trim();
-      
+
       // Check if user already exists - case-insensitive lookup
       // Since emails are stored lowercase, we can do direct comparison with lowercase version
       let existingUser = await User.findOne({
@@ -263,7 +261,12 @@ router.post(
       // Normalize email to lowercase for lookup (emails are stored lowercase)
       // This allows case-insensitive lookup while emails are normalized in storage
       const emailLower = email.toLowerCase().trim();
-      console.log("[LOGIN] Email received:", email, "-> normalized:", emailLower);
+      console.log(
+        "[LOGIN] Email received:",
+        email,
+        "-> normalized:",
+        emailLower
+      );
 
       let user = null;
 
