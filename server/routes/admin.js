@@ -290,7 +290,7 @@ router.get("/orders", verifyToken, requireRole("admin"), async (req, res) => {
         .populate("items.eventId", "title slug")
         .populate("customer.userId", "email username")
         .select(
-          "orderNumber status paymentStatus totalAmount customer items createdAt pricing"
+          "orderNumber status paymentStatus totalAmount customer items createdAt pricing transactionFee"
         )
         .sort({ createdAt: -1 })
         .skip(skip)
