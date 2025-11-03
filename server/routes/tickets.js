@@ -573,28 +573,63 @@ router.post(
 router.get("/my", verifyToken, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
-    const data = await ticketService.getUserTickets(req.user._id, {
-      page: parseInt(page),
-      limit: parseInt(limit),
+    const Ticket = require("../models/Ticket");
+    const Order = require("../models/Order");
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const [tickets, total] = await Promise.all([
+      Ticket.find({ ownerUserId: req.user._id })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .populate("eventId", "title dates location")
+        .populate("orderId", "paymentStatus status"),
+      Ticket.countDocuments({ ownerUserId: req.user._id }),
+    ]);
+
+    // Check order payment status for each ticket
+    const simplified = tickets.map((t) => {
+      const order = t.orderId;
+      const isPaid =
+        order &&
+        (order.paymentStatus === "paid" ||
+          order.paymentStatus === "completed" ||
+          order.status === "completed");
+
+      return {
+        id: t._id,
+        event: t.eventId
+          ? {
+              id: t.eventId._id,
+              title: t.eventId.title,
+              startDate: t.eventId.dates?.startDate,
+            }
+          : null,
+        holder: {
+          firstName: t.holder.firstName,
+          lastName: t.holder.lastName,
+          name: t.holder.name,
+        },
+        ticketType: t.ticketType,
+        status: t.status,
+        usedAt: t.usedAt,
+        // Only show QR as available if order is paid/completed
+        qrAvailable: isPaid && !!t.qr,
+        orderPaid: isPaid,
+      };
     });
-    const simplified = data.tickets.map((t) => ({
-      id: t._id,
-      event: t.eventId
-        ? {
-            id: t.eventId._id,
-            title: t.eventId.title,
-            startDate: t.eventId.dates?.startDate,
-          }
-        : null,
-      holder: { firstName: t.holder.firstName, lastName: t.holder.lastName },
-      ticketType: t.ticketType,
-      status: t.status,
-      usedAt: t.usedAt,
-      qrAvailable: !!t.qr,
-    }));
+
     res.json({
       success: true,
-      data: { tickets: simplified, pagination: data.pagination },
+      data: {
+        tickets: simplified,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / parseInt(limit)),
+        },
+      },
     });
   } catch (error) {
     console.error("❌ Get my tickets failed:", error.message);
@@ -665,9 +700,10 @@ router.post(
     const v = handleValidation(req, res);
     if (v) return v;
     try {
-      const ticket = await Ticket.findById(req.params.ticketId).select(
-        "ownerUserId eventId status qr"
-      );
+      const Order = require("../models/Order");
+      const ticket = await Ticket.findById(req.params.ticketId)
+        .select("ownerUserId eventId status qr orderId")
+        .populate("orderId", "paymentStatus status");
       if (!ticket)
         return res
           .status(404)
@@ -679,6 +715,23 @@ router.post(
         return res
           .status(400)
           .json({ success: false, error: "Ticket is not active" });
+      }
+
+      // Check if order is paid/completed before issuing QR
+      const order = ticket.orderId;
+      const isPaid =
+        order &&
+        (order.paymentStatus === "paid" ||
+          order.paymentStatus === "completed" ||
+          order.status === "completed");
+
+      if (!isPaid) {
+        return res.status(400).json({
+          success: false,
+          error: "Payment not completed",
+          message:
+            "QR codes are only available for tickets with completed payments",
+        });
       }
 
       const { rotate = false } = req.body || {};

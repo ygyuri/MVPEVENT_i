@@ -6,7 +6,6 @@ import {
   XCircle,
   Loader2,
   Clock,
-  Receipt,
   Mail,
   Download,
   Shield,
@@ -594,13 +593,6 @@ const PaymentStatus = () => {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        {/* <button
-          onClick={() => navigate('/wallet')}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-2"
-        >
-          <Receipt className="w-5 h-5" />
-          View My Tickets
-        </button> */}
         <button
           onClick={() => navigate("/events")}
           className={`px-6 py-3 rounded-lg font-semibold transition-all shadow-lg ${
@@ -754,13 +746,6 @@ const PaymentStatus = () => {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <button
-          onClick={() => navigate("/wallet")}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all shadow-lg flex items-center justify-center gap-2"
-        >
-          <Receipt className="w-5 h-5" />
-          Check My Wallet
-        </button>
         <button
           onClick={() => window.location.reload()}
           className={`px-6 py-3 rounded-lg font-semibold transition-all shadow-lg flex items-center justify-center gap-2 ${
@@ -952,16 +937,6 @@ const PaymentStatus = () => {
               Try Again
             </button>
           )}
-          <button
-            onClick={() => navigate("/wallet")}
-            className={`px-6 py-4 rounded-lg font-semibold transition-all shadow-lg ${
-              isDarkMode
-                ? "bg-gray-800 hover:bg-gray-700 text-white border border-gray-600"
-                : "bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"
-            }`}
-          >
-            Check My Wallet
-          </button>
           <button
             onClick={() => navigate("/events")}
             className={`px-6 py-4 rounded-lg font-semibold transition-all shadow-lg ${
