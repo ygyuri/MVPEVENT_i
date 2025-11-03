@@ -614,7 +614,7 @@ router.post(
   }
 );
 
-// Update draft (partial)
+// Update event (partial) - allows updating both drafts and published events
 router.patch(
   "/events/:id",
   verifyToken,
@@ -629,8 +629,7 @@ router.patch(
       const event = await Event.findById(req.params.id);
       const owns = ensureOwnership(event, req.user);
       if (!owns.ok) return res.status(owns.code).json({ error: owns.msg });
-      if (event.status !== "draft")
-        return res.status(400).json({ error: "Only drafts can be updated" });
+      // Allow updates for both draft and published events
       if (
         typeof req.body.version === "number" &&
         event.version !== req.body.version
@@ -681,7 +680,7 @@ router.patch(
         },
       });
     } catch (error) {
-      res.status(500).json({ error: "Failed to update draft" });
+      res.status(500).json({ error: "Failed to update event" });
     }
   }
 );

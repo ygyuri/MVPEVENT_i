@@ -20,32 +20,29 @@ const EventCreate = () => {
   const { eventId } = useParams();
   
   const { currentStep, formData, eventId: storedEventId, version } = useSelector(state => state.eventForm);
+  const { currentEvent } = useSelector(state => state.organizer);
 
-  // Handle form submission (publish event) with comprehensive error handling
+  // Handle form submission (publish draft or update published event)
   const handleSubmit = async (formData) => {
     try {
-      // Show initial loading message
-      toast.loading('Preparing to publish your event...', {
-        id: 'publish-loading',
-        duration: 0 // Keep loading until we dismiss it
-      });
+      // Determine effective eventId (route param may be 'create')
+      const effectiveEventId = (eventId && eventId !== 'create') ? eventId : storedEventId;
+
+      // Additional checks
+      if (!effectiveEventId) {
+        toast.error('Event ID is required');
+        return;
+      }
+
+      // Check if event is already published
+      const eventStatus = currentEvent?.status || 'draft';
+      const isPublished = eventStatus === 'published';
 
       // Final validation
       const validation = validateForm(formData);
       
       if (!validation.isValid) {
-        toast.dismiss('publish-loading');
-        toast.error('Please fix all errors before publishing');
-        return;
-      }
-
-      // Determine effective eventId (route param may be 'create')
-      const effectiveEventId = (eventId && eventId !== 'create') ? eventId : storedEventId;
-
-      // Additional checks before publishing
-      if (!effectiveEventId) {
-        toast.dismiss('publish-loading');
-        toast.error('Event ID is required for publishing');
+        toast.error(isPublished ? 'Please fix all errors before updating' : 'Please fix all errors before publishing');
         return;
       }
 
@@ -54,33 +51,64 @@ const EventCreate = () => {
       
       // Validate that we have essential data
       if (!apiData.title || !apiData.description || !apiData.dates?.startDate) {
-        toast.dismiss('publish-loading');
         toast.error('Title, description, and start date are required');
         return;
       }
       
-      // Update loading message
-      toast.loading('Saving final draft...', {
-        id: 'publish-loading'
+      // Show appropriate loading message
+      const loadingMessage = isPublished ? 'Updating your event...' : 'Preparing to publish your event...';
+      toast.loading(loadingMessage, {
+        id: 'publish-loading',
+        duration: 0
       });
       
-      // First, ensure the latest form data is saved to the draft
+      // Update the event (works for both drafts and published events now)
       const saveRes = await dispatch(updateEventDraft({ 
         eventId: effectiveEventId, 
         eventData: apiData, 
         version: version || 0
       })).unwrap();
-      // Sync version into form state before publish
-      if (saveRes?.data?.version !== undefined) {
-        // We cannot import setVersion here easily without circular deps; rely on final publish to work with server's latest version post-save.
+
+      // If event is already published, we're done - just update it
+      if (isPublished) {
+        toast.dismiss('publish-loading');
+        toast.success(
+          <div className="space-y-2">
+            <div className="font-semibold text-green-800">✅ Event Updated Successfully!</div>
+            <div className="text-sm text-green-700">
+              Your changes to "{formData.title}" have been saved.
+            </div>
+          </div>,
+          {
+            duration: 5000,
+            position: 'top-center',
+            style: {
+              background: '#F0FDF4',
+              border: '1px solid #BBF7D0',
+              color: '#166534',
+              padding: '16px',
+              borderRadius: '12px',
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)'
+            }
+          }
+        );
+        
+        navigate('/organizer', { 
+          state: { 
+            justUpdated: true,
+            eventTitle: formData.title,
+            eventId: effectiveEventId
+          } 
+        });
+        return;
       }
-      
-      // Update loading message
+
+      // For drafts, proceed with publishing
       toast.loading('Publishing your event...', {
         id: 'publish-loading'
       });
       
-      // Publish the event
+      // Publish the event (only for drafts)
       const result = await dispatch(publishEvent(effectiveEventId)).unwrap();
       
       // Dismiss loading toast
@@ -112,7 +140,6 @@ const EventCreate = () => {
       );
       
       // Navigate to organizer dashboard to see the published event
-      // Note: Individual event detail pages are not yet implemented
       navigate('/organizer', { 
         state: { 
           justPublished: true,
@@ -122,13 +149,16 @@ const EventCreate = () => {
       });
       
     } catch (error) {
-      console.error('Failed to publish event:', error);
+      console.error('Failed to save event:', error);
       
       // Dismiss loading toast if it's still showing
       toast.dismiss('publish-loading');
       
       // Extract meaningful error message
-      let errorMessage = 'Failed to publish event';
+      const eventStatus = currentEvent?.status || 'draft';
+      const isPublished = eventStatus === 'published';
+      let errorMessage = isPublished ? 'Failed to update event' : 'Failed to publish event';
+      
       if (error.message) {
         errorMessage = error.message;
       } else if (typeof error === 'string') {

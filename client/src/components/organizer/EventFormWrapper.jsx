@@ -72,6 +72,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     loading,
     error 
   } = useSelector(state => state.eventForm);
+  const { currentEvent } = useSelector(state => state.organizer);
   
   // Show toast notifications for auto-save status
   useEffect(() => {
@@ -123,12 +124,28 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     }
   }, [formData, formEventId, currentStep, version]);
 
-  // Check for recovery data on component mount (skip when creating new event)
+  // Check for recovery data on component mount (only for drafts/new events or when switching events)
   useEffect(() => {
-    // When starting a brand new event or no id in route, never prompt for recovery
-    if (!eventId || eventId === 'create') {
+    // Skip recovery check if we're editing an existing event - let it load normally from server
+    if (eventId && eventId !== 'create') {
+      // When editing an existing event, clear any stale recovery data for different events
+      try {
+        const recoveryData = localStorage.getItem('eventForm_recovery');
+        if (recoveryData) {
+          const parsed = JSON.parse(recoveryData);
+          // Only clear recovery data if it's for a different event
+          if (parsed.eventId && parsed.eventId !== eventId) {
+            console.log('🧹 [RECOVERY] Clearing recovery data for different event');
+            localStorage.removeItem('eventForm_recovery');
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ [RECOVERY] Failed to check recovery data:', error);
+      }
       return;
     }
+
+    // For new events or when switching events, check for recovery data
     try {
       const recoveryData = localStorage.getItem('eventForm_recovery');
       if (recoveryData) {
@@ -139,25 +156,47 @@ const EventFormWrapper = ({ children, onSubmit }) => {
         if (age < 60 * 60 * 1000) {
           console.log('🔄 [RECOVERY] Found recent form data, age:', Math.round(age / 1000), 'seconds');
           
-          // Check if current form is empty or different
-          const currentFormEmpty = !formData.title && !formData.description;
-          const isDifferentEvent = formEventId && formEventId !== parsed.eventId;
+          // Only show recovery modal if we have a real draft (with eventId) or meaningful data
+          // For "Create Event", we need to have an actual saved draft, not just empty form data
+          const hasRealDraft = parsed.eventId && parsed.eventId !== null;
+          const hasSignificantData = parsed.formData && (
+            parsed.formData.title || 
+            parsed.formData.description || 
+            parsed.formData.location?.venueName ||
+            parsed.formData.dates?.startDate
+          );
           
-          if (currentFormEmpty || isDifferentEvent) {
-            // Show recovery modal instead of browser confirm
+          // Only show recovery if we have either:
+          // 1. A real draft (with eventId) that was saved
+          // 2. Significant unsaved data that's worth recovering
+          if (hasRealDraft || hasSignificantData) {
+            console.log('✅ [RECOVERY] Recovery data is significant, showing modal');
+            
+            // Show recovery modal
             setRecoveryModal({
               isOpen: true,
-              type: 'recovery',
+              type: hasRealDraft ? 'draft' : 'recovery',
               lastSavedTime: parsed.timestamp,
               onRecover: () => {
-                dispatch(loadExistingEvent(parsed.formData));
-                dispatch(setCurrentStep(parsed.currentStep));
+                // Load recovery data into form
+                // If we have eventId, load the draft from server
+                if (parsed.eventId && parsed.eventId !== null) {
+                  // Navigate to the draft event to load it properly
+                  console.log('🔄 [RECOVERY] Loading draft event:', parsed.eventId);
+                  navigate(`/organizer/events/${parsed.eventId}/edit`);
+                } else {
+                  // Just load form data for unsaved draft
+                  dispatch(loadExistingEvent(parsed.formData));
+                  dispatch(setCurrentStep(parsed.currentStep || 1));
+                }
                 toast.success('Form data recovered successfully');
                 setRecoveryModal(prev => ({ ...prev, isOpen: false }));
               },
               onDiscard: () => {
-                // Clear recovery data
+                // Clear recovery data and start fresh
                 localStorage.removeItem('eventForm_recovery');
+                dispatch(clearForm());
+                dispatch(setCurrentStep(1));
                 setRecoveryModal(prev => ({ ...prev, isOpen: false }));
               }
             });
@@ -167,7 +206,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     } catch (error) {
       console.warn('⚠️ [RECOVERY] Failed to check recovery data:', error);
     }
-  }, [eventId]);
+  }, [eventId, formEventId, formData, dispatch, navigate]);
   
   const { loading: organizerLoading } = useSelector(state => state.organizer);
 
@@ -295,7 +334,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     }
   }, [user, navigate]);
 
-  // Load existing event if editing or check for saved drafts
+  // Load existing event if editing
   useEffect(() => {
     if (eventId && eventId !== 'create') {
       const loadEvent = async () => {
@@ -325,12 +364,9 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       };
       
       loadEvent();
-    } else {
-      // Starting a brand new event: do NOT prompt for draft recovery
-      // Always clear any saved draft data and start fresh
-      formPersistence.clearFormData();
-      dispatch(clearForm());
     }
+    // For new events (eventId === 'create' or no eventId), let the recovery modal handle clearing if needed
+    // Don't auto-clear here as it conflicts with recovery check
   }, [eventId, dispatch, navigate]);
 
 
@@ -871,9 +907,13 @@ const EventFormWrapper = ({ children, onSubmit }) => {
                       disabled={isPublishing}
                       loading={isPublishing}
                       className={`w-full sm:w-auto ${isTouchDevice ? 'min-h-[44px]' : ''}`}
-                      aria-label={currentStep === totalSteps ? 'Publish event' : 'Go to next step'}
+                      aria-label={currentStep === totalSteps ? (currentEvent?.status === 'published' ? 'Update event' : 'Publish event') : 'Go to next step'}
                     >
-                      {currentStep === totalSteps ? (isPublishing ? 'Publishing…' : 'Publish Event') : 'Next Step'}
+                      {currentStep === totalSteps 
+                        ? (isPublishing 
+                          ? (currentEvent?.status === 'published' ? 'Updating…' : 'Publishing…')
+                          : (currentEvent?.status === 'published' ? 'Update Event' : 'Publish Event'))
+                        : 'Next Step'}
                     </EnhancedButton>
                   </div>
                 </div>
