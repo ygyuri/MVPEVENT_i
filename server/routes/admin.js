@@ -33,7 +33,10 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
       }),
       Order.countDocuments({}),
       Ticket.countDocuments({}),
-      Order.countDocuments({ status: "completed", paymentStatus: "paid" }),
+      Order.countDocuments({ 
+        status: "completed", 
+        paymentStatus: { $in: ["paid", "completed"] } 
+      }),
       Order.countDocuments({ status: "pending" }),
       // Calculate total revenue from completed orders
       Order.aggregate([
@@ -46,7 +49,15 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
         {
           $group: {
             _id: null,
-            total: { $sum: "$totalAmount" },
+            total: {
+              $sum: {
+                $cond: [
+                  { $gt: [{ $ifNull: ["$totalAmount", 0] }, 0] },
+                  { $ifNull: ["$totalAmount", 0] },
+                  { $ifNull: ["$pricing.total", 0] }
+                ]
+              }
+            },
           },
         },
       ]),
@@ -87,7 +98,15 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          revenue: { $sum: "$totalAmount" },
+          revenue: {
+            $sum: {
+              $cond: [
+                { $gt: [{ $ifNull: ["$totalAmount", 0] }, 0] },
+                { $ifNull: ["$totalAmount", 0] },
+                { $ifNull: ["$pricing.total", 0] }
+              ]
+            }
+          },
           count: { $sum: 1 },
         },
       },
@@ -304,8 +323,8 @@ router.get("/orders", verifyToken, requireRole("admin"), async (req, res) => {
       ];
     }
     
-    // If no status filter, only count completed/paid orders for revenue
-    if (!status) {
+    // If no status filter or "all", only count completed/paid orders for revenue
+    if (!status || status === "all") {
       revenueQuery.status = "completed";
       revenueQuery.paymentStatus = "paid";
     } else {
