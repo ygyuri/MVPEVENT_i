@@ -8,11 +8,64 @@ import {
   Shield,
   Mail,
   Phone,
+  Clock,
+  Globe,
+  Server,
+  Edit3,
 } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 
 const TermsOfService = () => {
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://event-i.co.ke";
+  const currentUrl = `${baseUrl}/terms`;
+  const lastUpdated = new Date().toISOString().split("T")[0];
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "LegalDocument",
+    "name": "Terms of Service",
+    "description": "Terms of Service for Event-i event management platform",
+    "url": currentUrl,
+    "datePublished": "2024-01-01",
+    "dateModified": lastUpdated,
+    "publisher": {
+      "@type": "Organization",
+      "name": "Event-i",
+      "url": baseUrl,
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "support@event-i.co.ke",
+        "telephone": "+254703328938",
+        "contactType": "customer service"
+      }
+    },
+    "inLanguage": "en-US"
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <>
+      <Helmet>
+        <title>Terms of Service | Event-i</title>
+        <meta name="description" content="Event-i Terms of Service - Read our terms and conditions for using our event management platform." />
+        <meta name="keywords" content="terms of service, terms and conditions, user agreement, event management, Event-i" />
+        <link rel="canonical" href={currentUrl} />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Terms of Service | Event-i" />
+        <meta property="og:description" content="Event-i Terms of Service - Read our terms and conditions for using our platform." />
+        <meta property="og:url" content={currentUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Event-i" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="Terms of Service | Event-i" />
+        <meta name="twitter:description" content="Event-i Terms of Service - Read our terms and conditions for using our platform." />
+        
+        {/* Structured Data */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      </Helmet>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="container-modern py-12 md:py-16 lg:py-20">
         {/* Header */}
         <motion.div
@@ -277,10 +330,133 @@ const TermsOfService = () => {
               </p>
             </section>
 
+            {/* Service Availability */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+                <Server className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                12. Service Availability and Uptime
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                We strive to provide continuous access to the Platform, but we do not guarantee uninterrupted, secure, or error-free operation. The Platform may be temporarily unavailable due to:
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
+                <li>Scheduled maintenance and updates</li>
+                <li>Unforeseen technical issues or system failures</li>
+                <li>Security incidents or cyberattacks</li>
+                <li>Third-party service provider outages</li>
+                <li>Acts of God, natural disasters, or other circumstances beyond our control</li>
+              </ul>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
+                While we make reasonable efforts to minimize downtime and provide advance notice of scheduled maintenance, we are not liable for any losses or damages resulting from Platform unavailability.
+              </p>
+            </section>
+
+            {/* User-Generated Content */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+                <Edit3 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                13. User-Generated Content
+              </h2>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+                13.1 Content Responsibility
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                You are solely responsible for all content you post, upload, or otherwise make available on the Platform, including:
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
+                <li>Event descriptions, images, and media</li>
+                <li>User comments, reviews, and feedback</li>
+                <li>Profile information and biographical content</li>
+                <li>Any other materials you contribute to the Platform</li>
+              </ul>
+              
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+                13.2 Content Standards
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                You agree that all content you post will:
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
+                <li>Be accurate and truthful</li>
+                <li>Comply with all applicable laws and regulations</li>
+                <li>Not infringe upon the rights of any third party</li>
+                <li>Not contain defamatory, harassing, or offensive material</li>
+                <li>Not include spam, fraudulent, or malicious content</li>
+              </ul>
+
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+                13.3 Content Monitoring and Removal
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                We reserve the right to review, edit, or remove any content that violates these Terms or our community guidelines. We may, but are not obligated to, monitor or moderate user-generated content. You acknowledge that we may remove content at our sole discretion without prior notice.
+              </p>
+            </section>
+
+            {/* Dispute Resolution */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+                <Scale className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                14. Dispute Resolution
+              </h2>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+                14.1 Informal Resolution
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                Before initiating any formal legal proceedings, you agree to first contact us at support@event-i.co.ke to attempt to resolve any dispute informally. We will make good faith efforts to resolve disputes within 30 days of receiving your complaint.
+              </p>
+
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+                14.2 Binding Arbitration
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                If informal resolution is unsuccessful, any dispute arising from or relating to these Terms shall be resolved through binding arbitration in accordance with the rules of the Arbitration Act of Kenya, rather than in court. The arbitration shall be conducted in Nairobi, Kenya, and the language of arbitration shall be English.
+              </p>
+
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+                14.3 Exceptions to Arbitration
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                Notwithstanding the above, either party may seek injunctive relief or other equitable remedies in any court of competent jurisdiction to protect intellectual property rights or prevent unauthorized access to the Platform.
+              </p>
+            </section>
+
+            {/* Force Majeure */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                15. Force Majeure
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                We shall not be liable for any failure or delay in performance under these Terms that is due to circumstances beyond our reasonable control, including but not limited to acts of God, natural disasters, war, terrorism, labor strikes, pandemics, government actions, internet failures, or failures of third-party service providers. In such events, we will make reasonable efforts to notify you and resume performance as soon as practicable.
+              </p>
+            </section>
+
+            {/* Severability */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                16. Severability
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                If any provision of these Terms is found to be invalid, illegal, or unenforceable by a court of competent jurisdiction, such provision shall be modified to the minimum extent necessary to make it valid, legal, and enforceable. If such modification is not possible, the provision shall be severed from these Terms, and the remaining provisions shall remain in full force and effect.
+              </p>
+            </section>
+
+            {/* Entire Agreement */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                17. Entire Agreement
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                These Terms, together with our Privacy Policy and Cookie Policy, constitute the entire agreement between you and Event-i regarding your use of the Platform and supersede all prior agreements, understandings, negotiations, and discussions, whether oral or written.
+              </p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                No waiver of any provision of these Terms shall be effective unless in writing and signed by both parties. Our failure to enforce any right or provision of these Terms shall not constitute a waiver of such right or provision.
+              </p>
+            </section>
+
             {/* Changes to Terms */}
             <section>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                12. Changes to Terms
+                18. Changes to Terms
               </h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                 We reserve the right to modify these Terms at any time. We will
@@ -294,7 +470,7 @@ const TermsOfService = () => {
             {/* Contact Us */}
             <section className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                13. Contact Us
+                19. Contact Us
               </h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
                 If you have any questions about these Terms of Service, please
@@ -325,6 +501,7 @@ const TermsOfService = () => {
         </motion.div>
       </div>
     </div>
+    </>
   );
 };
 

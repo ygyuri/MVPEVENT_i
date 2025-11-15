@@ -72,6 +72,13 @@ services:
       PAYHERO_BASIC_AUTH_TOKEN: Basic UHFJS1FRaDg3bDA4WWVrbEIwbE46WDRBSDFLRGY0ODI2Q3VoNW9FQ1QybFd0bzJ6WTVVZElNekVyYlNpMA==
       PAYHERO_CHANNEL_ID: "3767"
       PAYHERO_CALLBACK_URL: https://84759a18136d.ngrok-free.app/api/payhero/callback
+      # Google OAuth Configuration
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-894994509927-l9m4etbfu4gsk6cmauisvdpj5t4gnf6m.apps.googleusercontent.com}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-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}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:5001/api/auth/google/callback}
+      GOOGLE_STATE_SECRET: ${GOOGLE_STATE_SECRET:-IJ6YbnIJyOKDKFbk+NeAwG0E9mEGFTTHxqbWYUTuNtM=}
+      GOOGLE_STATE_TTL_MS: ${GOOGLE_STATE_TTL_MS:-300000}
+      SESSION_SECRET: ${SESSION_SECRET:-KMdu1MGMY9+NSYYlHUIIzcNBQPb4CVi9qhkKqYmykok=}
     ports:
       - "${SERVER_PORT:-5001}:${SERVER_PORT:-5001}"
     depends_on:

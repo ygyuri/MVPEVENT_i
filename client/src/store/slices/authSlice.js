@@ -4,6 +4,11 @@ import api from "../../utils/api";
 // Request deduplication cache for auth API
 const authRequestCache = new Map();
 
+// Export function to clear cache (useful for testing)
+export const clearAuthRequestCache = () => {
+  authRequestCache.clear();
+};
+
 // Async thunks
 export const login = createAsyncThunk(
   "auth/login",
@@ -71,7 +76,8 @@ export const getCurrentUser = createAsyncThunk(
   "auth/getCurrentUser",
   async (_, { getState, rejectWithValue }) => {
     try {
-      const token = getState().auth.authToken;
+      // Use localStorage first (more reliable) - fallback to Redux state
+      const token = localStorage.getItem("authToken") || getState().auth.authToken;
       if (!token) throw new Error("No token available");
 
       const requestKey = "/api/auth/me";
@@ -164,23 +170,35 @@ export const updateUserProfile = createAsyncThunk(
   }
 );
 
+// Safe localStorage access for SSR/test environments
+const getLocalStorageItem = (key) => {
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem) {
+      return localStorage.getItem(key);
+    }
+  } catch (e) {
+    // localStorage not available (SSR, test environment, etc.)
+  }
+  return null;
+};
+
 const initialState = {
   user: null,
-  authToken: localStorage.getItem("authToken") || null,
-  isAuthenticated: !!localStorage.getItem("authToken"),
+  authToken: getLocalStorageItem("authToken") || null,
+  isAuthenticated: !!getLocalStorageItem("authToken"),
   loading: false,
   error: null,
   // Impersonation state
-  isImpersonating: !!localStorage.getItem("impersonatingUserId"),
-  impersonatingUser: localStorage.getItem("impersonatingUserId")
+  isImpersonating: !!getLocalStorageItem("impersonatingUserId"),
+  impersonatingUser: getLocalStorageItem("impersonatingUserId")
     ? {
-        _id: localStorage.getItem("impersonatingUserId"),
-        email: localStorage.getItem("impersonatingUserEmail"),
+        _id: getLocalStorageItem("impersonatingUserId"),
+        email: getLocalStorageItem("impersonatingUserEmail"),
       }
     : null,
-  originalUser: localStorage.getItem("originalUserId")
+  originalUser: getLocalStorageItem("originalUserId")
     ? {
-        _id: localStorage.getItem("originalUserId"),
+        _id: getLocalStorageItem("originalUserId"),
       }
     : null,
 };
@@ -195,6 +213,15 @@ const authSlice = createSlice({
     setAuthToken: (state, action) => {
       state.authToken = action.payload;
       state.isAuthenticated = !!action.payload;
+    },
+    setUser: (state, action) => {
+      console.log("🔧 [AUTH SLICE] setUser called with:", action.payload);
+      state.user = action.payload;
+      state.isAuthenticated = !!action.payload;
+      console.log("🔧 [AUTH SLICE] State after setUser:", {
+        hasUser: !!state.user,
+        isAuthenticated: state.isAuthenticated,
+      });
     },
     impersonateOrganizer: (state, action) => {
       const organizer = action.payload;
@@ -266,14 +293,21 @@ const authSlice = createSlice({
       .addCase(getCurrentUser.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload;
+        state.isAuthenticated = true;
       })
       .addCase(getCurrentUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        // If getting user fails, logout
+        // Only clear auth state if we don't already have a user
+        // This prevents clearing OAuth user data if getCurrentUser fails
+        if (!state.user) {
+          console.warn("⚠️ [AUTH SLICE] getCurrentUser failed and no user exists, clearing auth state");
         state.user = null;
         state.authToken = null;
         state.isAuthenticated = false;
+        } else {
+          console.warn("⚠️ [AUTH SLICE] getCurrentUser failed but user exists, keeping auth state");
+        }
       })
 
       // Update User Profile
@@ -295,6 +329,7 @@ const authSlice = createSlice({
 export const {
   clearError,
   setAuthToken,
+  setUser,
   impersonateOrganizer,
   stopImpersonation,
 } = authSlice.actions;

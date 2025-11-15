@@ -1,7 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { login, register, clearError } from "../store/slices/authSlice";
+import {
+  login,
+  register,
+  clearError,
+  setAuthToken,
+  setUser,
+  getCurrentUser,
+} from "../store/slices/authSlice";
 import { useTheme } from "../contexts/ThemeContext";
 
 const AuthModal = ({ isOpen, onClose }) => {
@@ -29,15 +36,228 @@ const AuthModal = ({ isOpen, onClose }) => {
     (state) => state.auth
   );
   const { isDarkMode } = useTheme();
+  const resolveApiBaseUrl = () => {
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL.replace(/\/$/, "");
+    }
+
+    if (typeof window !== "undefined") {
+      if (import.meta.env.DEV) {
+        return `${window.location.protocol}//${window.location.hostname}:5000`;
+      }
+
+      return window.location.origin.replace(/\/$/, "");
+    }
+
+    return "http://localhost:5000";
+  };
+
+  const apiBaseUrl = resolveApiBaseUrl();
+  const defaultFrontendOrigin =
+    typeof window !== "undefined" ? window.location.origin : "";
+  const frontendOrigin =
+    (import.meta.env.VITE_FRONTEND_URL &&
+      import.meta.env.VITE_FRONTEND_URL.replace(/\/$/, "")) ||
+    defaultFrontendOrigin;
+
+  const oauthWindowRef = useRef(null);
+  const oauthListenerRef = useRef(null);
+  const oauthTimerRef = useRef(null);
+  const oauthCompletedRef = useRef(false);
+
+  const cleanupOAuth = useCallback(({ closeWindow = true } = {}) => {
+    if (oauthListenerRef.current && typeof window !== "undefined") {
+      window.removeEventListener("message", oauthListenerRef.current);
+      oauthListenerRef.current = null;
+    }
+
+    if (oauthTimerRef.current) {
+      clearInterval(oauthTimerRef.current);
+      oauthTimerRef.current = null;
+    }
+
+    if (
+      closeWindow &&
+      oauthWindowRef.current &&
+      !oauthWindowRef.current.closed
+    ) {
+      oauthWindowRef.current.close();
+    }
+    oauthWindowRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cleanupOAuth();
+    };
+  }, [cleanupOAuth]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      cleanupOAuth();
+    }
+  }, [isOpen, cleanupOAuth]);
 
   // Close modal after authentication without updating during render
   useEffect(() => {
     if (isAuthenticated && isOpen) {
+      cleanupOAuth();
       onClose();
     }
-  }, [isAuthenticated, isOpen, onClose]);
+  }, [isAuthenticated, isOpen, onClose, cleanupOAuth]);
 
   if (!isOpen) return null;
+  const resolveRedirectPath = (targetPath, userRole) => {
+    if (typeof targetPath === "string" && targetPath.startsWith("/")) {
+      return targetPath;
+    }
+
+    if (userRole === "organizer") {
+      return "/organizer/dashboard";
+    }
+
+    return "/";
+  };
+
+  const handleGoogleLogin = () => {
+    if (typeof window === "undefined") return;
+
+    cleanupOAuth();
+    oauthCompletedRef.current = false;
+
+    setLocalError("");
+    setSuccessMessage("");
+    dispatch(clearError());
+
+    const redirectParam = encodeURIComponent(
+      `${window.location.pathname}${window.location.search}`
+    );
+    const authUrl = `${apiBaseUrl}/api/auth/google?redirect=${redirectParam}`;
+
+    const width = 500;
+    const height = 650;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    const popup = window.open(
+      authUrl,
+      "google-login",
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    if (!popup) {
+      setLocalError(
+        "Please enable pop-ups to sign in with Google. You can try again after allowing pop-ups for this site."
+      );
+      return;
+    }
+
+    oauthWindowRef.current = popup;
+
+    const listener = async (event) => {
+      if (event.origin !== frontendOrigin) return;
+      const { type, provider, payload, message } = event.data || {};
+      if (provider !== "google") return;
+
+      oauthCompletedRef.current = true;
+      cleanupOAuth({ closeWindow: true });
+
+      if (type === "oauth-error") {
+        setLocalError(
+          message || "Google sign-in failed. Please try again later."
+        );
+        return;
+      }
+
+      if (type !== "oauth-success" || !payload) {
+        setLocalError("Unexpected response from Google sign-in.");
+        return;
+      }
+
+      const { tokens, user: oauthUser, redirect } = payload;
+
+      if (!tokens?.accessToken || !tokens?.refreshToken) {
+        setLocalError("Failed to receive authentication tokens from Google.");
+        return;
+      }
+
+      console.log("🔐 [GOOGLE OAUTH] Received payload:", {
+        hasTokens: !!tokens?.accessToken,
+        hasUser: !!oauthUser,
+        userData: oauthUser,
+      });
+
+      // Store tokens FIRST
+      localStorage.setItem("authToken", tokens.accessToken);
+      localStorage.setItem("refreshToken", tokens.refreshToken);
+      
+      // Set auth token in Redux
+      dispatch(setAuthToken(tokens.accessToken));
+
+      // Set user immediately from OAuth payload
+      // This ensures user is logged in even if getCurrentUser fails or is slow
+      if (oauthUser) {
+        console.log("👤 [GOOGLE OAUTH] Setting user from OAuth payload:", oauthUser);
+        dispatch(setUser(oauthUser));
+        
+        // Log that we're setting the user
+        console.log("✅ [GOOGLE OAUTH] Dispatched setUser action");
+      } else {
+        console.warn("⚠️ [GOOGLE OAUTH] No user data in OAuth payload!");
+      }
+
+      setSuccessMessage("Signed in with Google. Finishing up...");
+
+      try {
+        // Fetch fresh user data from backend
+        const fetchedUser = await dispatch(getCurrentUser()).unwrap();
+        console.log("✅ [GOOGLE OAUTH] Fetched user from backend:", fetchedUser);
+        
+        const destination = resolveRedirectPath(
+          redirect,
+          fetchedUser?.role || oauthUser?.role
+        );
+        
+        // Small delay to ensure state is updated before navigation
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        
+        onClose();
+        navigate(destination);
+      } catch (fetchError) {
+        console.error("❌ [GOOGLE OAUTH] Failed to fetch user after Google login:", fetchError);
+        
+        // Even if getCurrentUser fails, we have oauthUser set, so proceed
+        if (oauthUser) {
+          console.log("🔄 [GOOGLE OAUTH] Using OAuth user data as fallback");
+          const destination = resolveRedirectPath(redirect, oauthUser?.role);
+          
+          // Small delay to ensure state is updated before navigation
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          
+        onClose();
+        navigate(destination);
+        } else {
+          setLocalError("Failed to complete Google sign-in. Please try again.");
+        }
+      }
+    };
+
+    oauthListenerRef.current = listener;
+    window.addEventListener("message", listener);
+
+    oauthTimerRef.current = window.setInterval(() => {
+      if (!oauthWindowRef.current || oauthWindowRef.current.closed) {
+        clearInterval(oauthTimerRef.current);
+        oauthTimerRef.current = null;
+        if (!oauthCompletedRef.current) {
+          cleanupOAuth({ closeWindow: false });
+          setLocalError(
+            "Google sign-in was closed before completion. Please try again."
+          );
+        }
+      }
+    }, 500);
+  };
 
   // Auto-generate username from name
   const generateUsername = (name) => {
@@ -144,6 +364,7 @@ const AuthModal = ({ isOpen, onClose }) => {
     setPasswordTouched(false);
     setConfirmTouched(false);
     dispatch(clearError());
+    cleanupOAuth();
     setFormData({
       email: "",
       password: "",
@@ -297,6 +518,64 @@ const AuthModal = ({ isOpen, onClose }) => {
               </div>
             </div>
           )}
+
+          <div className="space-y-4 mb-6">
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className={`w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border font-semibold transition-colors duration-200 ${
+                isDarkMode
+                  ? "bg-gray-800 border-gray-600 text-white hover:bg-gray-700"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
+              }`}
+              disabled={loading}
+            >
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white">
+                <svg
+                  className="h-5 w-5"
+                  viewBox="0 0 533.5 544.3"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M533.5 278.4c0-17.4-1.4-35.7-4.6-52.8H272v99.8h146.9c-6 33.6-24.5 62.2-52 81.3v67.4h83.9c49 45 77.2 111.2 77.2 182.4 0 19.9-1.6 39.2-4.6 57.5h.1V278.4Z"
+                    fill="#4285f4"
+                  />
+                  <path
+                    d="M272 544.3c72.5 0 133.5-24 178.1-65.2l-83.9-67.4c-23.3 16-53.3 25-94.2 25-72 0-133.6-48.2-155.6-112.9H31v70.6c45 88.4 138.4 149.9 241 149.9Z"
+                    fill="#34a853"
+                  />
+                  <path
+                    d="M116.4 323.4c-5.1-15-8-31.2-8-47.4 0-16.2 2.9-32.4 8-47.4V158H31c-29.5 58.9-29.5 128.4 0 187.3l85.4-21.9Z"
+                    fill="#fbbc04"
+                  />
+                  <path
+                    d="M272 106.6c39.5-.5 76.6 13.8 104.9 39.4l78.1-78c-48.1-44.9-111.4-68-183-68C169.4 0 76 61.6 31 149.9l85.4 70.6C138.4 154.1 200 106.6 272 106.6Z"
+                    fill="#ea4335"
+                  />
+                </svg>
+              </span>
+              Continue with Google
+            </button>
+            <div className="flex items-center gap-3">
+              <span
+                className={`flex-1 h-px ${
+                  isDarkMode ? "bg-gray-700" : "bg-gray-200"
+                }`}
+              />
+              <span
+                className={`text-xs uppercase tracking-wide ${
+                  isDarkMode ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
+                or
+              </span>
+              <span
+                className={`flex-1 h-px ${
+                  isDarkMode ? "bg-gray-700" : "bg-gray-200"
+                }`}
+              />
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {!isLogin && (

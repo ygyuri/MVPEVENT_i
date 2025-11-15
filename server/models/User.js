@@ -136,6 +136,17 @@ const userSchema = new mongoose.Schema(
       enum: ["pending_activation", "active", "suspended"],
       default: "active",
     },
+    googleId: {
+      type: String,
+      index: true,
+      unique: true,
+      sparse: true, // Allow multiple null values
+    },
+    lastLoginProvider: {
+      type: String,
+      enum: ["email", "google"],
+      default: "email",
+    },
     profile: {
       phone: String,
       city: String,
@@ -157,6 +168,7 @@ userSchema.index({ walletAddress: 1 });
 userSchema.index({ role: 1, isActive: 1 });
 userSchema.index({ accountStatus: 1 }); // For filtering by account status
 userSchema.index({ email: 1, accountStatus: 1 }); // For login and account status checks
+// Note: googleId index is defined inline in the schema with unique: true, sparse: true
 
 // Virtual for full name - prioritize name field, fallback to firstName/lastName
 userSchema.virtual("fullName").get(function () {
@@ -221,6 +233,46 @@ userSchema.methods.clearTempPassword = function () {
   if (this.accountStatus === "pending_activation") {
     this.accountStatus = "active";
   }
+};
+
+// Helper function to sanitize username seed
+const sanitizeUsernameSeed = (str) => {
+  if (!str || typeof str !== "string") return null;
+  return str
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_]/g, "") // Remove invalid characters
+    .substring(0, 30); // Limit length
+};
+
+// Static method to generate unique username
+userSchema.statics.generateUniqueUsername = async function (
+  displayName,
+  email
+) {
+  const base =
+    sanitizeUsernameSeed(displayName) ||
+    sanitizeUsernameSeed(email?.split("@")[0]) ||
+    "eventi";
+
+  let username = base;
+  let counter = 1;
+  const maxAttempts = 100; // Prevent infinite loops
+
+  while (counter < maxAttempts) {
+    const existing = await this.findOne({ username });
+    if (!existing) {
+      return username;
+    }
+    // Try with counter suffix
+    const suffix = counter.toString();
+    const maxBaseLength = 50 - suffix.length - 1; // Leave room for underscore and counter
+    username = `${base.substring(0, maxBaseLength)}_${suffix}`;
+    counter++;
+  }
+
+  // Fallback: use timestamp if all attempts fail
+  return `${base.substring(0, 30)}_${Date.now().toString(36)}`;
 };
 
 // JSON serialization

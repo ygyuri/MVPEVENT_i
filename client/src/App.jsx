@@ -39,13 +39,16 @@ import {
   OrganizerUpdatesDashboard,
   AttendeeUpdatesView,
 } from "./pages/EventUpdates";
-import { getCurrentUser } from "./store/slices/authSlice";
+import { getCurrentUser, setAuthToken } from "./store/slices/authSlice";
 import ErrorBoundary from "./components/shared/ErrorBoundary";
 import { ToastProvider } from "./components/shared/Toast";
 import ScrollToTop from "./components/shared/ScrollToTop";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function App() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   useEffect(() => {
@@ -55,6 +58,59 @@ function App() {
       dispatch(getCurrentUser());
     }
   }, [dispatch]);
+
+  // Handle OAuth callback fallback (when window.opener is not available)
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const oauthStatus = searchParams.get("oauth");
+    const provider = searchParams.get("provider");
+    const tokensParam = searchParams.get("tokens");
+
+    if (oauthStatus === "success" && provider === "google") {
+      console.log("🔄 [OAUTH FALLBACK] Detected OAuth success in URL");
+      
+      // If tokens are in URL, decode and store them
+      if (tokensParam) {
+        try {
+          // Decode base64url in browser
+          const base64Url = tokensParam.replace(/-/g, "+").replace(/_/g, "/");
+          const padded = base64Url + "=".repeat((4 - (base64Url.length % 4)) % 4);
+          const binaryString = atob(padded);
+          const tokens = JSON.parse(binaryString);
+          
+          console.log("🔐 [OAUTH FALLBACK] Tokens found in URL, storing...");
+          
+          if (tokens.accessToken && tokens.refreshToken) {
+            localStorage.setItem("authToken", tokens.accessToken);
+            localStorage.setItem("refreshToken", tokens.refreshToken);
+            dispatch(setAuthToken(tokens.accessToken));
+            console.log("✅ [OAUTH FALLBACK] Tokens stored successfully");
+          }
+        } catch (error) {
+          console.error("❌ [OAUTH FALLBACK] Failed to decode tokens:", error);
+        }
+      }
+      
+      // Remove OAuth params from URL
+      const newSearchParams = new URLSearchParams(location.search);
+      newSearchParams.delete("oauth");
+      newSearchParams.delete("provider");
+      newSearchParams.delete("tokens");
+      const newSearch = newSearchParams.toString();
+      const newPath = location.pathname + (newSearch ? `?${newSearch}` : "");
+      window.history.replaceState({}, "", newPath);
+
+      // Fetch user from backend (session should be active)
+      dispatch(getCurrentUser())
+        .unwrap()
+        .then((user) => {
+          console.log("✅ [OAUTH FALLBACK] User fetched successfully:", user);
+        })
+        .catch((error) => {
+          console.error("❌ [OAUTH FALLBACK] Failed to fetch user:", error);
+        });
+    }
+  }, [location, dispatch, navigate]);
 
   return (
     <ErrorBoundary>

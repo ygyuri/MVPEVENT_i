@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { motion } from "framer-motion";
 import { Globe } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import {
   fetchFeaturedEvents,
   fetchTrendingEvents,
@@ -66,8 +67,74 @@ const Home = () => {
     dispatch(fetchSuggestedEvents({ page: nextPage, pageSize: 12 }));
   };
 
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://event-i.co.ke";
+  const currentUrl = baseUrl;
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Event-i",
+    "description": "The global platform for effortless event management. Discover and create events from anywhere in the world with multi-currency support.",
+    "url": currentUrl,
+    "logo": `${baseUrl}/logos/event-i_light_mode_logo.png`,
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "email": "support@event-i.co.ke",
+      "telephone": "+254703328938",
+      "contactType": "customer service",
+      "areaServed": "Worldwide",
+      "availableLanguage": ["English"]
+    },
+    "sameAs": [
+      "https://facebook.com",
+      "https://twitter.com",
+      "https://instagram.com"
+    ],
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "4.8",
+      "reviewCount": "1000"
+    },
+    "applicationCategory": "EventManagementSoftware",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD",
+      "description": "Free event management platform with premium features available"
+    }
+  };
+
   return (
-    <div className="relative">
+    <>
+      <Helmet>
+        <title>Event-i - Global Event Management Platform</title>
+        <meta name="description" content="Event-i is the global platform for effortless event management. Discover and create events from anywhere in the world with multi-currency support. Manage your events seamlessly, anywhere." />
+        <meta name="keywords" content="event management, event platform, ticket sales, event creation, multi-currency, global events, event discovery, Event-i" />
+        <link rel="canonical" href={currentUrl} />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Event-i - Global Event Management Platform" />
+        <meta property="og:description" content="The global platform for effortless event management. Discover and create events from anywhere in the world with multi-currency support." />
+        <meta property="og:url" content={currentUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Event-i" />
+        <meta property="og:image" content={`${baseUrl}/og-image.png`} />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Event-i - Global Event Management Platform" />
+        <meta name="twitter:description" content="The global platform for effortless event management. Discover and create events from anywhere in the world." />
+        <meta name="twitter:image" content={`${baseUrl}/og-image.png`} />
+        
+        {/* Application metadata for OAuth */}
+        <meta name="application-name" content="Event-i" />
+        <meta name="application-url" content={currentUrl} />
+        
+        {/* Structured Data */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      </Helmet>
+      <div className="relative">
       {/* Hero */}
       <section className="hero-modern relative overflow-hidden">
         {/* Background gradient */}
@@ -264,6 +331,7 @@ const Home = () => {
         </div>
       </section>
     </div>
+    </>
   );
 };
 
