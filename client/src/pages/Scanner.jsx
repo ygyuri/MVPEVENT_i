@@ -56,10 +56,20 @@ export default function Scanner() {
   };
 
   useEffect(() => {
-    codeReader.current = new BrowserMultiFormatReader();
+    console.log("🔧 Initializing QR scanner...");
+    try {
+      // BrowserMultiFormatReader automatically supports QR codes
+      codeReader.current = new BrowserMultiFormatReader();
+      console.log("✅ QR scanner initialized");
+    } catch (e) {
+      console.error("❌ Failed to initialize scanner:", e);
+      codeReader.current = null;
+    }
     return () => {
       try {
-        codeReader.current?.reset();
+        if (codeReader.current) {
+          codeReader.current.reset();
+        }
       } catch {}
     };
   }, []);
@@ -72,127 +82,300 @@ export default function Scanner() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (!videoRef.current) return;
+    if (!videoRef.current) {
+      console.warn("⚠️ Video ref not available");
+      return;
+    }
+
+    let controls = null;
+    let isActive = true;
+
     const start = async () => {
+      console.log("🎥 Starting camera...", { preferBackCamera, torchOn });
       dispatch(setScanning(true));
+
       try {
+        // Build video constraints - simpler and more compatible
         const constraints = {
           video: {
             facingMode: preferBackCamera ? { ideal: "environment" } : "user",
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            advanced: [{ torch: torchOn }],
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
           },
         };
-        const controls = await codeReader.current.decodeFromConstraints(
-          constraints,
-          videoRef.current,
-          (result, err) => {
-            if (lockedRef.current) return;
-            if (err) {
-              // Suppress "No MultiFormat Readers were able to detect the code" errors
-              // This is expected when scanning - it means no QR code is visible yet
-              const errorMessage = err?.message || err?.toString() || "";
-              if (
-                errorMessage.includes("No MultiFormat Readers") ||
-                errorMessage.includes("detect the code")
-              ) {
-                // This is normal - scanner is just checking frames, no QR code visible yet
+
+        // Add torch support if available and requested
+        if (torchOn) {
+          constraints.video.advanced = [{ torch: true }];
+        }
+
+        console.log("📹 Starting QR scanner with constraints:", constraints);
+
+        // Use decodeFromVideoDevice for better control and device selection
+        try {
+          if (!codeReader.current) {
+            throw new Error("Scanner not initialized");
+          }
+
+          // Get available video devices
+          const videoInputDevices =
+            await codeReader.current.listVideoInputDevices();
+          console.log(`📷 Found ${videoInputDevices.length} video device(s)`);
+
+          // Find the preferred camera (back camera if available)
+          let selectedDeviceId = null;
+          if (videoInputDevices.length > 0) {
+            if (preferBackCamera) {
+              // Look for back/rear camera
+              const backCamera = videoInputDevices.find(
+                (device) =>
+                  device.label.toLowerCase().includes("back") ||
+                  device.label.toLowerCase().includes("rear") ||
+                  device.label.toLowerCase().includes("environment") ||
+                  device.label.toLowerCase().includes("facing back")
+              );
+              selectedDeviceId =
+                backCamera?.deviceId ||
+                videoInputDevices[videoInputDevices.length - 1]?.deviceId;
+              console.log(
+                "📷 Selected back camera:",
+                selectedDeviceId || "using last device"
+              );
+            } else {
+              // Use front camera
+              const frontCamera = videoInputDevices.find(
+                (device) =>
+                  device.label.toLowerCase().includes("front") ||
+                  device.label.toLowerCase().includes("user") ||
+                  device.label.toLowerCase().includes("facing front")
+              );
+              selectedDeviceId =
+                frontCamera?.deviceId || videoInputDevices[0]?.deviceId;
+              console.log(
+                "📷 Selected front camera:",
+                selectedDeviceId || "using first device"
+              );
+            }
+          }
+
+          // Start decoding from video device (preferred method)
+          controls = await codeReader.current.decodeFromVideoDevice(
+            selectedDeviceId || undefined, // undefined uses default
+            videoRef.current,
+            (result, err) => {
+              if (!isActive || lockedRef.current) return;
+
+              if (err) {
+                // Suppress "No MultiFormat Readers were able to detect the code" errors
+                const errorMessage = err?.message || err?.toString() || "";
+                if (
+                  errorMessage.includes("No MultiFormat Readers") ||
+                  errorMessage.includes("detect the code") ||
+                  errorMessage.includes("NotFoundException")
+                ) {
+                  // This is normal - scanner is checking frames, no QR visible yet
+                  return;
+                }
+                // Log other errors
+                console.error("❌ QR Scanner error:", err);
                 return;
               }
-              // Only log actual errors
-              console.error("❌ QR Scanner error:", err);
-              return;
-            }
-            if (result) {
-              setLocked(true);
-              lockedRef.current = true;
 
-              // Extract QR code text - handle different ZXing result formats
-              let qrText = null;
-              try {
-                // ZXing BrowserMultiFormatReader returns result with getText() method
-                qrText = result.getText
-                  ? result.getText()
-                  : result.text || result;
+              if (result && isActive) {
+                setLocked(true);
+                lockedRef.current = true;
 
-                // Ensure it's a string and trim whitespace
-                if (typeof qrText !== "string") {
-                  console.error(
-                    "❌ QR text is not a string:",
-                    typeof qrText,
-                    qrText
-                  );
-                  qrText = String(qrText);
-                }
-                qrText = qrText.trim();
+                // Extract QR code text - handle different ZXing result formats
+                let qrText = null;
+                try {
+                  // ZXing returns result with getText() method
+                  if (typeof result.getText === "function") {
+                    qrText = result.getText();
+                  } else if (result.text) {
+                    qrText = result.text;
+                  } else if (typeof result === "string") {
+                    qrText = result;
+                  } else {
+                    qrText = String(result);
+                  }
 
-                if (!qrText) {
-                  console.error("❌ Empty QR text extracted");
+                  // Ensure it's a string and trim whitespace
+                  if (typeof qrText !== "string") {
+                    console.error(
+                      "❌ QR text is not a string:",
+                      typeof qrText,
+                      qrText
+                    );
+                    qrText = String(qrText);
+                  }
+                  qrText = qrText.trim();
+
+                  if (!qrText) {
+                    console.error("❌ Empty QR text extracted");
+                    setLocked(false);
+                    lockedRef.current = false;
+                    return;
+                  }
+
+                  console.log("✅ QR code scanned:", {
+                    length: qrText.length,
+                    prefix: qrText.substring(0, 50),
+                    format: result.getBarcodeFormat?.() || "unknown",
+                  });
+                } catch (e) {
+                  console.error("❌ Error extracting QR text:", e);
                   setLocked(false);
                   lockedRef.current = false;
                   return;
                 }
 
-                console.log("✅ QR code scanned:", {
-                  length: qrText.length,
-                  prefix: qrText.substring(0, 50),
-                });
-              } catch (e) {
-                console.error("❌ Error extracting QR text:", e);
-                setLocked(false);
-                lockedRef.current = false;
+                const device = {
+                  userAgent:
+                    typeof navigator !== "undefined"
+                      ? navigator.userAgent
+                      : undefined,
+                  platform:
+                    typeof navigator !== "undefined"
+                      ? navigator.platform
+                      : undefined,
+                  vendor:
+                    typeof navigator !== "undefined"
+                      ? navigator.vendor
+                      : undefined,
+                };
+
+                dispatch(validateScan({ qr: qrText, location, device }))
+                  .unwrap()
+                  .then(() => {
+                    console.log("✅ Scan validation successful");
+                  })
+                  .catch((error) => {
+                    console.error("❌ Scan validation failed:", error);
+                    // If offline, enqueue
+                    if (!navigator.onLine) {
+                      dispatch(
+                        enqueueOfflineScan({ qr: qrText, location, device })
+                      );
+                    }
+                  })
+                  .finally(() => {
+                    setTimeout(() => {
+                      setLocked(false);
+                      lockedRef.current = false;
+                    }, 2000); // Longer delay to prevent rapid re-scans
+                  });
+              }
+            }
+          );
+
+          console.log("✅ QR scanner started successfully");
+        } catch (decodeError) {
+          // Fallback to decodeFromConstraints if decodeFromVideoDevice fails
+          console.warn(
+            "⚠️ decodeFromVideoDevice failed, trying decodeFromConstraints:",
+            decodeError
+          );
+          controls = await codeReader.current.decodeFromConstraints(
+            constraints,
+            videoRef.current,
+            (result, err) => {
+              if (!isActive || lockedRef.current) return;
+
+              if (err) {
+                const errorMessage = err?.message || err?.toString() || "";
+                if (
+                  errorMessage.includes("No MultiFormat Readers") ||
+                  errorMessage.includes("detect the code") ||
+                  errorMessage.includes("NotFoundException")
+                ) {
+                  return;
+                }
+                console.error("❌ QR Scanner error:", err);
                 return;
               }
 
-              const device = {
-                userAgent:
-                  typeof navigator !== "undefined"
-                    ? navigator.userAgent
-                    : undefined,
-                platform:
-                  typeof navigator !== "undefined"
-                    ? navigator.platform
-                    : undefined,
-                vendor:
-                  typeof navigator !== "undefined"
-                    ? navigator.vendor
-                    : undefined,
-              };
+              if (result && isActive) {
+                setLocked(true);
+                lockedRef.current = true;
 
-              dispatch(validateScan({ qr: qrText, location, device }))
-                .unwrap()
-                .catch((error) => {
-                  console.error("❌ Scan validation failed:", error);
-                  // If offline, enqueue
-                  if (!navigator.onLine) {
-                    dispatch(
-                      enqueueOfflineScan({ qr: qrText, location, device })
-                    );
-                  }
-                })
-                .finally(() =>
-                  setTimeout(() => {
+                let qrText = null;
+                try {
+                  qrText = result.getText
+                    ? result.getText()
+                    : result.text || String(result);
+                  qrText = qrText.trim();
+
+                  if (!qrText) {
                     setLocked(false);
                     lockedRef.current = false;
-                  }, 1500)
-                );
+                    return;
+                  }
+
+                  console.log("✅ QR code scanned:", {
+                    length: qrText.length,
+                    prefix: qrText.substring(0, 50),
+                  });
+
+                  const device = {
+                    userAgent:
+                      typeof navigator !== "undefined"
+                        ? navigator.userAgent
+                        : undefined,
+                    platform:
+                      typeof navigator !== "undefined"
+                        ? navigator.platform
+                        : undefined,
+                    vendor:
+                      typeof navigator !== "undefined"
+                        ? navigator.vendor
+                        : undefined,
+                  };
+
+                  dispatch(validateScan({ qr: qrText, location, device }))
+                    .unwrap()
+                    .catch((error) => {
+                      console.error("❌ Scan validation failed:", error);
+                      if (!navigator.onLine) {
+                        dispatch(
+                          enqueueOfflineScan({ qr: qrText, location, device })
+                        );
+                      }
+                    })
+                    .finally(() => {
+                      setTimeout(() => {
+                        setLocked(false);
+                        lockedRef.current = false;
+                      }, 2000);
+                    });
+                } catch (e) {
+                  console.error("❌ Error extracting QR text:", e);
+                  setLocked(false);
+                  lockedRef.current = false;
+                }
+              }
             }
-          }
-        );
-        return () => controls?.stop();
+          );
+          console.log("✅ QR scanner started (fallback method)");
+        }
       } catch (e) {
-        // camera error
-      } finally {
+        console.error("❌ Failed to start camera/scanner:", e);
         dispatch(setScanning(false));
       }
     };
-    const stop = start();
+
+    start();
+
     return () => {
+      console.log("🛑 Stopping QR scanner");
+      isActive = false;
       try {
+        if (controls) {
+          controls.stop();
+        }
         codeReader.current?.reset();
-      } catch {}
-      if (typeof stop === "function") stop();
+      } catch (e) {
+        console.warn("⚠️ Error stopping scanner:", e);
+      }
     };
   }, [dispatch, location, preferBackCamera, torchOn]);
 
