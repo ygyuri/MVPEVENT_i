@@ -7,6 +7,13 @@ const SECRET = process.env.TICKET_QR_SECRET || 'change-me-in-production';
 const AUTO_ROTATE_MS = parseInt(process.env.TICKET_QR_AUTO_ROTATE_MS || '0', 10); // 0 disables
 const ENC_KEY_B64 = process.env.TICKET_QR_ENC_KEY || '';
 
+// Legacy secrets for backward compatibility with old QR codes
+const LEGACY_SECRETS = [
+  SECRET, // Current secret (try first)
+  'default-secret-change-in-production', // Old default from payhero.js
+  process.env.QR_ENCRYPTION_SECRET || null, // Old env var name (if still set)
+].filter(Boolean);
+
 function base64UrlEncode(buffer) {
   return Buffer.from(buffer).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
@@ -80,10 +87,78 @@ class TicketService {
 
   async verifyQr(compactQrString) {
     try {
-      // Supports both plaintext compact JSON or encrypted format prefixed with E1.
+      if (!compactQrString || typeof compactQrString !== 'string') {
+        console.error('❌ verifyQr: Invalid QR string provided', { type: typeof compactQrString, length: compactQrString?.length });
+        return { ok: false, code: 'INVALID_QR' };
+      }
+
+      // First, try to decrypt legacy payhero.js format (AES-256-CBC)
+      const legacyPayload = decryptLegacyPayheroQR(compactQrString);
+      if (legacyPayload) {
+        console.log('✅ verifyQr: Legacy QR format detected', { ticketId: legacyPayload.ticketId });
+        const { ticketId, eventId, userId, ticketNumber, timestamp } = legacyPayload;
+        if (!ticketId) {
+          return { ok: false, code: 'INVALID_QR' };
+        }
+
+        // Find ticket by ID
+        const ticket = await Ticket.findById(ticketId);
+        if (!ticket) {
+          return { ok: false, code: 'TICKET_NOT_FOUND' };
+        }
+
+        // Verify the QR code matches what's stored in the ticket
+        if (ticket.qrCode !== compactQrString) {
+          console.error('❌ verifyQr: QR code mismatch', {
+            ticketId: ticket._id.toString(),
+            storedLength: ticket.qrCode?.length,
+            scannedLength: compactQrString.length,
+            storedPrefix: ticket.qrCode?.substring(0, 20),
+            scannedPrefix: compactQrString.substring(0, 20)
+          });
+          return { ok: false, code: 'INVALID_QR' };
+        }
+
+        // Verify signature if qr metadata exists
+        if (ticket.qr?.signature) {
+          // Try to verify with current secret or legacy secrets
+          let signatureValid = false;
+          for (const secret of LEGACY_SECRETS) {
+            const expectedSig = crypto
+              .createHmac('sha256', secret)
+              .update(compactQrString)
+              .digest('hex');
+            if (expectedSig === ticket.qr.signature) {
+              signatureValid = true;
+              break;
+            }
+          }
+          if (!signatureValid) {
+            return { ok: false, code: 'INVALID_QR' };
+          }
+        }
+
+        // Check if ticket is valid
+        if (ticket.status !== 'active') {
+          return { ok: false, code: 'TICKET_NOT_ACTIVE' };
+        }
+
+        // Check expiry if set
+        if (ticket.qr?.expiresAt && new Date(ticket.qr.expiresAt).getTime() < Date.now()) {
+          return { ok: false, code: 'QR_EXPIRED' };
+        }
+
+        const event = await Event.findById(eventId || ticket.eventId).select('organizer title dates');
+        console.log('✅ verifyQr: Legacy QR verified successfully', { ticketId: ticket._id.toString() });
+        return { ok: true, ticket, event };
+      }
+
+      // Otherwise, try new format (compact JSON with HMAC signature)
+      console.log('🔍 verifyQr: Trying new format', { qrLength: compactQrString.length, prefix: compactQrString.substring(0, 50) });
       const data = maybeDecryptPayload(compactQrString) || parseQrPayloadToJson(compactQrString);
       const { tid, ts, nonce, v, sig } = data || {};
       if (!tid || !ts || !nonce || !v || !sig) {
+        console.error('❌ verifyQr: New format parse failed', { hasData: !!data, tid: !!tid, ts: !!ts, nonce: !!nonce, v: !!v, sig: !!sig });
         return { ok: false, code: 'INVALID_QR' };
       }
 
@@ -107,8 +182,10 @@ class TicketService {
       }
 
       const event = await Event.findById(ticket.eventId).select('organizer title dates');
+      console.log('✅ verifyQr: New format QR verified successfully', { ticketId: ticket._id.toString() });
       return { ok: true, ticket, event };
     } catch (e) {
+      console.error('❌ verifyQr: Exception during verification', { error: e.message, stack: e.stack, qrLength: compactQrString?.length });
       return { ok: false, code: 'INVALID_QR' };
     }
   }
@@ -215,6 +292,67 @@ function maybeDecryptPayload(s) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Decrypt legacy AES-256-CBC QR codes from payhero.js (backward compatibility)
+ * Format: "iv:encrypted" where both are hex strings
+ * Key derivation: scryptSync(secret, "salt", 32)
+ */
+function decryptLegacyPayheroQR(encryptedData) {
+  if (!encryptedData || typeof encryptedData !== 'string') {
+    return null;
+  }
+  
+  // Check if it's the old format (iv:encrypted in hex)
+  if (!encryptedData.includes(':')) {
+    return null;
+  }
+  
+  const parts = encryptedData.split(':');
+  if (parts.length !== 2) {
+    return null;
+  }
+  
+  const [ivHex, encryptedHex] = parts;
+  
+  // Validate hex format
+  if (!/^[0-9a-fA-F]+$/.test(ivHex) || !/^[0-9a-fA-F]+$/.test(encryptedHex)) {
+    console.error('❌ decryptLegacyPayheroQR: Invalid hex format', { ivHexLength: ivHex.length, encryptedHexLength: encryptedHex.length });
+    return null;
+  }
+  
+  // Try each legacy secret
+  for (const secret of LEGACY_SECRETS) {
+    try {
+      const key = crypto.scryptSync(secret, 'salt', 32);
+      const iv = Buffer.from(ivHex, 'hex');
+      const encrypted = Buffer.from(encryptedHex, 'hex');
+      
+      if (iv.length !== 16) {
+        console.error('❌ decryptLegacyPayheroQR: Invalid IV length', { length: iv.length });
+        continue;
+      }
+      
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      let decrypted = decipher.update(encrypted, null, 'utf8');
+      decrypted += decipher.final('utf8');
+      
+      const payload = JSON.parse(decrypted);
+      console.log('✅ decryptLegacyPayheroQR: Successfully decrypted', { ticketId: payload.ticketId });
+      return payload;
+    } catch (e) {
+      // Try next secret - don't log every failure as it's expected to try multiple secrets
+      continue;
+    }
+  }
+  
+  console.error('❌ decryptLegacyPayheroQR: Failed to decrypt with all legacy secrets', { 
+    qrLength: encryptedData.length,
+    hasColon: encryptedData.includes(':'),
+    partsCount: parts.length 
+  });
+  return null;
 }
 
 

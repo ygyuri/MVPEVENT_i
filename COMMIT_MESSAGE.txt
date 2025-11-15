@@ -1,0 +1,36 @@
+fix(qr-codes): add backward compatibility and fix scanning issues
+
+- Fix environment variable mismatch in payhero.js QR generation
+  * Change QR_ENCRYPTION_SECRET to TICKET_QR_SECRET for consistency
+  * Ensures new QR codes use correct secret from environment
+
+- Add backward compatibility for legacy QR codes (30 existing tickets)
+  * Support old AES-256-CBC encrypted format (iv:encrypted hex)
+  * Support new compact JSON format with HMAC signature
+  * Try multiple legacy secrets for decryption (current, default, old env var)
+  * Verify old QR codes against stored ticket.qrCode field
+
+- Update QR availability checks to support both formats
+  * Check both ticket.qr (new) and ticket.qrCode (old) fields
+  * Old tickets now show as having QR codes available
+
+- Preserve existing QR codes for tickets already sent via email
+  * Return existing qrCode for old tickets unless rotating
+  * Ensures QR codes in app match what was sent in emails
+
+- Enhance client-side QR code extraction and validation
+  * Handle different ZXing result formats (getText, text, direct)
+  * Trim whitespace from scanned QR codes
+  * Validate QR string type and non-empty before sending
+  * Add comprehensive error handling and logging
+
+- Add comprehensive logging for debugging scanning issues
+  * Log QR extraction, format detection, and verification steps
+  * Log scan requests and responses on both client and server
+  * Log decryption attempts and failures with details
+  * Log QR code mismatches with prefixes for comparison
+
+This ensures all existing QR codes (30 tickets already sent) continue to
+work while new QR codes use the updated format. Scanning now supports
+both old and new formats seamlessly.
+

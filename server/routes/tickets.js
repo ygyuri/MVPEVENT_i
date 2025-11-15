@@ -614,7 +614,8 @@ router.get("/my", verifyToken, async (req, res) => {
         status: t.status,
         usedAt: t.usedAt,
         // Only show QR as available if order is paid/completed
-        qrAvailable: isPaid && !!t.qr,
+        // Support both old format (qrCode) and new format (qr metadata)
+        qrAvailable: isPaid && (!!t.qr || !!t.qrCode),
         orderPaid: isPaid,
       };
     });
@@ -680,7 +681,8 @@ router.get(
         usedAt: ticket.usedAt,
         usedBy: ticket.usedBy,
         metadata: ticket.metadata,
-        qrAvailable: !!ticket.qr,
+        // Support both old format (qrCode) and new format (qr metadata)
+        qrAvailable: !!ticket.qr || !!ticket.qrCode,
       };
       res.json({ success: true, data: payload });
     } catch (error) {
@@ -702,7 +704,7 @@ router.post(
     try {
       const Order = require("../models/Order");
       const ticket = await Ticket.findById(req.params.ticketId)
-        .select("ownerUserId eventId status qr orderId")
+        .select("ownerUserId eventId status qr qrCode orderId")
         .populate("orderId", "paymentStatus status");
       if (!ticket)
         return res
@@ -735,6 +737,23 @@ router.post(
       }
 
       const { rotate = false } = req.body || {};
+      
+      // For old tickets with existing qrCode (already sent in emails), return the existing QR code
+      // unless explicitly rotating. This ensures the QR code matches what was sent in the email.
+      if (!rotate && ticket.qrCode && !ticket.qr?.nonce) {
+        // Return the old QR code format - the encrypted string that's stored in qrCode
+        // This matches what was sent in the email and will work with backward-compatible scanning
+        return res.json({
+          success: true,
+          data: {
+            qr: ticket.qrCode, // The encrypted string (iv:encrypted format)
+            expiresAt: ticket.qr?.expiresAt || null,
+            legacy: true // Flag to indicate this is the old format
+          }
+        });
+      }
+      
+      // Otherwise, generate new QR code using the new format
       const result = await ticketService.issueQr(ticket._id, { rotate });
       res.json({ success: true, data: result });
     } catch (error) {
@@ -760,12 +779,27 @@ router.post(
     if (v) return v;
     try {
       const { qr, location, device } = req.body;
+      console.log('🔍 Scan request received', {
+        qrLength: qr?.length,
+        qrType: typeof qr,
+        qrPrefix: qr?.substring(0, 50),
+        location,
+        userId: req.user._id,
+        userRole: req.user.role
+      });
+      
+      // verifyQr handles both old (AES-256-CBC from payhero.js) and new (compact JSON) QR formats
+      // Old format: "iv:encrypted" hex string stored in ticket.qrCode
+      // New format: Compact JSON with HMAC signature stored in ticket.qr metadata
       const verification = await ticketService.verifyQr(qr);
       if (!verification.ok) {
+        console.error('❌ Scan verification failed', { code: verification.code, qrLength: qr?.length });
         return res
           .status(400)
           .json({ success: false, valid: false, code: verification.code });
       }
+      
+      console.log('✅ Scan verification passed', { ticketId: verification.ticket?._id, eventId: verification.event?._id });
 
       const { ticket, event } = verification;
       // Permission: organizer of event or admin

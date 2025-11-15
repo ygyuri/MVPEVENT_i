@@ -444,7 +444,7 @@ router.post(
           );
 
           const QR_SECRET =
-            process.env.QR_ENCRYPTION_SECRET ||
+            process.env.TICKET_QR_SECRET ||
             "default-secret-change-in-production";
 
           for (const ticket of tickets) {

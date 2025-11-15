@@ -71,20 +71,55 @@ export default function Scanner() {
         };
         const controls = await codeReader.current.decodeFromConstraints(constraints, videoRef.current, (result, err) => {
           if (lockedRef.current) return;
+          if (err) {
+            console.error('❌ QR Scanner error:', err);
+            return;
+          }
           if (result) {
             setLocked(true);
             lockedRef.current = true;
+            
+            // Extract QR code text - handle different ZXing result formats
+            let qrText = null;
+            try {
+              // ZXing BrowserMultiFormatReader returns result with getText() method
+              qrText = result.getText ? result.getText() : (result.text || result);
+              
+              // Ensure it's a string and trim whitespace
+              if (typeof qrText !== 'string') {
+                console.error('❌ QR text is not a string:', typeof qrText, qrText);
+                qrText = String(qrText);
+              }
+              qrText = qrText.trim();
+              
+              if (!qrText) {
+                console.error('❌ Empty QR text extracted');
+                setLocked(false);
+                lockedRef.current = false;
+                return;
+              }
+              
+              console.log('✅ QR code scanned:', { length: qrText.length, prefix: qrText.substring(0, 50) });
+            } catch (e) {
+              console.error('❌ Error extracting QR text:', e);
+              setLocked(false);
+              lockedRef.current = false;
+              return;
+            }
+            
             const device = {
               userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
               platform: typeof navigator !== 'undefined' ? navigator.platform : undefined,
               vendor: typeof navigator !== 'undefined' ? navigator.vendor : undefined
             };
-            dispatch(validateScan({ qr: result.getText(), location, device }))
+            
+            dispatch(validateScan({ qr: qrText, location, device }))
               .unwrap()
-              .catch(() => {
+              .catch((error) => {
+                console.error('❌ Scan validation failed:', error);
                 // If offline, enqueue
                 if (!navigator.onLine) {
-                  dispatch(enqueueOfflineScan({ qr: result.getText(), location, device }));
+                  dispatch(enqueueOfflineScan({ qr: qrText, location, device }));
                 }
               })
               .finally(() => setTimeout(() => { setLocked(false); lockedRef.current = false; }, 1500));

@@ -3,7 +3,22 @@ import api from '../../utils/api';
 
 export const validateScan = createAsyncThunk('scanner/validate', async ({ qr, location, device }, { rejectWithValue }) => {
   try {
-    const res = await api.post(`/api/tickets/scan`, { qr, location, device });
+    // Validate QR string before sending
+    if (!qr || typeof qr !== 'string') {
+      console.error('❌ Invalid QR string in validateScan:', { qr, type: typeof qr });
+      return rejectWithValue({ success: false, error: 'Invalid QR code', code: 'INVALID_QR' });
+    }
+    
+    const qrTrimmed = qr.trim();
+    if (!qrTrimmed) {
+      console.error('❌ Empty QR string after trim');
+      return rejectWithValue({ success: false, error: 'Empty QR code', code: 'INVALID_QR' });
+    }
+    
+    console.log('📤 Sending scan request:', { qrLength: qrTrimmed.length, qrPrefix: qrTrimmed.substring(0, 50), location });
+    
+    const res = await api.post(`/api/tickets/scan`, { qr: qrTrimmed, location, device });
+    console.log('✅ Scan response received:', res.data);
     return res.data;
   } catch (e) {
     const status = e.response?.status;
@@ -12,6 +27,7 @@ export const validateScan = createAsyncThunk('scanner/validate', async ({ qr, lo
       data.code = 'RATE_LIMITED';
       data.retryAfter = e.response?.headers?.['retry-after'];
     }
+    console.error('❌ Scan request failed:', { status, data, error: e.message });
     return rejectWithValue(data);
   }
 });
