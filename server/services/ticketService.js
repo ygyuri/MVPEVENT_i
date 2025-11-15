@@ -4,8 +4,7 @@ const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 
 const DEFAULT_TTL_MS = parseInt(process.env.TICKET_QR_TTL_MS || '900000', 10);
-// Use TICKET_QR_SECRET (matches original implementation used for production tickets)
-const QR_SECRET = process.env.TICKET_QR_SECRET || 'change-me-in-production';
+const SECRET = process.env.TICKET_QR_SECRET || 'change-me-in-production';
 const AUTO_ROTATE_MS = parseInt(process.env.TICKET_QR_AUTO_ROTATE_MS || '0', 10); // 0 disables
 const ENC_KEY_B64 = process.env.TICKET_QR_ENC_KEY || '';
 
@@ -20,7 +19,7 @@ function base64UrlDecodeToBuffer(str) {
 }
 
 function sign(payloadString) {
-  return crypto.createHmac('sha256', QR_SECRET).update(payloadString).digest('hex');
+  return crypto.createHmac('sha256', SECRET).update(payloadString).digest('hex');
 }
 
 // ——— OLD Format Encryption/Decryption (AES-256-CBC) ———
@@ -29,10 +28,10 @@ function sign(payloadString) {
 /**
  * Encrypt QR payload using AES-256-CBC (OLD format)
  * @param {Object} payload - Payload object to encrypt
- * @param {string} secret - Encryption secret (defaults to QR_SECRET)
+ * @param {string} secret - Encryption secret (defaults to SECRET)
  * @returns {string} Encrypted string in format "iv_hex:encrypted_hex"
  */
-function encryptQrPayloadOldFormat(payload, secret = QR_SECRET) {
+function encryptQrPayloadOldFormat(payload, secret = SECRET) {
   const algorithm = 'aes-256-cbc';
   const key = crypto.scryptSync(secret, 'salt', 32);
   const iv = crypto.randomBytes(16);
@@ -48,10 +47,10 @@ function encryptQrPayloadOldFormat(payload, secret = QR_SECRET) {
 /**
  * Decrypt QR payload from OLD format (AES-256-CBC)
  * @param {string} encryptedData - Encrypted string in format "iv_hex:encrypted_hex"
- * @param {string} secret - Encryption secret (defaults to QR_SECRET)
+ * @param {string} secret - Encryption secret (defaults to SECRET)
  * @returns {Object|null} Decrypted payload object or null on error
  */
-function decryptQrPayloadOldFormat(encryptedData, secret = QR_SECRET) {
+function decryptQrPayloadOldFormat(encryptedData, secret = SECRET) {
   try {
     if (!encryptedData || typeof encryptedData !== 'string' || !encryptedData.includes(':')) {
       return null;
@@ -117,7 +116,7 @@ class TicketService {
     };
 
     // Encrypt using AES-256-CBC (OLD format)
-    const encryptedQRData = encryptQrPayloadOldFormat(qrPayload, QR_SECRET);
+    const encryptedQRData = encryptQrPayloadOldFormat(qrPayload, SECRET);
 
     // Generate QR code image as base64 data URL
     const qrCodeDataURL = await QRCode.toDataURL(encryptedQRData, {
@@ -129,7 +128,7 @@ class TicketService {
 
     // Calculate signature (HMAC-SHA256 of encryptedQRData, not the payload)
     const signature = crypto
-      .createHmac('sha256', QR_SECRET)
+      .createHmac('sha256', SECRET)
       .update(encryptedQRData)
       .digest('hex');
 
@@ -161,7 +160,7 @@ class TicketService {
       }
 
       // Decrypt OLD format
-      const qrPayload = decryptQrPayloadOldFormat(compactQrString, QR_SECRET);
+      const qrPayload = decryptQrPayloadOldFormat(compactQrString, SECRET);
       
       if (!qrPayload || !qrPayload.ticketId) {
         return { ok: false, code: 'INVALID_QR' };
@@ -183,7 +182,7 @@ class TicketService {
       // Verify signature if stored
       if (ticket.qr?.signature) {
         const expectedSignature = crypto
-          .createHmac('sha256', QR_SECRET)
+          .createHmac('sha256', SECRET)
           .update(compactQrString)
           .digest('hex');
         
