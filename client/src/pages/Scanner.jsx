@@ -20,7 +20,29 @@ export default function Scanner() {
   const lockedRef = useRef(false);
   const [preferBackCamera, setPreferBackCamera] = useState(true);
   const [torchOn, setTorchOn] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
   const audioCtxRef = useRef(null);
+
+  // Log component mount
+  useEffect(() => {
+    console.log("📱 Scanner component mounted");
+    return () => {
+      console.log("📱 Scanner component unmounting");
+    };
+  }, []);
+
+  // Callback ref to ensure video element is captured
+  const setVideoRef = (element) => {
+    if (element) {
+      videoRef.current = element;
+      setVideoReady(true);
+      console.log("✅ Video element ref set", {
+        videoWidth: element.videoWidth,
+        videoHeight: element.videoHeight,
+        readyState: element.readyState,
+      });
+    }
+  };
   const ensureAudio = () => {
     if (audioCtxRef.current) return audioCtxRef.current;
     try {
@@ -82,15 +104,48 @@ export default function Scanner() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (!videoRef.current) {
-      console.warn("⚠️ Video ref not available");
-      return;
-    }
+    console.log("🔄 Scanner effect triggered", {
+      hasVideoRef: !!videoRef.current,
+      videoReady,
+      hasCodeReader: !!codeReader.current,
+      preferBackCamera,
+      torchOn,
+      location,
+    });
+
+    // Wait for video element to be available in DOM
+    let retryCount = 0;
+    const maxRetries = 50; // 5 seconds max wait
+
+    const checkVideoRef = () => {
+      if (!videoRef.current || !videoReady) {
+        retryCount++;
+        if (retryCount < maxRetries) {
+          console.warn(
+            `⚠️ Video ref not ready, retrying... (${retryCount}/${maxRetries})`
+          );
+          setTimeout(checkVideoRef, 100);
+          return;
+        } else {
+          console.error("❌ Video ref not ready after max retries");
+          dispatch(setScanning(false));
+          return;
+        }
+      }
+      console.log("✅ Video ref ready, starting scanner");
+      startScanner();
+    };
 
     let controls = null;
     let isActive = true;
 
-    const start = async () => {
+    const startScanner = async () => {
+      if (!videoRef.current) {
+        console.error("❌ Video ref still not available after retries");
+        dispatch(setScanning(false));
+        return;
+      }
+
       console.log("🎥 Starting camera...", { preferBackCamera, torchOn });
       dispatch(setScanning(true));
 
@@ -363,7 +418,18 @@ export default function Scanner() {
       }
     };
 
-    start();
+    // Start checking for video ref (only if video is ready)
+    if (videoReady) {
+      checkVideoRef();
+    } else {
+      // Wait a bit for video ref callback to fire
+      const timeout = setTimeout(() => {
+        if (videoRef.current) {
+          checkVideoRef();
+        }
+      }, 200);
+      return () => clearTimeout(timeout);
+    }
 
     return () => {
       console.log("🛑 Stopping QR scanner");
@@ -377,7 +443,7 @@ export default function Scanner() {
         console.warn("⚠️ Error stopping scanner:", e);
       }
     };
-  }, [dispatch, location, preferBackCamera, torchOn]);
+  }, [dispatch, location, preferBackCamera, torchOn, videoReady]);
 
   const humanStatus = () => {
     if (lastResult?.valid) return "Valid";
@@ -481,14 +547,41 @@ export default function Scanner() {
       <div className="mt-4 text-white/60 text-sm">
         Role: {role || "unknown"} · {scanning ? "Camera on" : "Idle"}
       </div>
-      <div className="mt-4 rounded-2xl overflow-hidden border border-white/10">
+      <div className="mt-4 rounded-2xl overflow-hidden border border-white/10 relative">
         <video
-          ref={videoRef}
+          ref={setVideoRef}
           className="w-full aspect-[3/4] object-cover bg-black"
           autoPlay
           muted
           playsInline
+          onLoadedMetadata={() => {
+            console.log("✅ Video metadata loaded", {
+              videoWidth: videoRef.current?.videoWidth,
+              videoHeight: videoRef.current?.videoHeight,
+            });
+          }}
+          onLoadedData={() => {
+            console.log("✅ Video data loaded");
+          }}
+          onCanPlay={() => {
+            console.log("✅ Video can play");
+          }}
+          onError={(e) => {
+            console.error("❌ Video element error:", e);
+          }}
         />
+        {!scanning && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+            <div className="text-white text-center">
+              <div className="text-lg font-semibold mb-2">
+                Camera not active
+              </div>
+              <div className="text-sm text-white/70">
+                Please allow camera access
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <div
         className={`mt-4 rounded-xl px-3 py-2 text-sm ${statusColor} shadow-lg border border-white/10 animate-[pulse_1s_ease-in-out_2]`}
