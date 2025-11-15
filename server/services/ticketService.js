@@ -1,9 +1,11 @@
 const crypto = require('crypto');
+const QRCode = require('qrcode');
 const Ticket = require('../models/Ticket');
 const Event = require('../models/Event');
 
 const DEFAULT_TTL_MS = parseInt(process.env.TICKET_QR_TTL_MS || '900000', 10);
-const SECRET = process.env.TICKET_QR_SECRET || 'change-me-in-production';
+// Use TICKET_QR_SECRET (matches original implementation used for production tickets)
+const QR_SECRET = process.env.TICKET_QR_SECRET || 'change-me-in-production';
 const AUTO_ROTATE_MS = parseInt(process.env.TICKET_QR_AUTO_ROTATE_MS || '0', 10); // 0 disables
 const ENC_KEY_B64 = process.env.TICKET_QR_ENC_KEY || '';
 
@@ -18,7 +20,62 @@ function base64UrlDecodeToBuffer(str) {
 }
 
 function sign(payloadString) {
-  return crypto.createHmac('sha256', SECRET).update(payloadString).digest('hex');
+  return crypto.createHmac('sha256', QR_SECRET).update(payloadString).digest('hex');
+}
+
+// ——— OLD Format Encryption/Decryption (AES-256-CBC) ———
+// Matches the format used in payhero.js for production tickets
+
+/**
+ * Encrypt QR payload using AES-256-CBC (OLD format)
+ * @param {Object} payload - Payload object to encrypt
+ * @param {string} secret - Encryption secret (defaults to QR_SECRET)
+ * @returns {string} Encrypted string in format "iv_hex:encrypted_hex"
+ */
+function encryptQrPayloadOldFormat(payload, secret = QR_SECRET) {
+  const algorithm = 'aes-256-cbc';
+  const key = crypto.scryptSync(secret, 'salt', 32);
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(algorithm, key, iv);
+
+  let encrypted = cipher.update(JSON.stringify(payload), 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+
+  // Combine IV and encrypted data: "iv_hex:encrypted_hex"
+  return iv.toString('hex') + ':' + encrypted;
+}
+
+/**
+ * Decrypt QR payload from OLD format (AES-256-CBC)
+ * @param {string} encryptedData - Encrypted string in format "iv_hex:encrypted_hex"
+ * @param {string} secret - Encryption secret (defaults to QR_SECRET)
+ * @returns {Object|null} Decrypted payload object or null on error
+ */
+function decryptQrPayloadOldFormat(encryptedData, secret = QR_SECRET) {
+  try {
+    if (!encryptedData || typeof encryptedData !== 'string' || !encryptedData.includes(':')) {
+      return null;
+    }
+
+    const parts = encryptedData.split(':');
+    if (parts.length !== 2) {
+      return null;
+    }
+
+    const ivHex = parts[0];
+    const encryptedHex = parts[1];
+    const iv = Buffer.from(ivHex, 'hex');
+    const encrypted = Buffer.from(encryptedHex, 'hex');
+    const key = crypto.scryptSync(secret, 'salt', 32);
+
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    let decrypted = decipher.update(encrypted, null, 'utf8');
+    decrypted += decipher.final('utf8');
+
+    return JSON.parse(decrypted);
+  } catch (error) {
+    return null;
+  }
 }
 
 function compactQrPayload(obj) {
@@ -50,65 +107,114 @@ class TicketService {
     const expiresAt = new Date(issuedAt.getTime() + perEventTtl);
     const nonce = shouldIssue ? crypto.randomBytes(16).toString('hex') : ticket.qr.nonce;
 
-    const payloadToSign = `${ticket._id.toString()}.${issuedAt.getTime()}.${nonce}.1`;
-    const signature = sign(payloadToSign);
+    // Generate OLD format payload (matching payhero.js)
+    const qrPayload = {
+      ticketId: ticket._id.toString(),
+      eventId: ticket.eventId._id.toString(),
+      userId: ticket.ownerUserId ? ticket.ownerUserId.toString() : '',
+      ticketNumber: ticket.ticketNumber || '',
+      timestamp: issuedAt.getTime(),
+    };
 
+    // Encrypt using AES-256-CBC (OLD format)
+    const encryptedQRData = encryptQrPayloadOldFormat(qrPayload, QR_SECRET);
+
+    // Generate QR code image as base64 data URL
+    const qrCodeDataURL = await QRCode.toDataURL(encryptedQRData, {
+      errorCorrectionLevel: 'H',
+      type: 'image/png',
+      width: 300,
+      margin: 2,
+    });
+
+    // Calculate signature (HMAC-SHA256 of encryptedQRData, not the payload)
+    const signature = crypto
+      .createHmac('sha256', QR_SECRET)
+      .update(encryptedQRData)
+      .digest('hex');
+
+    // Update ticket with QR code data
+    ticket.qrCode = encryptedQRData;
+    ticket.qrCodeUrl = qrCodeDataURL;
     ticket.qr = {
       nonce,
       issuedAt,
       expiresAt,
       signature
     };
+
     await ticket.save();
 
-    const qrObj = {
-      tid: ticket._id.toString(),
-      ts: issuedAt.getTime(),
-      nonce,
-      v: 1,
-      sig: signature
-    };
-
-    // Optionally encrypt payload (AES-256-GCM). Backward compatible if key absent.
-    const encrypted = maybeEncryptPayload(qrObj);
-
     return {
-      qr: encrypted || compactQrPayload(qrObj),
+      qr: encryptedQRData,
+      qrCodeUrl: qrCodeDataURL,
       expiresAt
     };
   }
 
   async verifyQr(compactQrString) {
     try {
-      // Supports both plaintext compact JSON or encrypted format prefixed with E1.
-      const data = maybeDecryptPayload(compactQrString) || parseQrPayloadToJson(compactQrString);
-      const { tid, ts, nonce, v, sig } = data || {};
-      if (!tid || !ts || !nonce || !v || !sig) {
+      // OLD format: AES-256-CBC encrypted "iv:encrypted" format
+      // Check if input contains ':' which indicates OLD format
+      if (!compactQrString || typeof compactQrString !== 'string') {
         return { ok: false, code: 'INVALID_QR' };
       }
 
-      const expected = sign(`${tid}.${ts}.${nonce}.${v}`);
-      if (expected !== sig) {
+      // Decrypt OLD format
+      const qrPayload = decryptQrPayloadOldFormat(compactQrString, QR_SECRET);
+      
+      if (!qrPayload || !qrPayload.ticketId) {
         return { ok: false, code: 'INVALID_QR' };
       }
 
-      const ticket = await Ticket.findById(tid);
+      const { ticketId, eventId, userId, ticketNumber, timestamp } = qrPayload;
+
+      // Look up ticket
+      const ticket = await Ticket.findById(ticketId);
       if (!ticket) {
         return { ok: false, code: 'TICKET_NOT_FOUND' };
       }
 
-      // Ensure stored meta matches
-      if (!ticket.qr || ticket.qr.nonce !== nonce || ticket.qr.signature !== sig) {
+      // Verify stored QR code matches scanned string
+      if (ticket.qrCode !== compactQrString) {
         return { ok: false, code: 'INVALID_QR' };
       }
 
-      if (ticket.qr.expiresAt && new Date(ticket.qr.expiresAt).getTime() < Date.now()) {
+      // Verify signature if stored
+      if (ticket.qr?.signature) {
+        const expectedSignature = crypto
+          .createHmac('sha256', QR_SECRET)
+          .update(compactQrString)
+          .digest('hex');
+        
+        if (ticket.qr.signature !== expectedSignature) {
+          return { ok: false, code: 'INVALID_QR' };
+        }
+      }
+
+      // Check ticket status
+      if (ticket.status !== 'active') {
+        return { ok: false, code: 'TICKET_NOT_ACTIVE', ticketStatus: ticket.status };
+      }
+
+      // Check expiration
+      if (ticket.qr?.expiresAt && new Date(ticket.qr.expiresAt).getTime() < Date.now()) {
         return { ok: false, code: 'QR_EXPIRED' };
+      }
+
+      // Check validity window
+      const now = new Date();
+      if (ticket.metadata?.validFrom && now < new Date(ticket.metadata.validFrom)) {
+        return { ok: false, code: 'TICKET_OUT_OF_VALIDITY_WINDOW' };
+      }
+      if (ticket.metadata?.validUntil && now > new Date(ticket.metadata.validUntil)) {
+        return { ok: false, code: 'TICKET_OUT_OF_VALIDITY_WINDOW' };
       }
 
       const event = await Event.findById(ticket.eventId).select('organizer title dates');
       return { ok: true, ticket, event };
     } catch (e) {
+      console.error('❌ QR verification error:', e.message);
       return { ok: false, code: 'INVALID_QR' };
     }
   }
