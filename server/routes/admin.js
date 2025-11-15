@@ -272,10 +272,13 @@ router.patch(
 router.get("/orders", verifyToken, requireRole("admin"), async (req, res) => {
   try {
     const Order = require("../models/Order");
-    const { page = 1, limit = 20, status, search } = req.query;
+    const { page = 1, limit = 20, status, search, eventId } = req.query;
     const query = {};
 
     if (status) query.status = status;
+    if (eventId) {
+      query["items.eventId"] = eventId;
+    }
     if (search) {
       query.$or = [
         { orderNumber: { $regex: search, $options: "i" } },
@@ -285,7 +288,32 @@ router.get("/orders", verifyToken, requireRole("admin"), async (req, res) => {
     }
 
     const skip = (Number(page) - 1) * Number(limit);
-    const [orders, total] = await Promise.all([
+    
+    // Build revenue query - respect all filters
+    const revenueQuery = {};
+    
+    // Copy eventId and search filters to revenue query
+    if (eventId) {
+      revenueQuery["items.eventId"] = eventId;
+    }
+    if (search) {
+      revenueQuery.$or = [
+        { orderNumber: { $regex: search, $options: "i" } },
+        { "customer.email": { $regex: search, $options: "i" } },
+        { "customer.name": { $regex: search, $options: "i" } },
+      ];
+    }
+    
+    // If no status filter, only count completed/paid orders for revenue
+    if (!status) {
+      revenueQuery.status = "completed";
+      revenueQuery.paymentStatus = "paid";
+    } else {
+      // If status filter is provided, use that status for revenue calculation
+      revenueQuery.status = status;
+    }
+    
+    const [orders, total, revenueResult] = await Promise.all([
       Order.find(query)
         .populate("items.eventId", "title slug")
         .populate("customer.userId", "email username")
@@ -297,7 +325,27 @@ router.get("/orders", verifyToken, requireRole("admin"), async (req, res) => {
         .limit(Number(limit))
         .lean(),
       Order.countDocuments(query),
+      // Aggregate total revenue
+      Order.aggregate([
+        { $match: revenueQuery },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: {
+              $sum: {
+                $cond: [
+                  { $gt: [{ $ifNull: ["$totalAmount", 0] }, 0] },
+                  { $ifNull: ["$totalAmount", 0] },
+                  { $ifNull: ["$pricing.total", 0] }
+                ]
+              }
+            }
+          }
+        }
+      ])
     ]);
+
+    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
 
     res.json({
       success: true,
@@ -309,6 +357,7 @@ router.get("/orders", verifyToken, requireRole("admin"), async (req, res) => {
           total,
           pages: Math.ceil(total / Number(limit)),
         },
+        totalRevenue,
       },
     });
   } catch (error) {
