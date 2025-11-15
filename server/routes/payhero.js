@@ -8,7 +8,6 @@ const enhancedEmailService = require("../services/enhancedEmailService");
 const mergedTicketReceiptService = require("../services/mergedTicketReceiptService");
 const orderStatusNotifier = require("../services/orderStatusNotifier");
 const payheroResultMapper = require("../services/payheroResultMapper");
-const ticketService = require("../services/ticketService");
 const Order = require("../models/Order");
 const Ticket = require("../models/Ticket");
 const User = require("../models/User");
@@ -444,39 +443,63 @@ router.post(
             `🎫 Processing ${tickets.length} tickets for QR generation...`
           );
 
-          for (const ticket of tickets) {
-            try {
-              // Use the new ticketService.issueQr() method which generates
-              // QR codes in the format expected by the scanner
-              const qrResult = await ticketService.issueQr(ticket._id);
-              
-              // Generate QR code image as base64 data URL for email attachments
-              // The qrResult.qr contains the scannable QR code string
-              const qrCodeDataURL = await QRCode.toDataURL(qrResult.qr, {
-                errorCorrectionLevel: "H",
-                type: "image/png",
-                width: 300,
-                margin: 2,
-              });
+          const QR_SECRET =
+            process.env.QR_ENCRYPTION_SECRET ||
+            "default-secret-change-in-production";
 
-              // Update ticket with QR code image URL (for email display)
-              // Note: ticket.qr metadata is already set by ticketService.issueQr()
-              ticket.qrCodeUrl = qrCodeDataURL;
-              
-              // Store the QR code string for backward compatibility (optional)
-              ticket.qrCode = qrResult.qr;
-              
-              await ticket.save();
-              console.log(
-                `✅ QR code generated for ticket: ${ticket.ticketNumber}`
-              );
-            } catch (ticketQrError) {
-              console.error(
-                `❌ Failed to generate QR for ticket ${ticket.ticketNumber}:`,
-                ticketQrError.message
-              );
-              // Continue with other tickets
-            }
+          for (const ticket of tickets) {
+            // Generate encrypted QR code payload
+            const qrPayload = {
+              ticketId: ticket._id.toString(),
+              eventId: ticket.eventId.toString(),
+              userId: ticket.ownerUserId.toString(),
+              ticketNumber: ticket.ticketNumber,
+              timestamp: Date.now(),
+            };
+
+            // Encrypt the payload using AES-256-CBC
+            const algorithm = "aes-256-cbc";
+            const key = crypto.scryptSync(QR_SECRET, "salt", 32);
+            const iv = crypto.randomBytes(16);
+            const cipher = crypto.createCipheriv(algorithm, key, iv);
+
+            let encrypted = cipher.update(
+              JSON.stringify(qrPayload),
+              "utf8",
+              "hex"
+            );
+            encrypted += cipher.final("hex");
+
+            // Combine IV and encrypted data for decryption later
+            const encryptedQRData = iv.toString("hex") + ":" + encrypted;
+
+            // Generate QR code image as base64 data URL
+            const qrCodeDataURL = await QRCode.toDataURL(encryptedQRData, {
+              errorCorrectionLevel: "H",
+              type: "image/png",
+              width: 300,
+              margin: 2,
+            });
+
+            // Update ticket with QR code data
+            ticket.qrCode = encryptedQRData;
+            ticket.qrCodeUrl = qrCodeDataURL; // Store base64 data URL (no cloud upload)
+
+            // Set QR metadata for enhanced security
+            ticket.qr = {
+              nonce: crypto.randomBytes(16).toString("hex"),
+              issuedAt: new Date(),
+              expiresAt: ticket.metadata?.validUntil || null,
+              signature: crypto
+                .createHmac("sha256", QR_SECRET)
+                .update(encryptedQRData)
+                .digest("hex"),
+            };
+
+            await ticket.save();
+            console.log(
+              `✅ QR code generated for ticket: ${ticket.ticketNumber}`
+            );
           }
 
           console.log(
