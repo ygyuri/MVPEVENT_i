@@ -7,6 +7,7 @@ const {
 } = require("../middleware/auth");
 const rateLimit = require("express-rate-limit");
 const crypto = require("crypto");
+const QRCode = require("qrcode");
 const Ticket = require("../models/Ticket");
 const Event = require("../models/Event");
 const Order = require("../models/Order");
@@ -1040,5 +1041,847 @@ router.post(
     }
   }
 );
+
+// ============= TEST ENDPOINTS FOR QR CODE GENERATION AND SCANNING =============
+// These endpoints use the same logic as production endpoints but are easier to test
+
+/**
+ * POST /api/tickets/test/generate-qr/:ticketId
+ * Test endpoint to generate QR code for a ticket (same as production)
+ * No authentication required for easier testing
+ */
+router.post(
+  "/test/generate-qr/:ticketId",
+  [
+    param("ticketId").isMongoId().withMessage("Invalid ticket ID"),
+    body("rotate").optional().isBoolean(),
+  ],
+  async (req, res) => {
+    const v = handleValidation(req, res);
+    if (v) return v;
+    try {
+      const { ticketId } = req.params;
+      const { rotate = false } = req.body || {};
+
+      // Find ticket
+      const ticket = await Ticket.findById(ticketId)
+        .select("_id ownerUserId eventId status qr orderId ticketNumber")
+        .populate("orderId", "paymentStatus status orderNumber")
+        .populate("eventId", "title");
+
+      if (!ticket) {
+        return res.status(404).json({
+          success: false,
+          error: "Ticket not found",
+        });
+      }
+
+      // Check ticket status
+      if (ticket.status !== "active") {
+        return res.status(400).json({
+          success: false,
+          error: "Ticket is not active",
+          status: ticket.status,
+        });
+      }
+
+      // Check payment status (for testing, we'll allow it but warn)
+      const order = ticket.orderId;
+      const isPaid =
+        order &&
+        (order.paymentStatus === "paid" ||
+          order.paymentStatus === "completed" ||
+          order.status === "completed");
+
+      if (!isPaid) {
+        console.warn(
+          `⚠️  TEST: Generating QR for unpaid ticket ${ticketId} (order: ${order?.orderNumber || "N/A"})`
+        );
+      }
+
+      // Generate QR code using the same service as production
+      const result = await ticketService.issueQr(ticket._id, { rotate });
+
+      // Also generate QR code image for display (like in payhero callback)
+      const qrCodeDataURL = await QRCode.toDataURL(result.qr, {
+        errorCorrectionLevel: "H",
+        type: "image/png",
+        width: 300,
+        margin: 2,
+      });
+
+      // Update ticket with QR code image URL (optional, for testing)
+      ticket.qrCodeUrl = qrCodeDataURL;
+      ticket.qrCode = result.qr;
+      await ticket.save();
+
+      res.json({
+        success: true,
+        message: "QR code generated successfully (TEST ENDPOINT)",
+        data: {
+          ticketId: ticket._id.toString(),
+          ticketNumber: ticket.ticketNumber,
+          eventTitle: ticket.eventId?.title,
+          orderNumber: order?.orderNumber,
+          orderPaid: isPaid,
+          qr: result.qr, // The scannable QR code string
+          qrCodeUrl: qrCodeDataURL, // Base64 image for display
+          expiresAt: result.expiresAt,
+          qrMetadata: ticket.qr, // The stored QR metadata
+        },
+      });
+    } catch (error) {
+      console.error("❌ Test QR generation failed:", error.message);
+      res.status(500).json({
+        success: false,
+        error: "Failed to generate QR code",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/tickets/test/scan
+ * Test endpoint to scan and validate QR code (same logic as production /scan endpoint)
+ * No authentication required for easier testing, but logs the scan attempt
+ */
+router.post(
+  "/test/scan",
+  [
+    body("qr").isString().trim().notEmpty().withMessage("QR code string is required"),
+    body("location").optional().isString(),
+    body("device").optional().isObject(),
+  ],
+  async (req, res) => {
+    const v = handleValidation(req, res);
+    if (v) return v;
+    try {
+      const { qr, location, device } = req.body;
+
+      // Trim and validate QR string
+      const trimmedQr = (qr || '').trim();
+      if (!trimmedQr) {
+        return res.status(400).json({
+          success: false,
+          valid: false,
+          code: "EMPTY_QR",
+          message: "QR code string is required and cannot be empty",
+        });
+      }
+
+      console.log("🧪 TEST SCAN:", {
+        qrLength: trimmedQr.length,
+        qrPreview: trimmedQr.substring(0, 100) + (trimmedQr.length > 100 ? "..." : ""),
+        location,
+        device,
+      });
+
+      // Use the same verification logic as production
+      const verification = await ticketService.verifyQr(trimmedQr);
+
+      if (!verification.ok) {
+        console.log("❌ TEST SCAN FAILED:", {
+          code: verification.code,
+          qrLength: trimmedQr.length,
+          qrPreview: trimmedQr.substring(0, 50),
+        });
+        return res.status(400).json({
+          success: false,
+          valid: false,
+          code: verification.code,
+          message: "QR code validation failed (TEST ENDPOINT)",
+          details: {
+            code: verification.code,
+            qrLength: trimmedQr.length,
+            possibleReasons: {
+              INVALID_QR: "QR format is invalid or signature doesn't match",
+              TICKET_NOT_FOUND: "Ticket ID in QR doesn't exist in database",
+              QR_EXPIRED: "QR code has expired (check expiresAt)",
+            },
+          },
+        });
+      }
+
+      const { ticket, event } = verification;
+
+      // Check ticket status
+      if (ticket.status !== "active") {
+        return res.status(400).json({
+          success: false,
+          valid: false,
+          code: "TICKET_NOT_ACTIVE",
+          message: `Ticket status is: ${ticket.status}`,
+          ticketStatus: ticket.status,
+        });
+      }
+
+      // Check validity window
+      const now = new Date();
+      const validFrom = ticket.metadata?.validFrom ? new Date(ticket.metadata.validFrom) : null;
+      const validUntil = ticket.metadata?.validUntil ? new Date(ticket.metadata.validUntil) : null;
+      
+      let validityIssue = null;
+      if (validFrom && now < validFrom) {
+        validityIssue = {
+          reason: "Ticket is not yet valid",
+          validFrom: validFrom,
+          currentTime: now,
+          daysUntilValid: Math.ceil((validFrom.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        };
+      } else if (validUntil && now > validUntil) {
+        validityIssue = {
+          reason: "Ticket has expired",
+          validUntil: validUntil,
+          currentTime: now,
+          daysSinceExpired: Math.ceil((now.getTime() - validUntil.getTime()) / (1000 * 60 * 60 * 24))
+        };
+      }
+
+      if (validityIssue) {
+        return res.status(400).json({
+          success: false,
+          valid: false,
+          code: "TICKET_OUT_OF_VALIDITY_WINDOW",
+          message: "Ticket is outside its validity window",
+          validityIssue: validityIssue,
+          validityWindow: {
+            validFrom: validFrom,
+            validUntil: validUntil,
+            currentTime: now,
+            isCurrentlyValid: !validityIssue
+          },
+          ticket: {
+            id: ticket._id.toString(),
+            ticketNumber: ticket.ticketNumber,
+            eventTitle: event?.title
+          }
+        });
+      }
+
+      // Check if already used
+      if (ticket.status === "used") {
+        return res.status(409).json({
+          success: true,
+          valid: false,
+          code: "ALREADY_USED",
+          message: "Ticket has already been used",
+          usedAt: ticket.usedAt,
+          usedBy: ticket.usedBy,
+        });
+      }
+
+      // For test endpoint, we'll simulate marking as used but not actually save it
+      // This allows testing the scan logic without permanently marking tickets as used
+      const scanResult = {
+        success: true,
+        valid: true,
+        message: "QR code is valid (TEST ENDPOINT - ticket NOT marked as used)",
+        code: "VALID",
+        ticket: {
+          id: ticket._id.toString(),
+          ticketNumber: ticket.ticketNumber,
+          holderName: `${ticket.holder.firstName} ${ticket.holder.lastName}`,
+          ticketType: ticket.ticketType,
+          status: ticket.status,
+        },
+        event: event
+          ? {
+              id: event._id.toString(),
+              title: event.title,
+              startDate: event.dates?.startDate,
+            }
+          : null,
+        qrMetadata: ticket.qr,
+        scanDetails: {
+          location,
+          device,
+          scannedAt: now,
+          note: "This is a TEST scan - ticket was NOT marked as used",
+        },
+      };
+
+      console.log("✅ TEST SCAN SUCCESS:", {
+        ticketId: ticket._id.toString(),
+        ticketNumber: ticket.ticketNumber,
+        eventTitle: event?.title,
+      });
+
+      res.json(scanResult);
+    } catch (error) {
+      console.error("❌ Test scan validation failed:", error.message);
+      res.status(500).json({
+        success: false,
+        error: "Scan validation failed",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/tickets/test/list
+ * Test endpoint to list available ticket IDs for testing
+ * Returns a list of tickets with their IDs, status, and basic info
+ */
+router.get("/test/list", async (req, res) => {
+  try {
+    const { limit = 20 } = req.query;
+    
+    const tickets = await Ticket.find({})
+      .select("_id ticketNumber status holder eventId orderId createdAt")
+      .populate("eventId", "title")
+      .populate("orderId", "orderNumber paymentStatus status")
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit));
+
+    const now = new Date();
+    const ticketList = tickets.map(t => {
+      const validFrom = t.metadata?.validFrom ? new Date(t.metadata.validFrom) : null;
+      const validUntil = t.metadata?.validUntil ? new Date(t.metadata.validUntil) : null;
+      const isCurrentlyValid = 
+        (!validFrom || now >= validFrom) && 
+        (!validUntil || now <= validUntil);
+      
+      return {
+        id: t._id.toString(),
+        ticketNumber: t.ticketNumber,
+        status: t.status,
+        holderName: t.holder?.name || `${t.holder?.firstName || ''} ${t.holder?.lastName || ''}`.trim(),
+        eventTitle: t.eventId?.title || 'N/A',
+        orderNumber: t.orderId?.orderNumber || 'N/A',
+        orderPaid: t.orderId?.paymentStatus === 'paid' || t.orderId?.paymentStatus === 'completed' || t.orderId?.status === 'completed',
+        hasQR: !!t.qr,
+        createdAt: t.createdAt,
+        validity: {
+          validFrom: validFrom,
+          validUntil: validUntil,
+          isCurrentlyValid: isCurrentlyValid,
+          validFromFormatted: validFrom ? validFrom.toLocaleString() : null,
+          validUntilFormatted: validUntil ? validUntil.toLocaleString() : null
+        }
+      };
+    });
+
+    res.json({
+      success: true,
+      message: "Available tickets for testing",
+      count: ticketList.length,
+      tickets: ticketList
+    });
+  } catch (error) {
+    console.error("❌ List tickets failed:", error.message);
+    res.status(500).json({
+      success: false,
+      error: "Failed to list tickets",
+      details: process.env.NODE_ENV === "development" ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * POST /api/tickets/test/fix-validity
+ * Test endpoint to fix event and ticket validity dates for testing
+ * Updates event dates to be in the future and updates all related tickets
+ */
+router.post("/test/fix-validity", async (req, res) => {
+  try {
+    const { eventId } = req.body;
+    const Event = require("../models/Event");
+    
+    let events = [];
+    if (eventId) {
+      // Fix specific event
+      const event = await Event.findById(eventId);
+      if (!event) {
+        return res.status(404).json({
+          success: false,
+          error: "Event not found"
+        });
+      }
+      events = [event];
+    } else {
+      // Fix all events that have expired or are in the future
+      const now = new Date();
+      events = await Event.find({
+        $or: [
+          { "dates.endDate": { $lt: now } }, // Expired events
+          { "dates.startDate": { $gt: now } } // Future events (not yet started)
+        ],
+        status: { $in: ["published", "draft"] }
+      });
+    }
+
+    if (events.length === 0) {
+      return res.json({
+        success: true,
+        message: "No events found to update",
+        updated: 0
+      });
+    }
+
+    // Set dates to be valid NOW for testing (start 1 hour ago, end 2 days from now)
+    const now = new Date();
+    const startDate = new Date(now.getTime() - (1 * 60 * 60 * 1000)); // 1 hour ago
+    const endDate = new Date(now.getTime() + (2 * 24 * 60 * 60 * 1000)); // 2 days from now
+
+    const results = [];
+
+    for (const event of events) {
+      // Update event dates
+      event.dates = event.dates || {};
+      event.dates.startDate = startDate;
+      event.dates.endDate = endDate;
+      await event.save();
+
+      // Update all tickets for this event
+      const tickets = await Ticket.find({ eventId: event._id });
+      let updatedTickets = 0;
+
+      for (const ticket of tickets) {
+        ticket.metadata = ticket.metadata || {};
+        ticket.metadata.validFrom = startDate;
+        ticket.metadata.validUntil = endDate;
+        await ticket.save();
+        updatedTickets++;
+      }
+
+      results.push({
+        eventId: event._id.toString(),
+        eventTitle: event.title,
+        newStartDate: startDate.toISOString(),
+        newEndDate: endDate.toISOString(),
+        ticketsUpdated: updatedTickets
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Updated ${results.length} event(s) and their tickets`,
+      updated: results.length,
+      results: results,
+      newValidityWindow: {
+        validFrom: startDate.toISOString(),
+        validUntil: endDate.toISOString(),
+        note: "Event is now valid (started 1 hour ago, ends in 2 days)"
+      }
+    });
+  } catch (error) {
+    console.error("❌ Fix validity failed:", error.message);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fix validity dates",
+      details: process.env.NODE_ENV === "development" ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * POST /api/tickets/test/seed-event
+ * Test endpoint to seed a new event with valid dates for testing
+ */
+router.post("/test/seed-event", async (req, res) => {
+  try {
+    const Event = require("../models/Event");
+    const User = require("../models/User");
+    
+    // Find or create a test organizer user
+    let organizer = await User.findOne({ 
+      $or: [
+        { role: 'organizer' },
+        { role: 'admin' },
+        { email: 'test@example.com' }
+      ]
+    });
+
+    if (!organizer) {
+      // Generate unique username
+      let username = `testorganizer${Date.now()}`;
+      let email = `test-organizer-${Date.now()}@example.com`;
+      
+      // Create a test organizer if none exists
+      organizer = new User({
+        email: email,
+        username: username,
+        firstName: 'Test',
+        lastName: 'Organizer',
+        name: 'Test Organizer',
+        role: 'organizer',
+        accountStatus: 'active',
+        emailVerified: true,
+        isActive: true
+      });
+      await organizer.setPassword('Test123!');
+      await organizer.save();
+      console.log('✅ Created test organizer:', organizer._id);
+    }
+
+    // Ensure organizer has required fields
+    if (!organizer.firstName) organizer.firstName = 'Test';
+    if (!organizer.lastName) organizer.lastName = 'Organizer';
+    if (!organizer.email) organizer.email = `test-organizer-${Date.now()}@example.com`;
+    if (!organizer.name) organizer.name = `${organizer.firstName} ${organizer.lastName}`;
+
+    // Set dates to be valid NOW for testing (start 1 hour ago, end 2 days from now)
+    const now = new Date();
+    const startDate = new Date(now.getTime() - (1 * 60 * 60 * 1000)); // 1 hour ago
+    const endDate = new Date(now.getTime() + (2 * 24 * 60 * 60 * 1000)); // 2 days from now
+
+    // Generate unique slug
+    const baseSlug = `test-event-${Date.now()}`;
+    let slug = baseSlug;
+    let counter = 1;
+    while (await Event.findOne({ slug })) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
+    // Create the event with all required fields including media
+    const event = new Event({
+      organizer: organizer._id,
+      title: `Test Event - ${new Date().toLocaleDateString()}`,
+      slug: slug,
+      description: 'This is a test event created for QR code testing. Valid for 30 days from creation. This event includes all necessary fields for proper validation and testing.',
+      shortDescription: 'Test event for QR code scanning',
+      status: 'published',
+      dates: {
+        startDate: startDate,
+        endDate: endDate,
+        timezone: 'UTC'
+      },
+      location: {
+        venueName: 'Test Venue',
+        address: '123 Test Street',
+        city: 'Test City',
+        state: 'Test State',
+        country: 'Test Country',
+        postalCode: '12345',
+        coordinates: {
+          latitude: -1.2921,
+          longitude: 36.8219
+        }
+      },
+      pricing: {
+        isFree: false,
+        price: 1000,
+        currency: 'KES'
+      },
+      capacity: 100,
+      currentAttendees: 0,
+      ticketTypes: [
+        {
+          name: 'General Admission',
+          price: 1000,
+          quantity: 100,
+          description: 'General admission ticket',
+          currency: 'KES',
+          salesStart: startDate,
+          salesEnd: endDate,
+          minPerOrder: 1,
+          maxPerOrder: 10
+        }
+      ],
+      media: {
+        coverImageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=600&fit=crop',
+        galleryUrls: [
+          'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&h=600&fit=crop',
+          'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800&h=600&fit=crop'
+        ]
+      },
+      flags: {
+        isFeatured: false,
+        isTrending: false
+      },
+      recurrence: {
+        enabled: false,
+        frequency: undefined,
+        interval: undefined,
+        byWeekday: [],
+        byMonthday: [],
+        count: undefined,
+        until: undefined
+      },
+      tags: ['test', 'qr-code', 'testing'],
+      metadata: {
+        createdBy: 'test-seed-endpoint',
+        testEvent: true
+      },
+      version: 0
+    });
+
+    await event.save();
+
+    // Create a test order for the ticket
+    const Order = require("../models/Order");
+    const testOrder = new Order({
+      customer: {
+        userId: organizer._id,
+        email: organizer.email,
+        firstName: organizer.firstName || 'Test',
+        lastName: organizer.lastName || 'User',
+        name: `${organizer.firstName || 'Test'} ${organizer.lastName || 'User'}`,
+        phone: '+254700000000'
+      },
+      isGuestOrder: false,
+      purchaseSource: 'admin', // Use 'admin' since 'test_seed' is not in enum
+      items: [
+        {
+          eventId: event._id,
+          eventTitle: event.title,
+          ticketType: 'General Admission',
+          quantity: 1,
+          unitPrice: 1000,
+          subtotal: 1000
+        }
+      ],
+      pricing: {
+        subtotal: 1000,
+        serviceFee: 0,
+        transactionFee: 0,
+        total: 1000,
+        currency: 'KES'
+      },
+      totalAmount: 1000,
+      status: 'completed',
+      paymentStatus: 'completed',
+      payment: {
+        method: 'mpesa', // Valid enum values: 'mpesa', 'pesapal', 'payhero'
+        status: 'completed',
+        provider: 'test',
+        transactionId: `TEST-${Date.now()}`,
+        paidAt: new Date(),
+        amount: 1000
+      }
+    });
+
+    await testOrder.save();
+
+    // Create a test ticket for this event so it shows up in the ticket list
+    const testTicket = new Ticket({
+      orderId: testOrder._id,
+      eventId: event._id,
+      ownerUserId: organizer._id,
+      holder: {
+        firstName: organizer.firstName || 'Test',
+        lastName: organizer.lastName || 'User',
+        name: `${organizer.firstName || 'Test'} ${organizer.lastName || 'User'}`,
+        email: organizer.email,
+        phone: '+254700000000'
+      },
+      ticketType: 'General Admission',
+      price: 1000,
+      status: 'active',
+      metadata: {
+        purchaseDate: new Date(),
+        validFrom: startDate,
+        validUntil: endDate
+      }
+    });
+
+    await testTicket.save();
+
+    // Generate QR code for the test ticket
+    try {
+      await ticketService.issueQr(testTicket._id);
+      console.log('✅ Generated QR code for test ticket');
+    } catch (qrError) {
+      console.warn('⚠️ Failed to generate QR for test ticket:', qrError.message);
+    }
+
+    console.log('✅ Created test event and ticket:', {
+      eventId: event._id.toString(),
+      ticketId: testTicket._id.toString(),
+      title: event.title,
+      startDate: event.dates.startDate,
+      endDate: event.dates.endDate
+    });
+
+    res.json({
+      success: true,
+      message: 'Test event and ticket created successfully',
+      event: {
+        id: event._id.toString(),
+        title: event.title,
+        slug: event.slug,
+        organizerId: organizer._id.toString(),
+        organizerEmail: organizer.email,
+        dates: {
+          startDate: event.dates.startDate.toISOString(),
+          endDate: event.dates.endDate.toISOString(),
+          startDateFormatted: event.dates.startDate.toLocaleString(),
+          endDateFormatted: event.dates.endDate.toLocaleString()
+        },
+        status: event.status,
+        isCurrentlyValid: true
+      },
+      ticket: {
+        id: testTicket._id.toString(),
+        ticketNumber: testTicket.ticketNumber,
+        status: testTicket.status,
+        hasQR: !!testTicket.qr
+      },
+      note: 'A test ticket has been created for this event. It should appear in the ticket list now.'
+    });
+  } catch (error) {
+    console.error("❌ Seed event failed:", error);
+    console.error("❌ Error stack:", error.stack);
+    res.status(500).json({
+      success: false,
+      error: "Failed to seed test event",
+      message: error.message,
+      details: process.env.NODE_ENV === "development" ? {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      } : undefined
+    });
+  }
+});
+
+/**
+ * GET /api/tickets/test/valid-event
+ * Test endpoint to get a valid (non-expired) event ID for testing
+ */
+router.get("/test/valid-event", async (req, res) => {
+  try {
+    const Event = require("../models/Event");
+    const now = new Date();
+    
+    // Find an event that is currently valid or will be valid soon
+    const validEvent = await Event.findOne({
+      status: { $in: ["published", "draft"] },
+      $or: [
+        // Currently valid (started but not ended)
+        {
+          "dates.startDate": { $lte: now },
+          "dates.endDate": { $gte: now }
+        },
+        // Future event (starts within next 30 days)
+        {
+          "dates.startDate": { $gte: now, $lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) }
+        }
+      ]
+    })
+    .select("_id title dates status")
+    .sort({ "dates.startDate": 1 }); // Get the soonest one
+
+    if (!validEvent) {
+      // If no valid event found, get the most recent event and we'll suggest fixing it
+      const recentEvent = await Event.findOne({ status: { $in: ["published", "draft"] } })
+        .select("_id title dates status")
+        .sort({ createdAt: -1 });
+
+      if (recentEvent) {
+        return res.json({
+          success: false,
+          message: "No valid events found. Use this event ID and click 'Fix' button:",
+          eventId: recentEvent._id.toString(),
+          eventTitle: recentEvent.title,
+          suggestion: "Use POST /api/tickets/test/fix-validity with this eventId to make it valid"
+        });
+      }
+
+      return res.status(404).json({
+        success: false,
+        error: "No events found in database"
+      });
+    }
+
+    const startDate = validEvent.dates?.startDate ? new Date(validEvent.dates.startDate) : null;
+    const endDate = validEvent.dates?.endDate ? new Date(validEvent.dates.endDate) : null;
+    const isCurrentlyValid = 
+      (!startDate || now >= startDate) && 
+      (!endDate || now <= endDate);
+
+    res.json({
+      success: true,
+      eventId: validEvent._id.toString(),
+      eventTitle: validEvent.title,
+      status: validEvent.status,
+      dates: {
+        startDate: startDate?.toISOString(),
+        endDate: endDate?.toISOString(),
+        startDateFormatted: startDate?.toLocaleString(),
+        endDateFormatted: endDate?.toLocaleString()
+      },
+      isCurrentlyValid: isCurrentlyValid,
+      message: isCurrentlyValid 
+        ? "This event is currently valid for testing"
+        : "This event will be valid soon"
+    });
+  } catch (error) {
+    console.error("❌ Get valid event failed:", error.message);
+    res.status(500).json({
+      success: false,
+      error: "Failed to find valid event",
+      details: process.env.NODE_ENV === "development" ? error.message : undefined
+    });
+  }
+});
+
+/**
+ * GET /api/tickets/test/events
+ * Test endpoint to list events with their dates and validity status
+ */
+router.get("/test/events", async (req, res) => {
+  try {
+    const Event = require("../models/Event");
+    const now = new Date();
+    
+    const events = await Event.find({ status: { $in: ["published", "draft"] } })
+      .select("_id title dates status")
+      .sort({ "dates.endDate": -1 })
+      .limit(50);
+
+    const eventList = events.map(e => {
+      const startDate = e.dates?.startDate ? new Date(e.dates.startDate) : null;
+      const endDate = e.dates?.endDate ? new Date(e.dates.endDate) : null;
+      const isCurrentlyValid = 
+        (!startDate || now >= startDate) && 
+        (!endDate || now <= endDate);
+      const isExpired = endDate && now > endDate;
+      const isFuture = startDate && now < startDate;
+
+      return {
+        id: e._id.toString(),
+        title: e.title,
+        status: e.status,
+        dates: {
+          startDate: startDate?.toISOString(),
+          endDate: endDate?.toISOString(),
+          startDateFormatted: startDate?.toLocaleString(),
+          endDateFormatted: endDate?.toLocaleString()
+        },
+        validity: {
+          isCurrentlyValid,
+          isExpired,
+          isFuture,
+          daysUntilStart: startDate && now < startDate 
+            ? Math.ceil((startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+            : null,
+          daysSinceExpired: endDate && now > endDate
+            ? Math.ceil((now.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24))
+            : null
+        }
+      };
+    });
+
+    res.json({
+      success: true,
+      count: eventList.length,
+      events: eventList,
+      currentTime: now.toISOString()
+    });
+  } catch (error) {
+    console.error("❌ List events failed:", error.message);
+    res.status(500).json({
+      success: false,
+      error: "Failed to list events",
+      details: process.env.NODE_ENV === "development" ? error.message : undefined
+    });
+  }
+});
+
+// ============= END TEST ENDPOINTS =============
 
 module.exports = router;

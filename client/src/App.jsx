@@ -11,6 +11,7 @@ import Events from "./pages/Events";
 import DirectCheckout from "./pages/DirectCheckout";
 import PaymentStatus from "./pages/PaymentStatus";
 import AuthTest from "./pages/AuthTest";
+import QRTest from "./pages/QRTest";
 import UserProfile from "./pages/UserProfile";
 import TicketWallet from "./pages/TicketWallet";
 import Scanner from "./pages/Scanner";
@@ -74,6 +75,7 @@ function App() {
                   />
                   <Route path="/payment/:orderId" element={<PaymentStatus />} />
                   <Route path="/auth-test" element={<AuthTest />} />
+                  <Route path="/qr-test" element={<QRTest />} />
                   <Route path="/profile" element={<UserProfile />} />
                   <Route path="/wallet" element={<TicketWallet />} />
                   <Route path="/scanner" element={<Scanner />} />
