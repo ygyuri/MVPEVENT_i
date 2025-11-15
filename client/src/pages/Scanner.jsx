@@ -72,6 +72,14 @@ export default function Scanner() {
         const controls = await codeReader.current.decodeFromConstraints(constraints, videoRef.current, (result, err) => {
           if (lockedRef.current) return;
           if (err) {
+            // Suppress "No MultiFormat Readers were able to detect the code" errors
+            // This is expected when scanning - it means no QR code is visible yet
+            const errorMessage = err?.message || err?.toString() || '';
+            if (errorMessage.includes('No MultiFormat Readers') || errorMessage.includes('detect the code')) {
+              // This is normal - scanner is just checking frames, no QR code visible yet
+              return;
+            }
+            // Only log actual errors
             console.error('❌ QR Scanner error:', err);
             return;
           }
