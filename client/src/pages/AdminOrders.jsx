@@ -30,8 +30,11 @@ const AdminOrders = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [eventFilter, setEventFilter] = useState("all");
+  const [events, setEvents] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
   const [limit] = useState(20);
   const [sendingReminders, setSendingReminders] = useState({});
   const [resendingTickets, setResendingTickets] = useState({});
@@ -43,8 +46,26 @@ const AdminOrders = () => {
       navigate("/");
       return;
     }
+    fetchEvents();
     fetchOrders();
-  }, [isAuthenticated, user, navigate, page, statusFilter]);
+  }, [isAuthenticated, user, navigate]);
+
+  useEffect(() => {
+    if (isAuthenticated && user && user.role === "admin") {
+      fetchOrders();
+    }
+  }, [page, statusFilter, eventFilter]);
+
+  const fetchEvents = async () => {
+    try {
+      const response = await api.get(`/api/admin/events?limit=100`);
+      if (response.data?.success) {
+        setEvents(response.data.data.events || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch events:", err);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -55,12 +76,14 @@ const AdminOrders = () => {
         limit: limit.toString(),
       });
       if (statusFilter !== "all") params.append("status", statusFilter);
+      if (eventFilter !== "all") params.append("eventId", eventFilter);
       if (searchTerm) params.append("search", searchTerm);
 
       const response = await api.get(`/api/admin/orders?${params.toString()}`);
       if (response.data?.success) {
         setOrders(response.data.data.orders);
         setTotal(response.data.data.pagination.total);
+        setTotalRevenue(response.data.data.totalRevenue || 0);
       }
     } catch (err) {
       console.error("Failed to fetch orders:", err);
@@ -76,6 +99,9 @@ const AdminOrders = () => {
       "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
     pending:
       "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    paid: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    confirmed:
+      "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
     cancelled: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
     refunded: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
   };
@@ -210,13 +236,23 @@ const AdminOrders = () => {
               View and manage all orders and transactions
             </p>
           </div>
-          <button
-            onClick={fetchOrders}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-end">
+              <span className="text-gray-600 dark:text-gray-400 font-medium">
+                Total: {total} orders
+              </span>
+              <span className="text-sm text-gray-500 dark:text-gray-500">
+                Revenue: {totalRevenue.toLocaleString()} KES
+              </span>
+            </div>
+            <button
+              onClick={fetchOrders}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
+          </div>
         </div>
       </motion.div>
 
@@ -229,7 +265,7 @@ const AdminOrders = () => {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -252,10 +288,29 @@ const AdminOrders = () => {
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4f0f69] focus:border-transparent"
           >
             <option value="all">All Status</option>
-            <option value="completed">Completed</option>
             <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
             <option value="refunded">Refunded</option>
+          </select>
+
+          {/* Event Filter */}
+          <select
+            value={eventFilter}
+            onChange={(e) => {
+              setEventFilter(e.target.value);
+              setPage(1);
+            }}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4f0f69] focus:border-transparent"
+          >
+            <option value="all">All Events</option>
+            {events.map((event) => (
+              <option key={event._id} value={event._id}>
+                {event.title}
+              </option>
+            ))}
           </select>
         </div>
 
