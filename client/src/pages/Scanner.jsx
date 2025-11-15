@@ -166,56 +166,15 @@ export default function Scanner() {
 
         console.log("📹 Starting QR scanner with constraints:", constraints);
 
-        // Use decodeFromVideoDevice for better control and device selection
+        // Use decodeFromConstraints (works reliably across browsers)
         try {
           if (!codeReader.current) {
             throw new Error("Scanner not initialized");
           }
 
-          // Get available video devices
-          const videoInputDevices =
-            await codeReader.current.listVideoInputDevices();
-          console.log(`📷 Found ${videoInputDevices.length} video device(s)`);
-
-          // Find the preferred camera (back camera if available)
-          let selectedDeviceId = null;
-          if (videoInputDevices.length > 0) {
-            if (preferBackCamera) {
-              // Look for back/rear camera
-              const backCamera = videoInputDevices.find(
-                (device) =>
-                  device.label.toLowerCase().includes("back") ||
-                  device.label.toLowerCase().includes("rear") ||
-                  device.label.toLowerCase().includes("environment") ||
-                  device.label.toLowerCase().includes("facing back")
-              );
-              selectedDeviceId =
-                backCamera?.deviceId ||
-                videoInputDevices[videoInputDevices.length - 1]?.deviceId;
-              console.log(
-                "📷 Selected back camera:",
-                selectedDeviceId || "using last device"
-              );
-            } else {
-              // Use front camera
-              const frontCamera = videoInputDevices.find(
-                (device) =>
-                  device.label.toLowerCase().includes("front") ||
-                  device.label.toLowerCase().includes("user") ||
-                  device.label.toLowerCase().includes("facing front")
-              );
-              selectedDeviceId =
-                frontCamera?.deviceId || videoInputDevices[0]?.deviceId;
-              console.log(
-                "📷 Selected front camera:",
-                selectedDeviceId || "using first device"
-              );
-            }
-          }
-
-          // Start decoding from video device (preferred method)
-          controls = await codeReader.current.decodeFromVideoDevice(
-            selectedDeviceId || undefined, // undefined uses default
+          // Start decoding from constraints (handles camera selection via facingMode)
+          controls = await codeReader.current.decodeFromConstraints(
+            constraints,
             videoRef.current,
             (result, err) => {
               if (!isActive || lockedRef.current) return;
@@ -325,92 +284,8 @@ export default function Scanner() {
 
           console.log("✅ QR scanner started successfully");
         } catch (decodeError) {
-          // Fallback to decodeFromConstraints if decodeFromVideoDevice fails
-          console.warn(
-            "⚠️ decodeFromVideoDevice failed, trying decodeFromConstraints:",
-            decodeError
-          );
-          controls = await codeReader.current.decodeFromConstraints(
-            constraints,
-            videoRef.current,
-            (result, err) => {
-              if (!isActive || lockedRef.current) return;
-
-              if (err) {
-                const errorMessage = err?.message || err?.toString() || "";
-                if (
-                  errorMessage.includes("No MultiFormat Readers") ||
-                  errorMessage.includes("detect the code") ||
-                  errorMessage.includes("NotFoundException")
-                ) {
-                  return;
-                }
-                console.error("❌ QR Scanner error:", err);
-                return;
-              }
-
-              if (result && isActive) {
-                setLocked(true);
-                lockedRef.current = true;
-
-                let qrText = null;
-                try {
-                  qrText = result.getText
-                    ? result.getText()
-                    : result.text || String(result);
-                  qrText = qrText.trim();
-
-                  if (!qrText) {
-                    setLocked(false);
-                    lockedRef.current = false;
-                    return;
-                  }
-
-                  console.log("✅ QR code scanned:", {
-                    length: qrText.length,
-                    prefix: qrText.substring(0, 50),
-                  });
-
-                  const device = {
-                    userAgent:
-                      typeof navigator !== "undefined"
-                        ? navigator.userAgent
-                        : undefined,
-                    platform:
-                      typeof navigator !== "undefined"
-                        ? navigator.platform
-                        : undefined,
-                    vendor:
-                      typeof navigator !== "undefined"
-                        ? navigator.vendor
-                        : undefined,
-                  };
-
-                  dispatch(validateScan({ qr: qrText, location, device }))
-                    .unwrap()
-                    .catch((error) => {
-                      console.error("❌ Scan validation failed:", error);
-                      if (!navigator.onLine) {
-                        dispatch(
-                          enqueueOfflineScan({ qr: qrText, location, device })
-                        );
-                      }
-                    })
-                    .finally(() => {
-                      setTimeout(() => {
-                        setLocked(false);
-                        lockedRef.current = false;
-                      }, 2000);
-                    });
-                } catch (e) {
-                  console.error("❌ Error extracting QR text:", e);
-                  setLocked(false);
-                  lockedRef.current = false;
-                }
-              }
-            }
-          );
-          console.log("✅ QR scanner started (fallback method)");
+          console.error("❌ Failed to start QR scanner:", decodeError);
+          throw decodeError; // Re-throw to be caught by outer catch
         }
       } catch (e) {
         console.error("❌ Failed to start camera/scanner:", e);
