@@ -337,11 +337,14 @@ router.get(
             new Date(e.dates.startDate) > new Date()
         ).length,
 
-        // Total tickets sold (paid orders only)
-        Ticket.countDocuments({
-          eventId: { $in: eventIds },
-          orderId: { $exists: true },
-        }),
+        // Total tickets sold (active tickets from paid orders)
+        eventIds.length > 0
+          ? Ticket.countDocuments({
+              eventId: { $in: eventIds },
+              orderId: { $exists: true },
+              status: { $in: ["active", "used"] }, // Count active and used tickets (exclude cancelled/refunded)
+            })
+          : 0,
 
         // Total revenue from paid orders
         eventIds.length > 0
@@ -356,7 +359,15 @@ router.get(
               {
                 $group: {
                   _id: null,
-                  total: { $sum: "$totalAmount" },
+                  total: {
+                    $sum: {
+                      $cond: [
+                        { $gt: [{ $ifNull: ["$totalAmount", 0] }, 0] },
+                        { $ifNull: ["$totalAmount", 0] },
+                        { $ifNull: ["$pricing.total", 0] }
+                      ]
+                    }
+                  },
                 },
               },
             ])
@@ -387,7 +398,15 @@ router.get(
                 {
                   $group: {
                     _id: null,
-                    total: { $sum: "$totalAmount" },
+                    total: {
+                      $sum: {
+                        $cond: [
+                          { $gt: [{ $ifNull: ["$totalAmount", 0] }, 0] },
+                          { $ifNull: ["$totalAmount", 0] },
+                          { $ifNull: ["$pricing.total", 0] }
+                        ]
+                      }
+                    },
                   },
                 },
               ]);
@@ -402,6 +421,7 @@ router.get(
               startOfMonth.setHours(0, 0, 0, 0);
               return Ticket.countDocuments({
                 eventId: { $in: eventIds },
+                status: { $in: ["active", "used"] }, // Count active and used tickets (exclude cancelled/refunded)
                 createdAt: { $gte: startOfMonth },
               });
             })()
