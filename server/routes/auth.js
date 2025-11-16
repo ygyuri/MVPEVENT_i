@@ -1,44 +1,340 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
-const crypto = require("crypto");
+const passport = require("passport");
 const User = require("../models/User");
-const Session = require("../models/Session");
 const emailService = require("../services/emailService");
 const {
   verifyToken,
-  requireRole,
   registrationRateLimit,
   loginRateLimit,
-  JWT_SECRET,
 } = require("../middleware/auth");
+const {
+  generateTokens,
+  persistSession,
+  findActiveSessionByRefreshToken,
+  rotateSessionTokens,
+  verifyRefreshToken,
+  revokeSessionByToken,
+} = require("../services/auth/tokenService");
+const StatelessStateStore = require("../utils/statelessStateStore");
 
 const router = express.Router();
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const sanitizeRedirect = (value) => {
+  if (!value || typeof value !== "string") {
+    return "/";
+  }
 
-// Generate JWT tokens
-const generateTokens = (userId) => {
-  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: "1h" });
-  const refreshToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: "7d" });
-  return { accessToken, refreshToken };
+  const trimmed = value.trim();
+
+  // Ignore error URLs from previous failed OAuth attempts
+  if (
+    trimmed.includes("oauth=failed") ||
+    trimmed.includes("oauth=error") ||
+    trimmed.includes("message=")
+  ) {
+    console.log("⚠️ [SANITIZE] Ignoring error URL as redirect:", trimmed);
+    return "/";
+  }
+
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("//")
+  ) {
+    return "/";
+  }
+
+  if (!trimmed.startsWith("/")) {
+    return `/${trimmed}`;
+  }
+
+  return trimmed;
 };
 
-// Store session in database
-const storeSession = async (userId, accessToken, refreshToken, req) => {
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+const serializeForScript = (data) =>
+  JSON.stringify(data).replace(/</g, "\\u003c");
 
-  const session = new Session({
-    userId,
-    sessionToken: accessToken,
-    refreshToken,
-    expiresAt,
-    userAgent: req.get("User-Agent"),
-    ipAddress: req.ip || req.connection.remoteAddress,
+// Check if Google OAuth is configured
+const isGoogleOAuthConfigured = () => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return false;
+  }
+  // Check if strategy is registered by checking passport's strategies
+  try {
+    const strategies = passport._strategies || {};
+    return !!strategies.google;
+  } catch {
+    return false;
+  }
+};
+
+// Google OAuth - initiate
+router.get("/google", (req, res, next) => {
+  console.log("🚀 [OAUTH INIT] Google OAuth initiation requested", {
+    query: req.query,
+    redirect: req.query.redirect,
+    timestamp: new Date().toISOString(),
   });
 
-  await session.save();
-  return session;
-};
+  if (!isGoogleOAuthConfigured()) {
+    console.error("❌ [OAUTH INIT] Google OAuth is not configured");
+    return res.status(503).json({
+      error: "Google OAuth is not configured. Please contact support.",
+      code: "OAUTH_NOT_CONFIGURED",
+    });
+  }
+
+  // Always use a clean redirect - never pass error URLs
+  const redirect = sanitizeRedirect(req.query.redirect || "/");
+  
+  // Manually encode the state using the state store to ensure it's properly encoded
+  // passport-google-oauth20's state store integration might not be working as expected
+  const getStateStore = () => {
+    const secret =
+      process.env.GOOGLE_STATE_SECRET ||
+      process.env.JWT_SECRET ||
+      "eventi-google-state";
+    const ttl =
+      typeof process.env.GOOGLE_STATE_TTL_MS !== "undefined"
+        ? Number(process.env.GOOGLE_STATE_TTL_MS)
+        : undefined;
+    return new StatelessStateStore({ secret, ttl });
+  };
+
+  const stateStore = getStateStore();
+  
+  // Encode the state manually
+  stateStore.store(req, redirect, null, (storeErr, encodedState) => {
+    if (storeErr) {
+      console.error("❌ [OAUTH INIT] Failed to encode state:", storeErr);
+      return res.status(500).json({
+        error: "Failed to initialize OAuth. Please try again.",
+        code: "OAUTH_INIT_ERROR",
+      });
+    }
+
+    console.log("✅ [OAUTH INIT] Google OAuth configured, initiating flow", {
+      originalRedirect: req.query.redirect,
+      sanitizedRedirect: redirect,
+      encodedStateLength: encodedState.length,
+      encodedStatePreview: encodedState.substring(0, 30) + "...",
+    });
+
+    // Pass the encoded state to passport
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
+      state: encodedState, // Pass the pre-encoded state
+      session: false,
+      prompt: "select_account",
+    })(req, res, next);
+  });
+});
+
+// Google OAuth callback
+router.get("/google/callback", (req, res, next) => {
+  console.log("📥 [OAUTH CALLBACK] Google OAuth callback received", {
+    url: req.url,
+    query: req.query,
+    state: req.query.state,
+    code: req.query.code ? "present" : "missing",
+    error: req.query.error,
+    timestamp: new Date().toISOString(),
+  });
+
+  if (!isGoogleOAuthConfigured()) {
+    console.error("❌ [OAUTH CALLBACK] Google OAuth is not configured");
+    const targetOrigin = FRONTEND_URL;
+    const html = `
+      <html>
+        <body>
+          <script>
+            (function() {
+              const data = ${serializeForScript({
+                type: "oauth-error",
+                provider: "google",
+                message: "Google OAuth is not configured. Please contact support.",
+                redirect: "/",
+              })};
+              if (window.opener) {
+                window.opener.postMessage(data, "${targetOrigin}");
+                window.close();
+              } else {
+                window.location = "${targetOrigin}/?oauth=failed&message=" + encodeURIComponent("Google OAuth is not configured. Please contact support.");
+              }
+            })();
+          </script>
+        </body>
+      </html>`;
+    return res.status(503).send(html);
+  }
+
+  console.log("✅ [OAUTH CALLBACK] Google OAuth configured, calling passport.authenticate");
+
+  passport.authenticate("google", { session: false }, (err, payload, info) => {
+    console.log("🔍 [OAUTH CALLBACK] Passport authenticate callback invoked", {
+      hasError: !!err,
+      hasPayload: !!payload,
+      hasInfo: !!info,
+      errorMessage: err?.message,
+      infoMessage: info?.message,
+      infoState: info?.state,
+      infoType: typeof info,
+      infoKeys: info ? Object.keys(info) : [],
+    });
+
+    // Extract redirect from validated state (if state validation succeeded)
+    // If state validation failed, info.state will be the error message object
+    const stateRedirect =
+      typeof info?.state === "object" &&
+      info.state !== null &&
+      typeof info.state.redirect === "string"
+        ? info.state.redirect
+        : null;
+    
+    // Fallback: if state validation failed, use query.state but sanitize it
+    // (it might be an error URL from a previous failed attempt)
+    let fallbackState = req.query.state;
+    if (fallbackState && (fallbackState.includes("oauth=failed") || fallbackState.includes("message="))) {
+      console.warn("⚠️ [OAUTH CALLBACK] Query state is an error URL, ignoring it");
+      fallbackState = null;
+    }
+    
+    const redirectPath = sanitizeRedirect(stateRedirect || fallbackState || "/");
+
+    console.log("🔍 [OAUTH CALLBACK] State and redirect extraction", {
+      stateRedirect,
+      queryState: req.query.state,
+      fallbackState,
+      redirectPath,
+      infoStateType: typeof info?.state,
+      infoStateValue: info?.state,
+      infoStateKeys: info?.state && typeof info.state === "object" ? Object.keys(info.state) : null,
+    });
+
+    const targetOrigin = FRONTEND_URL;
+
+    if (err || !payload) {
+      // Check if this is just a state validation error but we might still have valid auth
+      const isStateError =
+        info?.message?.includes("state") ||
+        info?.message?.includes("State") ||
+        (err && err.message?.includes("state"));
+
+      const message =
+        err?.message ||
+        info?.message ||
+        "Google authentication failed. Please try again.";
+
+      console.error("❌ [OAUTH CALLBACK] Authentication failed", {
+        error: err,
+        errorMessage: err?.message,
+        errorStack: err?.stack,
+        info: info,
+        infoMessage: info?.message,
+        infoType: typeof info,
+        isStateError,
+        finalMessage: message,
+        redirectPath,
+      });
+
+      // If it's a state error, provide a more helpful message
+      const userFriendlyMessage = isStateError
+        ? "OAuth state validation failed. Please try again from the home page."
+        : message;
+
+      const html = `
+        <html>
+          <body>
+            <script>
+              (function() {
+                const data = ${serializeForScript({
+                  type: "oauth-error",
+                  provider: "google",
+                  message: userFriendlyMessage,
+                  redirect: redirectPath,
+                })};
+                if (window.opener) {
+                  window.opener.postMessage(data, "${targetOrigin}");
+                  window.close();
+                } else {
+                  window.location = "${targetOrigin}/?oauth=failed&message=" + encodeURIComponent("${userFriendlyMessage}");
+                }
+              })();
+            </script>
+          </body>
+        </html>`;
+      return res.status(200).send(html);
+    }
+
+    const { user, tokens } = payload;
+    console.log("✅ [OAUTH CALLBACK] Authentication successful", {
+      userId: user?.id,
+      userEmail: user?.email,
+      hasTokens: !!tokens,
+      hasAccessToken: !!tokens?.accessToken,
+      hasRefreshToken: !!tokens?.refreshToken,
+      redirectPath,
+    });
+
+    // Encode tokens for URL (as fallback when postMessage fails)
+    const tokensParam = Buffer.from(
+      JSON.stringify({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken })
+    ).toString("base64url");
+
+    const html = `
+      <html>
+        <body>
+          <script>
+            (function() {
+              const data = ${serializeForScript({
+                type: "oauth-success",
+                provider: "google",
+                payload: { user, tokens, redirect: redirectPath },
+              })};
+              const targetOrigin = "${targetOrigin}";
+              
+              // Try multiple ways to send postMessage
+              let messageSent = false;
+              
+              // Try window.opener first
+              if (window.opener && !window.opener.closed) {
+                try {
+                  window.opener.postMessage(data, targetOrigin);
+                  messageSent = true;
+                  console.log("✅ [OAUTH CALLBACK] postMessage sent to window.opener");
+                  setTimeout(() => window.close(), 100);
+                } catch (e) {
+                  console.warn("⚠️ [OAUTH CALLBACK] Failed to postMessage to window.opener:", e);
+                }
+              }
+              
+              // Try window.parent as fallback
+              if (!messageSent && window.parent && window.parent !== window) {
+                try {
+                  window.parent.postMessage(data, targetOrigin);
+                  messageSent = true;
+                  console.log("✅ [OAUTH CALLBACK] postMessage sent to window.parent");
+                  setTimeout(() => window.close(), 100);
+                } catch (e) {
+                  console.warn("⚠️ [OAUTH CALLBACK] Failed to postMessage to window.parent:", e);
+                }
+              }
+              
+              // If postMessage failed, redirect with tokens in URL
+              if (!messageSent) {
+                console.warn("⚠️ [OAUTH CALLBACK] postMessage failed, using redirect fallback");
+                window.location = targetOrigin + "/?oauth=success&provider=google&tokens=" + encodeURIComponent("${tokensParam}");
+              }
+            })();
+          </script>
+        </body>
+      </html>`;
+    res.send(html);
+  })(req, res, next);
+});
+
 
 // Registration endpoint
 router.post(
@@ -175,6 +471,7 @@ router.post(
         walletAddress: walletAddress || null,
         emailVerified: false,
         role,
+        lastLoginProvider: "email",
       };
 
       // Use name field if provided, otherwise use firstName/lastName
@@ -205,8 +502,8 @@ router.post(
       }
 
       // Generate tokens
-      const { accessToken, refreshToken } = generateTokens(user._id);
-      await storeSession(user._id, accessToken, refreshToken, req);
+      const tokens = generateTokens(user._id);
+      await persistSession(user._id, tokens, req);
 
       res.status(201).json({
         message: "Account created successfully! Welcome to Event-i!",
@@ -219,7 +516,7 @@ router.post(
           lastName: user.lastName,
           role: user.role,
         },
-        tokens: { accessToken, refreshToken },
+        tokens,
       });
     } catch (error) {
       console.error("Registration error:", error);
@@ -354,9 +651,16 @@ router.post(
 
       console.log("[LOGIN] ✅ Password verified for:", emailLower);
 
+      if (user.lastLoginProvider !== "email") {
+        await User.updateOne(
+          { _id: user._id },
+          { lastLoginProvider: "email" }
+        );
+      }
+
       // Generate tokens
-      const { accessToken, refreshToken } = generateTokens(user._id);
-      await storeSession(user._id, accessToken, refreshToken, req);
+      const tokens = generateTokens(user._id);
+      await persistSession(user._id, tokens, req);
 
       res.json({
         message: "Welcome back! You have successfully logged in.",
@@ -369,10 +673,7 @@ router.post(
           lastName: user.lastName,
           role: user.role,
         },
-        tokens: {
-          accessToken,
-          refreshToken,
-        },
+        tokens,
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -387,7 +688,7 @@ router.post("/logout", verifyToken, async (req, res) => {
     const token = req.headers.authorization?.split(" ")[1];
 
     // Remove session from database
-    await Session.findOneAndDelete({ sessionToken: token });
+    await revokeSessionByToken(token);
 
     res.json({ message: "Logout successful" });
   } catch (error) {
@@ -435,34 +736,29 @@ router.post("/refresh", async (req, res) => {
       return res.status(400).json({ error: "Refresh token required" });
     }
 
-    // Verify refresh token
-    const decoded = jwt.verify(refreshToken, JWT_SECRET);
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(refreshToken);
+    } catch (error) {
+      console.error("Refresh token verify error:", error.message);
+      return res.status(401).json({ error: "Invalid refresh token" });
+    }
 
     // Check if session exists
-    const session = await Session.findOne({
-      refreshToken,
-      expiresAt: { $gt: new Date() },
-      isActive: true,
-    });
+    const session = await findActiveSessionByRefreshToken(refreshToken);
 
     if (!session) {
       return res.status(401).json({ error: "Invalid refresh token" });
     }
 
     // Generate new tokens
-    const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-      generateTokens(decoded.userId);
-
-    // Update session
-    session.sessionToken = newAccessToken;
-    session.refreshToken = newRefreshToken;
-    session.lastUsedAt = new Date();
-    await session.save();
+    const tokens = generateTokens(decoded.userId);
+    await rotateSessionTokens(session, tokens);
 
     res.json({
       tokens: {
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
       },
     });
   } catch (error) {

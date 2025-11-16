@@ -102,6 +102,12 @@ docker compose -f docker-compose.prod.yml exec server node scripts/test-email.js
 NODE_ENV=production
 FRONTEND_URL=https://event-i.co.ke
 BASE_URL=https://event-i.co.ke
+SESSION_SECRET=your-express-session-secret
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CALLBACK_URL=https://event-i.co.ke/api/auth/google/callback
+GOOGLE_STATE_SECRET=generate-a-unique-64-char-state-secret
+GOOGLE_STATE_TTL_MS=300000
 
 # Database
 MONGODB_URI=mongodb://admin:password@mongodb:27017/event_i?authSource=admin

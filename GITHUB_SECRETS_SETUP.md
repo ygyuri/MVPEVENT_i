@@ -66,6 +66,14 @@ This document outlines all the secrets that need to be configured in your GitHub
 - `MPESA_CALLBACK_URL` - MPESA callback URL
 - `MPESA_TIMEOUT_URL` - MPESA timeout URL
 
+### Google OAuth Configuration
+- `GOOGLE_CLIENT_ID` - Your Google OAuth Client ID (e.g., `894994509927-l9m4etbfu4gsk6cmauisvdpj5t4gnf6m.apps.googleusercontent.com`)
+- `GOOGLE_CLIENT_SECRET` - **SECURE** Your Google OAuth Client Secret (e.g., `GOCSPX-...`)
+- `GOOGLE_CALLBACK_URL` - Production callback URL (e.g., `https://event-i.co.ke/api/auth/google/callback`)
+- `GOOGLE_STATE_SECRET` - **SECURE** OAuth state signing secret (use `openssl rand -base64 32`)
+- `GOOGLE_STATE_TTL_MS` - OAuth state TTL in milliseconds (e.g., `300000` for 5 minutes)
+- `SESSION_SECRET` - **SECURE** Express session secret (use `openssl rand -base64 32`)
+
 ### Email Configuration
 - `SMTP_HOST` - Your SMTP host (e.g., `smtp-relay.brevo.com`)
 - `SMTP_PORT` - SMTP port (e.g., `587`)
@@ -104,9 +112,15 @@ This document outlines all the secrets that need to be configured in your GitHub
 
 2. **Use Strong Passwords**: All passwords should be at least 32 characters long and randomly generated.
 
-3. **Rotate Exposed Credentials**: If `.env.production` was previously committed to git, rotate ALL credentials immediately.
+3. **Google OAuth Secrets**: 
+   - `GOOGLE_CLIENT_SECRET` - Get from [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   - `GOOGLE_STATE_SECRET` - Generate new secret for production (different from local)
+   - `SESSION_SECRET` - Generate new secret for production (different from local)
+   - Ensure `GOOGLE_CALLBACK_URL` matches exactly what's in Google Cloud Console
 
-4. **Access Control**: Only repository administrators should have access to secrets.
+4. **Rotate Exposed Credentials**: If `.env.production` was previously committed to git, rotate ALL credentials immediately.
+
+5. **Access Control**: Only repository administrators should have access to secrets.
 
 ## Generating Secure Secrets
 
@@ -120,6 +134,12 @@ openssl rand -base64 32
 openssl rand -base64 32
 
 # Generate QR secrets
+openssl rand -base64 32
+
+# Generate Google OAuth state secret
+openssl rand -base64 32
+
+# Generate session secret
 openssl rand -base64 32
 ```
 

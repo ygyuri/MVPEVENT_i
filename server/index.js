@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const passport = require("passport");
 require("dotenv").config();
 
 // Initialize Redis connection manager
@@ -65,7 +66,27 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // Middleware
-app.use(helmet());
+// Configure Helmet with CSP that allows inline scripts for OAuth callbacks
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'", // Required for OAuth callback postMessage scripts
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+      },
+    },
+  })
+);
 
 // Trust proxy for rate limiting behind nginx
 // Use 1 to trust only the first proxy (nginx), not true (too permissive)
@@ -150,6 +171,8 @@ if (process.env.NODE_ENV !== "production") {
 }
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(passport.initialize());
+require("./config/passport")(passport);
 
 // Request logging middleware (production-safe)
 app.use((req, res, next) => {

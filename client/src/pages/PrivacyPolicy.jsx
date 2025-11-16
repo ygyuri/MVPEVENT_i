@@ -1,10 +1,59 @@
 import { motion } from "framer-motion";
-import { Shield, Lock, Eye, FileText, Mail, Phone } from "lucide-react";
+import { Shield, Lock, Eye, FileText, Mail, Phone, Database, Globe, Clock, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 
 const PrivacyPolicy = () => {
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://event-i.co.ke";
+  const currentUrl = `${baseUrl}/privacy`;
+  const lastUpdated = new Date().toISOString().split("T")[0];
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "LegalDocument",
+    "name": "Privacy Policy",
+    "description": "Privacy Policy for Event-i event management platform",
+    "url": currentUrl,
+    "datePublished": "2024-01-01",
+    "dateModified": lastUpdated,
+    "publisher": {
+      "@type": "Organization",
+      "name": "Event-i",
+      "url": baseUrl,
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "support@event-i.co.ke",
+        "telephone": "+254703328938",
+        "contactType": "customer service"
+      }
+    },
+    "inLanguage": "en-US"
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <>
+      <Helmet>
+        <title>Privacy Policy | Event-i</title>
+        <meta name="description" content="Event-i Privacy Policy - Learn how we collect, use, and protect your personal information when you use our event management platform." />
+        <meta name="keywords" content="privacy policy, data protection, GDPR, CCPA, event management, Event-i" />
+        <link rel="canonical" href={currentUrl} />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="Privacy Policy | Event-i" />
+        <meta property="og:description" content="Event-i Privacy Policy - Learn how we collect, use, and protect your personal information." />
+        <meta property="og:url" content={currentUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Event-i" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="Privacy Policy | Event-i" />
+        <meta name="twitter:description" content="Event-i Privacy Policy - Learn how we collect, use, and protect your personal information." />
+        
+        {/* Structured Data */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+      </Helmet>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="container-modern py-12 md:py-16 lg:py-20">
         {/* Header */}
         <motion.div
@@ -254,10 +303,183 @@ const PrivacyPolicy = () => {
               </p>
             </section>
 
+            {/* Data Processing Legal Basis */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+                <FileText className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                7. Legal Basis for Processing (GDPR)
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                We process your personal information based on the following legal bases:
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
+                <li>
+                  <strong>Contract Performance:</strong> To fulfill our contractual obligations and provide services you've requested
+                </li>
+                <li>
+                  <strong>Legitimate Interests:</strong> To operate and improve our platform, ensure security, and prevent fraud
+                </li>
+                <li>
+                  <strong>Consent:</strong> When you've given explicit consent for specific processing activities
+                </li>
+                <li>
+                  <strong>Legal Obligations:</strong> To comply with applicable laws, regulations, and legal processes
+                </li>
+                <li>
+                  <strong>Vital Interests:</strong> To protect your safety or the safety of others
+                </li>
+              </ul>
+            </section>
+
+            {/* Data Retention */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+                <Clock className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                8. Data Retention
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                We retain your personal information only for as long as necessary to fulfill the purposes outlined in this Privacy Policy, unless a longer retention period is required or permitted by law. Our data retention periods are as follows:
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
+                <li>
+                  <strong>Account Information:</strong> Retained while your account is active and for up to 2 years after account closure, unless you request earlier deletion
+                </li>
+                <li>
+                  <strong>Transaction Records:</strong> Retained for 7 years as required by tax and accounting regulations
+                </li>
+                <li>
+                  <strong>Event Data:</strong> Retained for the duration of the event and up to 2 years after the event ends
+                </li>
+                <li>
+                  <strong>Marketing Communications:</strong> Retained until you opt out or request deletion
+                </li>
+                <li>
+                  <strong>Analytics Data:</strong> Aggregated and anonymized data may be retained indefinitely for statistical purposes
+                </li>
+                <li>
+                  <strong>Legal Records:</strong> Retained as required by applicable laws and regulations
+                </li>
+              </ul>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
+                After the retention period expires, we will securely delete or anonymize your personal information.
+              </p>
+            </section>
+
+            {/* International Data Transfers */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+                <Globe className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                9. International Data Transfers
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                Your information may be transferred to and processed in countries other than your country of residence. These countries may have data protection laws that differ from those in your country. When we transfer your data internationally, we ensure appropriate safeguards are in place:
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
+                <li>
+                  <strong>Standard Contractual Clauses:</strong> We use European Commission-approved standard contractual clauses with service providers
+                </li>
+                <li>
+                  <strong>Adequacy Decisions:</strong> We transfer data to countries with adequacy decisions from relevant authorities
+                </li>
+                <li>
+                  <strong>Certification Programs:</strong> We work with service providers certified under recognized data protection frameworks
+                </li>
+                <li>
+                  <strong>Technical and Organizational Measures:</strong> We implement appropriate security measures to protect your data during transfer
+                </li>
+              </ul>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
+                By using our services, you consent to the transfer of your information to countries outside your jurisdiction, subject to the safeguards described above.
+              </p>
+            </section>
+
+            {/* Data Breach Notification */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+                <AlertCircle className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                10. Data Breach Notification
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                In the event of a data breach that poses a risk to your rights and freedoms, we will:
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
+                <li>
+                  <strong>Notify Relevant Authorities:</strong> Report the breach to appropriate data protection authorities within 72 hours of becoming aware of it, where required by law
+                </li>
+                <li>
+                  <strong>Notify Affected Users:</strong> Inform you without undue delay if the breach is likely to result in a high risk to your rights and freedoms
+                </li>
+                <li>
+                  <strong>Provide Details:</strong> Include information about the nature of the breach, the types of data affected, and steps we're taking to address it
+                </li>
+                <li>
+                  <strong>Remediation:</strong> Take immediate steps to contain the breach and prevent further unauthorized access
+                </li>
+              </ul>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
+                We maintain an incident response plan and regularly test our security measures to minimize the risk of data breaches.
+              </p>
+            </section>
+
+            {/* Third-Party Service Providers */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">
+                <Database className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                11. Third-Party Service Providers
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                We use third-party service providers to help us operate our platform and provide services. These providers may have access to your personal information only to perform tasks on our behalf and are obligated not to disclose or use it for any other purpose. Our key service providers include:
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
+                <li>
+                  <strong>Payment Processors:</strong> PayHero, MPesa, and other payment gateways for secure payment processing
+                </li>
+                <li>
+                  <strong>Cloud Hosting:</strong> Cloud infrastructure providers for data storage and application hosting
+                </li>
+                <li>
+                  <strong>Email Services:</strong> Email service providers for transactional and marketing communications
+                </li>
+                <li>
+                  <strong>Analytics Services:</strong> Analytics providers for understanding usage patterns and improving our services
+                </li>
+                <li>
+                  <strong>Authentication Services:</strong> Google OAuth and other authentication providers for user login
+                </li>
+                <li>
+                  <strong>Customer Support:</strong> Customer support platforms for managing user inquiries
+                </li>
+              </ul>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
+                All third-party service providers are required to comply with applicable data protection laws and implement appropriate security measures. We regularly review our service providers to ensure they meet our data protection standards.
+              </p>
+            </section>
+
+            {/* User Rights Implementation */}
+            <section>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                12. Exercising Your Rights
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+                To exercise your privacy rights, please contact us at support@event-i.co.ke with:
+              </p>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
+                <li>Your name and email address associated with your account</li>
+                <li>A clear description of the right you wish to exercise</li>
+                <li>Verification of your identity (we may request additional information to verify your identity)</li>
+              </ul>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
+                We will respond to your request within 30 days, or within the time period required by applicable law. If we need more time to process your request, we will inform you of the reason and the extended timeframe.
+              </p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
+                If you are not satisfied with our response, you have the right to lodge a complaint with your local data protection authority or supervisory authority.
+              </p>
+            </section>
+
             {/* Cookies */}
             <section>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                7. Cookies and Tracking Technologies
+                13. Cookies and Tracking Technologies
               </h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                 We use cookies and similar tracking technologies to track
@@ -281,7 +503,7 @@ const PrivacyPolicy = () => {
             {/* Children's Privacy */}
             <section>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                8. Children's Privacy
+                14. Children's Privacy
               </h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                 Our services are not intended for individuals under the age of
@@ -295,7 +517,7 @@ const PrivacyPolicy = () => {
             {/* Changes to This Policy */}
             <section>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                9. Changes to This Privacy Policy
+                15. Changes to This Privacy Policy
               </h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                 We may update our Privacy Policy from time to time. We will
@@ -308,7 +530,7 @@ const PrivacyPolicy = () => {
             {/* Contact Us */}
             <section className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-6 border border-purple-200 dark:border-purple-800">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                10. Contact Us
+                16. Contact Us
               </h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
                 If you have any questions about this Privacy Policy or our data
@@ -339,6 +561,7 @@ const PrivacyPolicy = () => {
         </motion.div>
       </div>
     </div>
+    </>
   );
 };
 
