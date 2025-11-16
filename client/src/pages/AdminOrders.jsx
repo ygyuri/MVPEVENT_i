@@ -36,8 +36,10 @@ const AdminOrders = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
+  const [organizerFilter, setOrganizerFilter] = useState("all");
   const [events, setEvents] = useState([]);
   const [organizers, setOrganizers] = useState([]);
+  const [allPaidOrders, setAllPaidOrders] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -61,7 +63,14 @@ const AdminOrders = () => {
     if (isAuthenticated && user && user.role === "admin") {
       fetchOrders();
     }
-  }, [page, statusFilter, eventFilter]);
+  }, [page, statusFilter, eventFilter, organizerFilter]);
+
+  useEffect(() => {
+    // Fetch all paid orders when switching to payout view or when organizer filter changes
+    if (viewMode === "payouts" && isAuthenticated && user && user.role === "admin") {
+      fetchAllPaidOrders();
+    }
+  }, [viewMode, organizerFilter]);
 
   const fetchEvents = async () => {
     try {
@@ -91,6 +100,7 @@ const AdminOrders = () => {
       });
       if (statusFilter !== "all") params.append("status", statusFilter);
       if (eventFilter !== "all") params.append("eventId", eventFilter);
+      if (organizerFilter !== "all") params.append("organizerId", organizerFilter);
       if (searchTerm) params.append("search", searchTerm);
 
       const response = await api.get(`/api/admin/orders?${params.toString()}`);
@@ -105,6 +115,25 @@ const AdminOrders = () => {
       toast.error("Failed to load orders");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAllPaidOrders = async () => {
+    try {
+      // Fetch all paid/completed orders (with high limit) for payout calculation
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "1000", // Get a large batch of orders
+        status: "paid", // Only paid orders for payouts
+      });
+      if (organizerFilter !== "all") params.append("organizerId", organizerFilter);
+
+      const response = await api.get(`/api/admin/orders?${params.toString()}`);
+      if (response.data?.success) {
+        setAllPaidOrders(response.data.data.orders);
+      }
+    } catch (err) {
+      console.error("Failed to fetch paid orders:", err);
     }
   };
 
@@ -220,8 +249,11 @@ const AdminOrders = () => {
   const calculatePayoutSummary = () => {
     const summary = {};
 
-    orders
-      .filter(order => order.paymentStatus === "paid" || order.status === "completed")
+    // Use allPaidOrders if in payout view, otherwise use current orders
+    const ordersToProcess = viewMode === "payouts" ? allPaidOrders : orders;
+
+    ordersToProcess
+      .filter(order => order.paymentStatus === "paid" || order.status === "paid" || order.status === "completed")
       .forEach(order => {
         order.items?.forEach(item => {
           const event = item.eventId;
@@ -440,7 +472,7 @@ const AdminOrders = () => {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -484,6 +516,23 @@ const AdminOrders = () => {
             {events.map((event) => (
               <option key={event._id} value={event._id}>
                 {event.title}
+              </option>
+            ))}
+          </select>
+
+          {/* Organizer Filter */}
+          <select
+            value={organizerFilter}
+            onChange={(e) => {
+              setOrganizerFilter(e.target.value);
+              setPage(1);
+            }}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4f0f69] focus:border-transparent"
+          >
+            <option value="all">All Organizers</option>
+            {organizers.map((organizer) => (
+              <option key={organizer._id} value={organizer._id}>
+                {organizer.name || organizer.email}
               </option>
             ))}
           </select>

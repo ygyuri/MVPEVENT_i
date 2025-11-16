@@ -291,13 +291,22 @@ router.patch(
 router.get("/orders", verifyToken, requireRole("admin"), async (req, res) => {
   try {
     const Order = require("../models/Order");
-    const { page = 1, limit = 20, status, search, eventId } = req.query;
+    const Event = require("../models/Event");
+    const { page = 1, limit = 20, status, search, eventId, organizerId } = req.query;
     const query = {};
 
-    if (status) query.status = status;
+    if (status && status !== "all") query.status = status;
     if (eventId) {
       query["items.eventId"] = eventId;
     }
+
+    // If organizer filter is applied, find all events by this organizer first
+    if (organizerId) {
+      const organizerEvents = await Event.find({ organizer: organizerId }).select("_id").lean();
+      const eventIds = organizerEvents.map(e => e._id);
+      query["items.eventId"] = { $in: eventIds };
+    }
+
     if (search) {
       query.$or = [
         { orderNumber: { $regex: search, $options: "i" } },
@@ -307,14 +316,22 @@ router.get("/orders", verifyToken, requireRole("admin"), async (req, res) => {
     }
 
     const skip = (Number(page) - 1) * Number(limit);
-    
+
     // Build revenue query - respect all filters
     const revenueQuery = {};
-    
+
     // Copy eventId and search filters to revenue query
     if (eventId) {
       revenueQuery["items.eventId"] = eventId;
     }
+
+    // Copy organizer filter to revenue query
+    if (organizerId) {
+      const organizerEvents = await Event.find({ organizer: organizerId }).select("_id").lean();
+      const eventIds = organizerEvents.map(e => e._id);
+      revenueQuery["items.eventId"] = { $in: eventIds };
+    }
+
     if (search) {
       revenueQuery.$or = [
         { orderNumber: { $regex: search, $options: "i" } },
@@ -322,7 +339,7 @@ router.get("/orders", verifyToken, requireRole("admin"), async (req, res) => {
         { "customer.name": { $regex: search, $options: "i" } },
       ];
     }
-    
+
     // If no status filter or "all", only count completed/paid orders for revenue
     if (!status || status === "all") {
       revenueQuery.status = "completed";
@@ -334,7 +351,14 @@ router.get("/orders", verifyToken, requireRole("admin"), async (req, res) => {
     
     const [orders, total, revenueResult] = await Promise.all([
       Order.find(query)
-        .populate("items.eventId", "title slug")
+        .populate({
+          path: "items.eventId",
+          select: "title slug organizer",
+          populate: {
+            path: "organizer",
+            select: "email name firstName lastName"
+          }
+        })
         .populate("customer.userId", "email username")
         .select(
           "orderNumber status paymentStatus totalAmount customer items createdAt pricing transactionFee"
