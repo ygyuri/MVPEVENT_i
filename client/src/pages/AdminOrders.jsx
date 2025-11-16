@@ -17,6 +17,11 @@ import {
   Mail,
   QrCode,
   Ticket,
+  Download,
+  TrendingUp,
+  Building2,
+  Wallet,
+  Users,
 } from "lucide-react";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
@@ -32,6 +37,7 @@ const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
   const [events, setEvents] = useState([]);
+  const [organizers, setOrganizers] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -40,6 +46,7 @@ const AdminOrders = () => {
   const [resendingTickets, setResendingTickets] = useState({});
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
+  const [viewMode, setViewMode] = useState("orders"); // "orders" or "payouts"
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== "admin") {
@@ -61,6 +68,13 @@ const AdminOrders = () => {
       const response = await api.get(`/api/admin/events?limit=100`);
       if (response.data?.success) {
         setEvents(response.data.data.events || []);
+        // Extract unique organizers
+        const uniqueOrganizers = [...new Map(
+          response.data.data.events
+            .filter(e => e.organizer)
+            .map(e => [e.organizer._id, e.organizer])
+        ).values()];
+        setOrganizers(uniqueOrganizers);
       }
     } catch (err) {
       console.error("Failed to fetch events:", err);
@@ -203,6 +217,130 @@ const AdminOrders = () => {
     }
   };
 
+  const calculatePayoutSummary = () => {
+    const summary = {};
+
+    orders
+      .filter(order => order.paymentStatus === "paid" || order.status === "completed")
+      .forEach(order => {
+        order.items?.forEach(item => {
+          const event = item.eventId;
+          if (!event || !event.organizer) return;
+
+          const organizerId = event.organizer._id;
+          if (!summary[organizerId]) {
+            summary[organizerId] = {
+              organizer: event.organizer,
+              events: new Set(),
+              totalOrders: 0,
+              totalRevenue: 0,
+              totalFees: 0,
+              netPayout: 0,
+              orders: []
+            };
+          }
+
+          // Calculate order amounts
+          const orderAmount = order.totalAmount || order.pricing?.total || 0;
+          // Platform takes serviceFee (currently 0%) + transactionFee (payment processing)
+          const serviceFee = order.pricing?.serviceFee || 0;
+          const transactionFee = order.pricing?.transactionFee || 0;
+          const totalFees = serviceFee + transactionFee;
+          const netAmount = orderAmount - totalFees;
+
+          summary[organizerId].events.add(event.title);
+          summary[organizerId].totalOrders++;
+          summary[organizerId].totalRevenue += orderAmount;
+          summary[organizerId].totalFees += totalFees;
+          summary[organizerId].netPayout += netAmount;
+          summary[organizerId].orders.push({
+            orderNumber: order.orderNumber,
+            customer: order.customer?.email,
+            amount: orderAmount,
+            fee: totalFees,
+            serviceFee: serviceFee,
+            transactionFee: transactionFee,
+            net: netAmount,
+            date: order.createdAt,
+            event: event.title
+          });
+        });
+      });
+
+    // Convert Set to Array for events
+    Object.keys(summary).forEach(key => {
+      summary[key].events = Array.from(summary[key].events);
+    });
+
+    return summary;
+  };
+
+  const exportPayoutData = () => {
+    const summary = calculatePayoutSummary();
+
+    // Create CSV content
+    let csv = "Organizer Name,Email,Total Orders,Total Revenue (KES),Platform Fees (KES),Net Payout (KES),Events\n";
+
+    Object.values(summary).forEach(org => {
+      csv += `"${org.organizer.name || org.organizer.email}",`;
+      csv += `"${org.organizer.email}",`;
+      csv += `${org.totalOrders},`;
+      csv += `${org.totalRevenue.toFixed(2)},`;
+      csv += `${org.totalFees.toFixed(2)},`;
+      csv += `${org.netPayout.toFixed(2)},`;
+      csv += `"${org.events.join(', ')}"\n`;
+    });
+
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `event-i-payouts-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    toast.success('Payout data exported successfully!');
+  };
+
+  const exportDetailedPayoutData = (organizerId) => {
+    const summary = calculatePayoutSummary();
+    const orgData = summary[organizerId];
+
+    if (!orgData) return;
+
+    // Create detailed CSV for specific organizer
+    let csv = "Order Number,Customer Email,Event,Order Amount (KES),Service Fee (0%),Transaction Fee,Total Fees (KES),Net Amount (KES),Date\n";
+
+    orgData.orders.forEach(order => {
+      csv += `"${order.orderNumber}",`;
+      csv += `"${order.customer}",`;
+      csv += `"${order.event}",`;
+      csv += `${order.amount.toFixed(2)},`;
+      csv += `${order.serviceFee.toFixed(2)},`;
+      csv += `${order.transactionFee.toFixed(2)},`;
+      csv += `${order.fee.toFixed(2)},`;
+      csv += `${order.net.toFixed(2)},`;
+      csv += `"${new Date(order.date).toLocaleDateString()}"\n`;
+    });
+
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const filename = `payout-details-${orgData.organizer.name?.replace(/\s+/g, '-') || 'organizer'}-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    toast.success(`Detailed payout data exported for ${orgData.organizer.name || orgData.organizer.email}!`);
+  };
+
   if (loading && orders.length === 0) {
     return (
       <div className="container-modern py-12">
@@ -233,7 +371,9 @@ const AdminOrders = () => {
               Order Management
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
-              View and manage all orders and transactions
+              {viewMode === "orders"
+                ? "View and manage all orders and transactions"
+                : "View organizer payout summary for paid orders"}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -245,6 +385,15 @@ const AdminOrders = () => {
                 Revenue: {totalRevenue.toLocaleString()} KES
               </span>
             </div>
+            {viewMode === "payouts" && (
+              <button
+                onClick={exportPayoutData}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Export Payouts
+              </button>
+            )}
             <button
               onClick={fetchOrders}
               className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
@@ -253,6 +402,32 @@ const AdminOrders = () => {
               Refresh
             </button>
           </div>
+        </div>
+
+        {/* View Mode Toggle */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setViewMode("orders")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              viewMode === "orders"
+                ? "bg-[#4f0f69] text-white"
+                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+            }`}
+          >
+            <ShoppingBag className="w-4 h-4" />
+            Orders View
+          </button>
+          <button
+            onClick={() => setViewMode("payouts")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              viewMode === "payouts"
+                ? "bg-[#4f0f69] text-white"
+                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+            }`}
+          >
+            <Wallet className="w-4 h-4" />
+            Payout Summary
+          </button>
         </div>
       </motion.div>
 
@@ -319,9 +494,163 @@ const AdminOrders = () => {
         </div>
       </div>
 
+      {/* Payout Summary View */}
+      {viewMode === "payouts" && (
+        <div className="space-y-4 mb-8">
+          {(() => {
+            const summary = calculatePayoutSummary();
+            const summaryArray = Object.values(summary);
+
+            if (summaryArray.length === 0) {
+              return (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center border border-gray-200 dark:border-gray-700">
+                  <Wallet className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400 text-lg">
+                    No paid orders found to calculate payouts
+                  </p>
+                </div>
+              );
+            }
+
+            return summaryArray.map((org) => (
+              <motion.div
+                key={org.organizer._id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-[#4f0f69]/10 rounded-lg">
+                      <Building2 className="w-6 h-6 text-[#4f0f69]" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                        {org.organizer.name || "Unnamed Organizer"}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                        <Mail className="w-4 h-4" />
+                        {org.organizer.email}
+                      </p>
+                      <div className="flex items-center gap-4 mt-2">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {org.totalOrders} orders
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {org.events.length} event(s): {org.events.join(", ")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => exportDetailedPayoutData(org.organizer._id)}
+                    className="flex items-center gap-2 px-3 py-2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors text-sm"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export Details
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {/* Total Revenue */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
+                      <TrendingUp className="w-4 h-4" />
+                      <span className="text-xs font-medium">Total Revenue</span>
+                    </div>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {org.totalRevenue.toLocaleString()} KES
+                    </p>
+                  </div>
+
+                  {/* Platform Fees */}
+                  <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 mb-1">
+                      <DollarSign className="w-4 h-4" />
+                      <span className="text-xs font-medium">Transaction Fees</span>
+                    </div>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {org.totalFees.toLocaleString()} KES
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {org.totalRevenue > 0 ? ((org.totalFees / org.totalRevenue) * 100).toFixed(1) : 0}% of revenue (Payment processing only)
+                    </p>
+                  </div>
+
+                  {/* Net Payout */}
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 md:col-span-2">
+                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-1">
+                      <Wallet className="w-5 h-5" />
+                      <span className="text-sm font-medium">Net Payout (Amount to Transfer)</span>
+                    </div>
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                      {org.netPayout.toLocaleString()} KES
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Full ticket revenue minus payment processing fees only
+                    </p>
+                  </div>
+                </div>
+
+                {/* Order Breakdown */}
+                <div className="mt-4">
+                  <button
+                    onClick={() => {
+                      const elem = document.getElementById(`orders-${org.organizer._id}`);
+                      if (elem) {
+                        elem.classList.toggle("hidden");
+                      }
+                    }}
+                    className="text-sm text-[#4f0f69] dark:text-purple-400 hover:underline flex items-center gap-1"
+                  >
+                    <Eye className="w-4 h-4" />
+                    View {org.orders.length} order details
+                  </button>
+                  <div id={`orders-${org.organizer._id}`} className="hidden mt-3">
+                    <div className="max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Order</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Event</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Customer</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">Amount</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">Service Fee (0%)</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">Total Fees</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">Net</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {org.orders.map((order, idx) => (
+                            <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                              <td className="px-3 py-2 text-xs text-gray-900 dark:text-white">{order.orderNumber}</td>
+                              <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{order.event}</td>
+                              <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{order.customer}</td>
+                              <td className="px-3 py-2 text-xs text-gray-900 dark:text-white text-right">{order.amount.toLocaleString()}</td>
+                              <td className="px-3 py-2 text-xs text-orange-600 dark:text-orange-400 text-right" title={`Service: ${order.serviceFee.toLocaleString()} + Transaction: ${order.transactionFee.toLocaleString()}`}>
+                                {order.serviceFee.toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2 text-xs text-orange-600 dark:text-orange-400 text-right font-semibold">{order.fee.toLocaleString()}</td>
+                              <td className="px-3 py-2 text-xs font-semibold text-green-600 dark:text-green-400 text-right">{order.net.toLocaleString()}</td>
+                              <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{new Date(order.date).toLocaleDateString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ));
+          })()}
+        </div>
+      )}
+
       {/* Orders List */}
-      <div className="space-y-4">
-        {orders.length === 0 ? (
+      {viewMode === "orders" && (
+        <div className="space-y-4">
+          {orders.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center border border-gray-200 dark:border-gray-700">
             <ShoppingBag className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600 dark:text-gray-400 text-lg">
@@ -411,23 +740,22 @@ const AdminOrders = () => {
                             0
                           ).toLocaleString()}
                         </span>
-                        {order.pricing?.transactionFee &&
-                          order.pricing.transactionFee > 0 && (
-                            <span className="text-xs text-gray-400 dark:text-gray-500">
-                              Subtotal:{" "}
-                              {(order.pricing.subtotal || 0).toLocaleString()} +
-                              Fee:{" "}
-                              {order.pricing.transactionFee.toLocaleString()}
-                              {order.pricing.transactionFeeDetails
-                                ?.tierName && (
-                                <span className="ml-1">
-                                  (
-                                  {order.pricing.transactionFeeDetails.tierName}
-                                  )
-                                </span>
-                              )}
-                            </span>
-                          )}
+                        {order.pricing?.serviceFee && order.pricing.serviceFee > 0 && (
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
+                            Subtotal:{" "}
+                            {(order.pricing.subtotal || 0).toLocaleString()} +
+                            Fee:{" "}
+                            {order.pricing.serviceFee.toLocaleString()}
+                            {order.pricing.transactionFee > 0 && (
+                              <span> + {order.pricing.transactionFee.toLocaleString()}</span>
+                            )}
+                            {order.pricing.transactionFeeDetails?.tierName && (
+                              <span className="ml-1">
+                                ({order.pricing.transactionFeeDetails.tierName})
+                              </span>
+                            )}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -505,9 +833,10 @@ const AdminOrders = () => {
           ))
         )}
       </div>
+      )}
 
       {/* Pagination */}
-      {total > limit && (
+      {viewMode === "orders" && total > limit && (
         <div className="flex items-center justify-center gap-4 mt-8">
           <button
             onClick={() => setPage(page - 1)}
