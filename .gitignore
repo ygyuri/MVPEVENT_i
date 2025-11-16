@@ -9,6 +9,7 @@ yarn.lock
 # Environment variables
 .env
 .env.*
+.env.example
 .env.bak
 .env.local
 .env.development.local
