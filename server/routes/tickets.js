@@ -837,12 +837,38 @@ router.post(
           .json({ success: false, valid: false, code: "ACCESS_DENIED" });
       }
 
-      // Validity window
+      // Validity window - Allow some flexibility for event staff
       const now = new Date();
-      if (
-        (ticket.metadata?.validFrom && now < ticket.metadata.validFrom) ||
-        (ticket.metadata?.validUntil && now > ticket.metadata.validUntil)
-      ) {
+      const validFrom = ticket.metadata?.validFrom;
+      const validUntil = ticket.metadata?.validUntil;
+
+      // Allow scanning up to 2 hours before event starts and 2 hours after event ends
+      const GRACE_PERIOD_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+
+      let isOutsideValidityWindow = false;
+      let validityCode = "INVALID_QR";
+
+      if (validFrom && now < new Date(validFrom.getTime() - GRACE_PERIOD_MS)) {
+        isOutsideValidityWindow = true;
+        validityCode = "EVENT_NOT_STARTED";
+        console.warn('⚠️ Scan attempt before event starts', {
+          ticketId: ticket._id,
+          eventStart: validFrom,
+          currentTime: now,
+          hoursUntilStart: ((validFrom - now) / (1000 * 60 * 60)).toFixed(2)
+        });
+      } else if (validUntil && now > new Date(validUntil.getTime() + GRACE_PERIOD_MS)) {
+        isOutsideValidityWindow = true;
+        validityCode = "EVENT_ENDED";
+        console.warn('⚠️ Scan attempt after event ends', {
+          ticketId: ticket._id,
+          eventEnd: validUntil,
+          currentTime: now,
+          hoursSinceEnd: ((now - validUntil) / (1000 * 60 * 60)).toFixed(2)
+        });
+      }
+
+      if (isOutsideValidityWindow) {
         ticket.scanHistory = ticket.scanHistory || [];
         ticket.scanHistory.push({
           scannedAt: now,
@@ -861,7 +887,14 @@ router.post(
         });
         return res
           .status(400)
-          .json({ success: false, valid: false, code: "INVALID_QR" });
+          .json({
+            success: false,
+            valid: false,
+            code: validityCode,
+            validFrom,
+            validUntil,
+            currentTime: now
+          });
       }
 
       const result = await ticketService.markUsed(ticket, req.user, {

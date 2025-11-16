@@ -329,6 +329,9 @@ export default function Scanner() {
     if (code === "QR_EXPIRED") return "QR Expired";
     if (code === "ACCESS_DENIED") return "Access Denied";
     if (code === "RATE_LIMITED") return "Too many scans - slow down";
+    if (code === "EVENT_NOT_STARTED") return "Event hasn't started yet";
+    if (code === "EVENT_ENDED") return "Event has ended";
+    if (code === "TICKET_NOT_ACTIVE") return "Ticket not active";
     return String(code);
   };
   const status = humanStatus();
