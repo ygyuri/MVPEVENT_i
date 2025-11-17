@@ -54,6 +54,7 @@ const AdminOrders = () => {
   const [processingPayout, setProcessingPayout] = useState(false);
   const [payoutFilter, setPayoutFilter] = useState("unpaid"); // "all", "unpaid", "paid"
   const [completedPayouts, setCompletedPayouts] = useState(new Set());
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== "admin") {
@@ -64,11 +65,20 @@ const AdminOrders = () => {
     fetchOrders();
   }, [isAuthenticated, user, navigate]);
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500); // Wait 500ms after user stops typing
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   useEffect(() => {
     if (isAuthenticated && user && user.role === "admin") {
       fetchOrders();
     }
-  }, [page, statusFilter, eventFilter, organizerFilter]);
+  }, [page, statusFilter, eventFilter, organizerFilter, debouncedSearchTerm]);
 
   useEffect(() => {
     // Fetch all paid orders when switching to payout view or when organizer filter changes
@@ -107,7 +117,7 @@ const AdminOrders = () => {
       if (statusFilter !== "all") params.append("status", statusFilter);
       if (eventFilter !== "all") params.append("eventId", eventFilter);
       if (organizerFilter !== "all") params.append("organizerId", organizerFilter);
-      if (searchTerm) params.append("search", searchTerm);
+      if (debouncedSearchTerm) params.append("search", debouncedSearchTerm);
 
       const response = await api.get(`/api/admin/orders?${params.toString()}`);
       if (response.data?.success) {
@@ -158,11 +168,22 @@ const AdminOrders = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    await fetchOrders();
+    if (viewMode === "payouts") {
+      await fetchAllPaidOrders();
+      await fetchCompletedPayouts();
+    }
+  };
+
   const handleMarkAsPaid = async (organizerId, organizerName) => {
     const summary = calculatePayoutSummary();
     const orgData = summary[organizerId];
 
-    if (!orgData) return;
+    if (!orgData) {
+      toast.error('No payout data found for this organizer');
+      return;
+    }
 
     const confirmed = window.confirm(
       `Mark payout as completed for ${organizerName}?\n\n` +
@@ -180,10 +201,26 @@ const AdminOrders = () => {
     try {
       setProcessingPayout(true);
 
+      // Extract order IDs properly
+      const orderIds = orgData.orders.map(order => {
+        // Get the actual order object from allPaidOrders
+        const fullOrder = allPaidOrders.find(o =>
+          (o._id === order._id) ||
+          (o.orderNumber === order.orderNumber)
+        );
+        return fullOrder?._id || order._id;
+      }).filter(Boolean);
+
+      if (orderIds.length === 0) {
+        throw new Error('No valid order IDs found');
+      }
+
+      console.log('Creating payout for orders:', orderIds);
+
       // Create payout record
       const createResponse = await api.post('/api/admin/payouts', {
         organizerId,
-        orderIds: orgData.orders.map(o => o._id || o),
+        orderIds,
         paymentMethod: 'manual',
         paymentReference: reference || undefined,
         notes: `Payout for ${orgData.events.length} event(s): ${orgData.events.join(', ')}`,
@@ -194,6 +231,7 @@ const AdminOrders = () => {
       }
 
       const payoutId = createResponse.data.data.payout._id;
+      console.log('Created payout:', payoutId);
 
       // Mark as completed
       const completeResponse = await api.patch(`/api/admin/payouts/${payoutId}/complete`, {
@@ -201,10 +239,13 @@ const AdminOrders = () => {
       });
 
       if (completeResponse.data?.success) {
-        toast.success(`Payout marked as completed for ${organizerName}!`);
-        // Refresh data
-        await fetchCompletedPayouts();
-        await fetchAllPaidOrders();
+        toast.success(`Payout completed for ${organizerName}! Refreshing data...`);
+        // Refresh all payout-related data
+        await Promise.all([
+          fetchCompletedPayouts(),
+          fetchAllPaidOrders(),
+        ]);
+        toast.success('Data refreshed successfully');
       } else {
         throw new Error(completeResponse.data?.error || 'Failed to complete payout');
       }
@@ -379,6 +420,7 @@ const AdminOrders = () => {
           summary[organizerId].totalFees += totalFees;
           summary[organizerId].netPayout += netAmount;
           summary[organizerId].orders.push({
+            _id: order._id,
             orderNumber: order.orderNumber,
             customer: order.customer?.email,
             amount: orderAmount,
@@ -520,10 +562,11 @@ const AdminOrders = () => {
               </button>
             )}
             <button
-              onClick={fetchOrders}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </button>
           </div>
