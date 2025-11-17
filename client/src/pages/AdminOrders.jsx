@@ -140,13 +140,20 @@ const AdminOrders = () => {
       const params = new URLSearchParams({
         page: "1",
         limit: "1000", // Get a large batch of orders
-        status: "paid", // Only paid orders for payouts
       });
       if (organizerFilter !== "all") params.append("organizerId", organizerFilter);
 
       const response = await api.get(`/api/admin/orders?${params.toString()}`);
       if (response.data?.success) {
-        setAllPaidOrders(response.data.data.orders);
+        // Filter for paid/completed orders on the frontend
+        const paidOrders = response.data.data.orders.filter(order =>
+          order.paymentStatus === "paid" ||
+          order.paymentStatus === "completed" ||
+          order.status === "paid" ||
+          order.status === "completed"
+        );
+        console.log('Fetched all paid orders:', paidOrders.length);
+        setAllPaidOrders(paidOrders);
       }
     } catch (err) {
       console.error("Failed to fetch paid orders:", err);
@@ -158,9 +165,18 @@ const AdminOrders = () => {
       const response = await api.get('/api/admin/payouts?status=completed&limit=1000');
       if (response.data?.success) {
         const paidOrderIds = new Set();
+        console.log('Completed payouts response:', response.data.data.payouts.length, 'payouts');
         response.data.data.payouts.forEach(payout => {
-          payout.orders.forEach(orderId => paidOrderIds.add(orderId.toString()));
+          console.log('Payout orders:', payout.orders);
+          if (Array.isArray(payout.orders)) {
+            payout.orders.forEach(orderId => {
+              const idStr = typeof orderId === 'string' ? orderId : orderId.toString();
+              paidOrderIds.add(idStr);
+              console.log('Added paid order ID:', idStr);
+            });
+          }
         });
+        console.log('Total paid order IDs:', paidOrderIds.size);
         setCompletedPayouts(paidOrderIds);
       }
     } catch (err) {
@@ -379,6 +395,10 @@ const AdminOrders = () => {
         // Filter by payout filter
         const orderId = order._id.toString();
         const isAlreadyPaid = completedPayouts.has(orderId);
+
+        if (viewMode === "payouts") {
+          console.log('Checking order:', orderId, 'isPaid:', isPaid, 'isAlreadyPaid:', isAlreadyPaid, 'filter:', payoutFilter);
+        }
 
         if (payoutFilter === "unpaid") {
           return isPaid && !isAlreadyPaid;
