@@ -232,6 +232,12 @@ const AdminDashboard = () => {
       color: "text-blue-600 dark:text-blue-400",
     },
     {
+      label: "Pending Payouts",
+      value: formatCurrency(overview?.companyRevenue?.pendingRevenue || 0),
+      icon: Clock,
+      color: "text-orange-600 dark:text-orange-400",
+    },
+    {
       label: "Completed Payouts",
       value: overview?.companyRevenue?.completedPayoutsCount || 0,
       icon: CheckCircle,
@@ -302,7 +308,7 @@ const AdminDashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
         >
           {additionalStats.map((stat, index) => (
             <motion.div
@@ -318,7 +324,7 @@ const AdminDashboard = () => {
                       {stat.label}
                     </p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {stat.value.toLocaleString()}
+                      {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
                     </p>
                   </div>
                   <stat.icon className={`w-8 h-8 ${stat.color}`} />

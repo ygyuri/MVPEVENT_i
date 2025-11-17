@@ -142,6 +142,10 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
       count: 0,
     };
 
+    // Calculate pending amounts (revenue not yet paid out to organizers)
+    const totalProcessed = companyRevenue.totalPaidToOrganizers + companyRevenue.totalFees;
+    const pendingRevenue = totalRevenueAmount - totalProcessed;
+
     res.json({
       ok: true,
       overview: {
@@ -163,6 +167,7 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
           totalTransactionFees: companyRevenue.totalTransactionFees,
           totalPaidToOrganizers: companyRevenue.totalPaidToOrganizers,
           completedPayoutsCount: companyRevenue.count,
+          pendingRevenue: Math.max(0, pendingRevenue), // Revenue not yet paid to organizers
         },
       },
       me: {
