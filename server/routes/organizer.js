@@ -6,6 +6,9 @@ const { body, param, query, validationResult } = require("express-validator");
 const { verifyToken, requireRole } = require("../middleware/auth");
 const Event = require("../models/Event");
 const User = require("../models/User");
+const Order = require("../models/Order");
+const Ticket = require("../models/Ticket");
+const Payout = require("../models/Payout");
 const emailService = require("../services/emailService");
 
 const router = express.Router();
@@ -294,6 +297,7 @@ router.get(
     try {
       const Order = require("../models/Order");
       const Ticket = require("../models/Ticket");
+      const Payout = require("../models/Payout");
 
       // Allow admins to view organizer overview by passing organizerId
       const organizerId =
@@ -431,6 +435,67 @@ router.get(
       const totalRevenueAmount = totalRevenue[0]?.total || 0;
       const thisMonthRevenueAmount = thisMonthRevenue[0]?.total || 0;
 
+      // Get payout information
+      const completedPayouts = await Payout.find({
+        organizer: organizerId,
+        status: "completed",
+      })
+        .select("amounts createdAt completedAt payoutNumber paymentMethod paymentReference")
+        .sort({ completedAt: -1 })
+        .limit(10)
+        .lean();
+
+      // Calculate total paid out
+      const totalPaidOut = completedPayouts.reduce(
+        (sum, payout) => sum + (payout.amounts.netAmount || 0),
+        0
+      );
+
+      const totalFeesPaid = completedPayouts.reduce(
+        (sum, payout) => sum + (payout.amounts.totalFees || 0),
+        0
+      );
+
+      // Get IDs of paid orders
+      const paidOrderIds = new Set();
+      const allCompletedPayouts = await Payout.find({
+        organizer: organizerId,
+        status: "completed",
+      }).select("orders").lean();
+
+      allCompletedPayouts.forEach(payout => {
+        payout.orders.forEach(orderId => paidOrderIds.add(orderId.toString()));
+      });
+
+      // Calculate pending payouts (paid orders that haven't been paid to organizer yet)
+      const allPaidOrders = eventIds.length > 0
+        ? await Order.find({
+            "items.eventId": { $in: eventIds },
+            $or: [
+              { status: "paid", paymentStatus: "paid" },
+              { status: "completed", paymentStatus: "paid" },
+            ],
+          })
+            .select("_id pricing totalAmount")
+            .lean()
+        : [];
+
+      const unpaidOrders = allPaidOrders.filter(
+        order => !paidOrderIds.has(order._id.toString())
+      );
+
+      let pendingPayout = 0;
+      let pendingFees = 0;
+      unpaidOrders.forEach(order => {
+        const amount = order.totalAmount || order.pricing?.total || 0;
+        const serviceFee = order.pricing?.serviceFee || 0;
+        const transactionFee = order.pricing?.transactionFee || 0;
+        const totalFees = serviceFee + transactionFee;
+
+        pendingPayout += (amount - totalFees);
+        pendingFees += totalFees;
+      });
+
       res.json({
         ok: true,
         overview: {
@@ -443,11 +508,175 @@ router.get(
           totalOrders,
           thisMonthRevenue: thisMonthRevenueAmount,
           thisMonthTickets,
+          // Payout information
+          payouts: {
+            totalPaidOut,              // Amount already received
+            totalFeesPaid,             // Fees deducted from completed payouts
+            pendingPayout,             // Amount waiting to be paid
+            pendingFees,               // Fees on pending orders
+            completedPayoutsCount: completedPayouts.length,
+            pendingOrdersCount: unpaidOrders.length,
+            recentPayouts: completedPayouts.slice(0, 5), // Last 5 payouts
+          },
         },
       });
     } catch (error) {
       console.error("Organizer overview error:", error);
       res.status(500).json({ error: "Failed to load organizer overview" });
+    }
+  }
+);
+
+// Get organizer payout history
+router.get(
+  "/payouts",
+  verifyToken,
+  requireRole(["organizer", "admin"]),
+  [
+    query("status").optional().isIn(["pending", "processing", "completed", "failed", "cancelled"]),
+    query("page").optional().isInt({ min: 1 }).toInt(),
+    query("limit").optional().isInt({ min: 1, max: 100 }).toInt(),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const organizerId = req.userId;
+      const { status, page = 1, limit = 20 } = req.query;
+
+      // Build query
+      const query = { organizer: organizerId };
+      if (status) {
+        query.status = status;
+      }
+
+      // Get payouts with pagination
+      const payouts = await Payout.find(query)
+        .select("-__v")
+        .populate("processedBy", "email name firstName lastName")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean();
+
+      const totalPayouts = await Payout.countDocuments(query);
+
+      res.json({
+        ok: true,
+        payouts,
+        pagination: {
+          page,
+          limit,
+          total: totalPayouts,
+          totalPages: Math.ceil(totalPayouts / limit),
+        },
+      });
+    } catch (error) {
+      console.error("Organizer payouts error:", error);
+      res.status(500).json({ error: "Failed to load payout history" });
+    }
+  }
+);
+
+// Get pending payouts details (unpaid orders)
+router.get(
+  "/payouts/pending",
+  verifyToken,
+  requireRole(["organizer", "admin"]),
+  async (req, res) => {
+    try {
+      const organizerId = req.userId;
+
+      // Get all organizer's events
+      const events = await Event.find({ organizer: organizerId }).select("_id title").lean();
+      const eventIds = events.map((e) => e._id);
+
+      if (eventIds.length === 0) {
+        return res.json({
+          ok: true,
+          pendingOrders: [],
+          summary: {
+            totalPendingRevenue: 0,
+            totalPendingFees: 0,
+            netPendingPayout: 0,
+            orderCount: 0,
+          },
+        });
+      }
+
+      // Get IDs of orders that have been paid to organizer
+      const completedPayouts = await Payout.find({
+        organizer: organizerId,
+        status: "completed",
+      }).select("orders").lean();
+
+      const paidOrderIds = new Set();
+      completedPayouts.forEach((payout) => {
+        payout.orders.forEach((orderId) => paidOrderIds.add(orderId.toString()));
+      });
+
+      // Get all paid orders that haven't been paid to organizer
+      const allPaidOrders = await Order.find({
+        "items.eventId": { $in: eventIds },
+        $or: [
+          { status: "paid", paymentStatus: "completed" },
+          { status: "completed", paymentStatus: "completed" },
+          { paymentStatus: "paid" },
+        ],
+      })
+        .populate("items.eventId", "title slug")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      // Filter to only unpaid orders
+      const unpaidOrders = allPaidOrders.filter(
+        (order) => !paidOrderIds.has(order._id.toString())
+      );
+
+      // Calculate summary
+      let totalPendingRevenue = 0;
+      let totalPendingFees = 0;
+
+      const pendingOrdersWithDetails = unpaidOrders.map((order) => {
+        const amount = order.totalAmount || order.pricing?.total || 0;
+        const serviceFee = order.pricing?.serviceFee || 0;
+        const transactionFee = order.pricing?.transactionFee || 0;
+        const totalFees = serviceFee + transactionFee;
+        const netAmount = amount - totalFees;
+
+        totalPendingRevenue += amount;
+        totalPendingFees += totalFees;
+
+        return {
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          customer: order.customer,
+          items: order.items,
+          createdAt: order.createdAt,
+          amount,
+          serviceFee,
+          transactionFee,
+          totalFees,
+          netAmount,
+        };
+      });
+
+      res.json({
+        ok: true,
+        pendingOrders: pendingOrdersWithDetails,
+        summary: {
+          totalPendingRevenue,
+          totalPendingFees,
+          netPendingPayout: totalPendingRevenue - totalPendingFees,
+          orderCount: unpaidOrders.length,
+        },
+      });
+    } catch (error) {
+      console.error("Organizer pending payouts error:", error);
+      res.status(500).json({ error: "Failed to load pending payouts" });
     }
   }
 );

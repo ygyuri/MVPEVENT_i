@@ -14,6 +14,7 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
   try {
     const Order = require("../models/Order");
     const Ticket = require("../models/Ticket");
+    const Payout = require("../models/Payout");
 
     const [
       usersCount,
@@ -24,6 +25,7 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
       completedOrdersCount,
       pendingOrdersCount,
       totalRevenue,
+      companyRevenueData,
     ] = await Promise.all([
       User.countDocuments({}),
       Event.countDocuments({}),
@@ -33,9 +35,9 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
       }),
       Order.countDocuments({}),
       Ticket.countDocuments({}),
-      Order.countDocuments({ 
-        status: "completed", 
-        paymentStatus: { $in: ["paid", "completed"] } 
+      Order.countDocuments({
+        status: "completed",
+        paymentStatus: { $in: ["paid", "completed"] }
       }),
       Order.countDocuments({ status: "pending" }),
       // Calculate total revenue from completed orders
@@ -61,6 +63,22 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
           },
         },
       ]),
+      // Calculate company revenue from completed payouts
+      Payout.aggregate([
+        {
+          $match: { status: "completed" }
+        },
+        {
+          $group: {
+            _id: null,
+            totalFees: { $sum: "$amounts.totalFees" },
+            totalServiceFees: { $sum: "$amounts.serviceFees" },
+            totalTransactionFees: { $sum: "$amounts.transactionFees" },
+            totalPaidToOrganizers: { $sum: "$amounts.netAmount" },
+            count: { $sum: 1 },
+          }
+        }
+      ])
     ]);
 
     // Get recent orders
@@ -115,6 +133,15 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
 
     const totalRevenueAmount = totalRevenue[0]?.total || 0;
 
+    // Extract company revenue data
+    const companyRevenue = companyRevenueData[0] || {
+      totalFees: 0,
+      totalServiceFees: 0,
+      totalTransactionFees: 0,
+      totalPaidToOrganizers: 0,
+      count: 0,
+    };
+
     res.json({
       ok: true,
       overview: {
@@ -129,6 +156,14 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
         recentOrders,
         ordersByStatus,
         recentRevenue,
+        // Company revenue from payouts
+        companyRevenue: {
+          totalEarned: companyRevenue.totalFees,
+          totalServiceFees: companyRevenue.totalServiceFees,
+          totalTransactionFees: companyRevenue.totalTransactionFees,
+          totalPaidToOrganizers: companyRevenue.totalPaidToOrganizers,
+          completedPayoutsCount: companyRevenue.count,
+        },
       },
       me: {
         id: req.user._id,
@@ -894,5 +929,383 @@ router.post(
     }
   }
 );
+
+// ============================================
+// PAYOUT MANAGEMENT ROUTES
+// ============================================
+
+// Get all payouts (admin only)
+router.get("/payouts", verifyToken, requireRole("admin"), async (req, res) => {
+  try {
+    const Payout = require("../models/Payout");
+    const { page = 1, limit = 20, status, organizerId } = req.query;
+    const query = {};
+
+    if (status && status !== "all") query.status = status;
+    if (organizerId) query.organizer = organizerId;
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [payouts, total] = await Promise.all([
+      Payout.find(query)
+        .populate("organizer", "email name firstName lastName")
+        .populate("processedBy", "email name")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit))
+        .lean(),
+      Payout.countDocuments(query),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        payouts,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          pages: Math.ceil(total / Number(limit)),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get payouts error:", error);
+    res.status(500).json({ error: "Failed to load payouts" });
+  }
+});
+
+// Create payout (mark orders as paid to organizer)
+router.post(
+  "/payouts",
+  verifyToken,
+  requireRole("admin"),
+  [
+    body("organizerId").isMongoId().withMessage("Valid organizer ID required"),
+    body("orderIds").isArray({ min: 1 }).withMessage("At least one order required"),
+    body("paymentMethod").optional().isIn(["bank_transfer", "mpesa", "paypal", "manual", "other"]),
+    body("paymentReference").optional().isString(),
+    body("notes").optional().isString().trim(),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ error: "Validation failed", details: errors.array() });
+      }
+
+      const Order = require("../models/Order");
+      const Event = require("../models/Event");
+      const Payout = require("../models/Payout");
+      const { organizerId, orderIds, paymentMethod = "manual", paymentReference, notes } = req.body;
+
+      // Fetch orders
+      const orders = await Order.find({ _id: { $in: orderIds } })
+        .populate("items.eventId", "title organizer")
+        .lean();
+
+      if (orders.length === 0) {
+        return res.status(404).json({ error: "No orders found" });
+      }
+
+      // Calculate totals
+      let totalRevenue = 0;
+      let serviceFees = 0;
+      let transactionFees = 0;
+      const eventIds = new Set();
+      const eventTitles = new Set();
+
+      orders.forEach((order) => {
+        const orderAmount = order.totalAmount || order.pricing?.total || 0;
+        const serviceFee = order.pricing?.serviceFee || 0;
+        const transactionFee = order.pricing?.transactionFee || 0;
+
+        totalRevenue += orderAmount;
+        serviceFees += serviceFee;
+        transactionFees += transactionFee;
+
+        order.items?.forEach((item) => {
+          if (item.eventId) {
+            eventIds.add(item.eventId._id.toString());
+            eventTitles.add(item.eventId.title);
+          }
+        });
+      });
+
+      const totalFees = serviceFees + transactionFees;
+      const netAmount = totalRevenue - totalFees;
+
+      // Get date range
+      const orderDates = orders.map((o) => new Date(o.createdAt));
+      const periodStart = new Date(Math.min(...orderDates));
+      const periodEnd = new Date(Math.max(...orderDates));
+
+      // Create payout record
+      const payout = new Payout({
+        organizer: organizerId,
+        orders: orderIds,
+        events: Array.from(eventIds),
+        amounts: {
+          totalRevenue,
+          serviceFees,
+          transactionFees,
+          totalFees,
+          netAmount,
+        },
+        status: "pending",
+        paymentMethod,
+        paymentReference,
+        periodStart,
+        periodEnd,
+        notes,
+        metadata: {
+          orderCount: orders.length,
+          eventTitles: Array.from(eventTitles),
+          currency: "KES",
+        },
+      });
+
+      await payout.save();
+
+      // Populate before sending response
+      await payout.populate("organizer", "email name firstName lastName");
+
+      res.json({
+        success: true,
+        message: "Payout created successfully",
+        data: { payout },
+      });
+    } catch (error) {
+      console.error("Create payout error:", error);
+      res.status(500).json({ error: "Failed to create payout" });
+    }
+  }
+);
+
+// Mark payout as completed
+router.patch(
+  "/payouts/:payoutId/complete",
+  verifyToken,
+  requireRole("admin"),
+  [
+    param("payoutId").isMongoId(),
+    body("paymentReference").optional().isString().trim(),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ error: "Validation failed", details: errors.array() });
+      }
+
+      const Payout = require("../models/Payout");
+      const { payoutId } = req.params;
+      const { paymentReference } = req.body;
+
+      const payout = await Payout.findById(payoutId);
+      if (!payout) {
+        return res.status(404).json({ error: "Payout not found" });
+      }
+
+      if (payout.status === "completed") {
+        return res.status(400).json({ error: "Payout already completed" });
+      }
+
+      payout.markAsCompleted(req.user._id, paymentReference);
+      await payout.save();
+
+      await payout.populate("organizer", "email name firstName lastName");
+      await payout.populate("processedBy", "email name");
+
+      res.json({
+        success: true,
+        message: "Payout marked as completed",
+        data: { payout },
+      });
+    } catch (error) {
+      console.error("Complete payout error:", error);
+      res.status(500).json({ error: "Failed to complete payout" });
+    }
+  }
+);
+
+// Get company revenue statistics
+router.get("/revenue/stats", verifyToken, requireRole("admin"), async (req, res) => {
+  try {
+    const Order = require("../models/Order");
+    const Payout = require("../models/Payout");
+    const { startDate, endDate } = req.query;
+
+    // Build date query
+    const dateQuery = {};
+    if (startDate) dateQuery.$gte = new Date(startDate);
+    if (endDate) dateQuery.$lte = new Date(endDate);
+
+    // Get total revenue from completed orders
+    const orderStats = await Order.aggregate([
+      {
+        $match: {
+          status: { $in: ["completed", "paid"] },
+          paymentStatus: { $in: ["paid", "completed"] },
+          ...(Object.keys(dateQuery).length > 0 ? { createdAt: dateQuery } : {}),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: {
+            $sum: {
+              $cond: [
+                { $gt: [{ $ifNull: ["$totalAmount", 0] }, 0] },
+                { $ifNull: ["$totalAmount", 0] },
+                { $ifNull: ["$pricing.total", 0] },
+              ],
+            },
+          },
+          totalServiceFees: { $sum: { $ifNull: ["$pricing.serviceFee", 0] } },
+          totalTransactionFees: { $sum: { $ifNull: ["$pricing.transactionFee", 0] } },
+          orderCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Get payout stats
+    const payoutQuery = { status: "completed" };
+    if (Object.keys(dateQuery).length > 0) {
+      payoutQuery.completedAt = dateQuery;
+    }
+
+    const payoutStats = await Payout.aggregate([
+      { $match: payoutQuery },
+      {
+        $group: {
+          _id: null,
+          totalPaidOut: { $sum: "$amounts.netAmount" },
+          totalFeesPaidOut: { $sum: "$amounts.totalFees" },
+          payoutCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const orders = orderStats[0] || {
+      totalRevenue: 0,
+      totalServiceFees: 0,
+      totalTransactionFees: 0,
+      orderCount: 0,
+    };
+
+    const payouts = payoutStats[0] || {
+      totalPaidOut: 0,
+      totalFeesPaidOut: 0,
+      payoutCount: 0,
+    };
+
+    const totalFees = orders.totalServiceFees + orders.totalTransactionFees;
+    const pendingPayouts = orders.totalRevenue - totalFees - payouts.totalPaidOut;
+    const actualRevenue = payouts.totalFeesPaidOut; // Fees from completed payouts
+
+    res.json({
+      success: true,
+      data: {
+        orders: {
+          totalRevenue: orders.totalRevenue,
+          totalServiceFees: orders.totalServiceFees,
+          totalTransactionFees: orders.totalTransactionFees,
+          totalFees,
+          orderCount: orders.orderCount,
+        },
+        payouts: {
+          totalPaidOut: payouts.totalPaidOut,
+          totalFees: payouts.totalFeesPaidOut,
+          payoutCount: payouts.payoutCount,
+        },
+        company: {
+          actualRevenue, // Platform fees from completed payouts
+          pendingPayouts, // Amount still owed to organizers
+          totalCollected: orders.totalRevenue, // Total from customers
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Revenue stats error:", error);
+    res.status(500).json({ error: "Failed to load revenue statistics" });
+  }
+});
+
+// Get pending payouts summary by organizer
+router.get("/payouts/pending-summary", verifyToken, requireRole("admin"), async (req, res) => {
+  try {
+    const Order = require("../models/Order");
+    const Event = require("../models/Event");
+    const Payout = require("../models/Payout");
+
+    // Get all paid orders
+    const orders = await Order.find({
+      $or: [
+        { status: "paid", paymentStatus: "paid" },
+        { status: "completed", paymentStatus: "paid" },
+      ],
+    })
+      .populate({
+        path: "items.eventId",
+        select: "title organizer",
+        populate: {
+          path: "organizer",
+          select: "email name firstName lastName",
+        },
+      })
+      .lean();
+
+    // Get all completed payouts
+    const completedPayouts = await Payout.find({ status: "completed" })
+      .select("orders")
+      .lean();
+
+    const paidOutOrderIds = new Set(
+      completedPayouts.flatMap((p) => p.orders.map((id) => id.toString()))
+    );
+
+    // Group unpaid orders by organizer
+    const summary = {};
+
+    orders
+      .filter((order) => !paidOutOrderIds.has(order._id.toString()))
+      .forEach((order) => {
+        order.items?.forEach((item) => {
+          const event = item.eventId;
+          if (!event || !event.organizer) return;
+
+          const organizerId = event.organizer._id.toString();
+          if (!summary[organizerId]) {
+            summary[organizerId] = {
+              organizer: event.organizer,
+              orders: [],
+              totalRevenue: 0,
+              totalFees: 0,
+              netAmount: 0,
+            };
+          }
+
+          const orderAmount = order.totalAmount || order.pricing?.total || 0;
+          const serviceFee = order.pricing?.serviceFee || 0;
+          const transactionFee = order.pricing?.transactionFee || 0;
+          const totalFees = serviceFee + transactionFee;
+
+          summary[organizerId].orders.push(order._id);
+          summary[organizerId].totalRevenue += orderAmount;
+          summary[organizerId].totalFees += totalFees;
+          summary[organizerId].netAmount += orderAmount - totalFees;
+        });
+      });
+
+    res.json({
+      success: true,
+      data: Object.values(summary),
+    });
+  } catch (error) {
+    console.error("Pending payouts summary error:", error);
+    res.status(500).json({ error: "Failed to load pending payouts summary" });
+  }
+});
 
 module.exports = router;

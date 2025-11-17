@@ -49,6 +49,11 @@ const AdminOrders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
   const [viewMode, setViewMode] = useState("orders"); // "orders" or "payouts"
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [selectedOrganizerForPayout, setSelectedOrganizerForPayout] = useState(null);
+  const [processingPayout, setProcessingPayout] = useState(false);
+  const [payoutFilter, setPayoutFilter] = useState("unpaid"); // "all", "unpaid", "paid"
+  const [completedPayouts, setCompletedPayouts] = useState(new Set());
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== "admin") {
@@ -69,6 +74,7 @@ const AdminOrders = () => {
     // Fetch all paid orders when switching to payout view or when organizer filter changes
     if (viewMode === "payouts" && isAuthenticated && user && user.role === "admin") {
       fetchAllPaidOrders();
+      fetchCompletedPayouts();
     }
   }, [viewMode, organizerFilter]);
 
@@ -134,6 +140,79 @@ const AdminOrders = () => {
       }
     } catch (err) {
       console.error("Failed to fetch paid orders:", err);
+    }
+  };
+
+  const fetchCompletedPayouts = async () => {
+    try {
+      const response = await api.get('/api/admin/payouts?status=completed&limit=1000');
+      if (response.data?.success) {
+        const paidOrderIds = new Set();
+        response.data.data.payouts.forEach(payout => {
+          payout.orders.forEach(orderId => paidOrderIds.add(orderId.toString()));
+        });
+        setCompletedPayouts(paidOrderIds);
+      }
+    } catch (err) {
+      console.error("Failed to fetch completed payouts:", err);
+    }
+  };
+
+  const handleMarkAsPaid = async (organizerId, organizerName) => {
+    const summary = calculatePayoutSummary();
+    const orgData = summary[organizerId];
+
+    if (!orgData) return;
+
+    const confirmed = window.confirm(
+      `Mark payout as completed for ${organizerName}?\n\n` +
+      `Net Amount: ${orgData.netPayout.toLocaleString()} KES\n` +
+      `Orders: ${orgData.totalOrders}\n\n` +
+      `This will record that the organizer has been paid.`
+    );
+
+    if (!confirmed) return;
+
+    const reference = window.prompt(
+      'Enter payment reference/transaction ID (optional):'
+    );
+
+    try {
+      setProcessingPayout(true);
+
+      // Create payout record
+      const createResponse = await api.post('/api/admin/payouts', {
+        organizerId,
+        orderIds: orgData.orders.map(o => o._id || o),
+        paymentMethod: 'manual',
+        paymentReference: reference || undefined,
+        notes: `Payout for ${orgData.events.length} event(s): ${orgData.events.join(', ')}`,
+      });
+
+      if (!createResponse.data?.success) {
+        throw new Error(createResponse.data?.error || 'Failed to create payout');
+      }
+
+      const payoutId = createResponse.data.data.payout._id;
+
+      // Mark as completed
+      const completeResponse = await api.patch(`/api/admin/payouts/${payoutId}/complete`, {
+        paymentReference: reference || undefined,
+      });
+
+      if (completeResponse.data?.success) {
+        toast.success(`Payout marked as completed for ${organizerName}!`);
+        // Refresh data
+        await fetchCompletedPayouts();
+        await fetchAllPaidOrders();
+      } else {
+        throw new Error(completeResponse.data?.error || 'Failed to complete payout');
+      }
+    } catch (err) {
+      console.error('Failed to mark payout as paid:', err);
+      toast.error(err.response?.data?.error || err.message || 'Failed to process payout');
+    } finally {
+      setProcessingPayout(false);
     }
   };
 
@@ -253,7 +332,21 @@ const AdminOrders = () => {
     const ordersToProcess = viewMode === "payouts" ? allPaidOrders : orders;
 
     ordersToProcess
-      .filter(order => order.paymentStatus === "paid" || order.status === "paid" || order.status === "completed")
+      .filter(order => {
+        // Filter by payment status
+        const isPaid = order.paymentStatus === "paid" || order.status === "paid" || order.status === "completed";
+        // Filter by payout filter
+        const orderId = order._id.toString();
+        const isAlreadyPaid = completedPayouts.has(orderId);
+
+        if (payoutFilter === "unpaid") {
+          return isPaid && !isAlreadyPaid;
+        } else if (payoutFilter === "paid") {
+          return isPaid && isAlreadyPaid;
+        } else {
+          return isPaid; // "all"
+        }
+      })
       .forEach(order => {
         order.items?.forEach(item => {
           const event = item.eventId;
@@ -437,29 +530,44 @@ const AdminOrders = () => {
         </div>
 
         {/* View Mode Toggle */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setViewMode("orders")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              viewMode === "orders"
-                ? "bg-[#4f0f69] text-white"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-            }`}
-          >
-            <ShoppingBag className="w-4 h-4" />
-            Orders View
-          </button>
-          <button
-            onClick={() => setViewMode("payouts")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              viewMode === "payouts"
-                ? "bg-[#4f0f69] text-white"
-                : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-            }`}
-          >
-            <Wallet className="w-4 h-4" />
-            Payout Summary
-          </button>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode("orders")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                viewMode === "orders"
+                  ? "bg-[#4f0f69] text-white"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+              }`}
+            >
+              <ShoppingBag className="w-4 h-4" />
+              Orders View
+            </button>
+            <button
+              onClick={() => setViewMode("payouts")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                viewMode === "payouts"
+                  ? "bg-[#4f0f69] text-white"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+              }`}
+            >
+              <Wallet className="w-4 h-4" />
+              Payout Summary
+            </button>
+          </div>
+
+          {/* Payout Status Filter (only show in payout view) */}
+          {viewMode === "payouts" && (
+            <select
+              value={payoutFilter}
+              onChange={(e) => setPayoutFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4f0f69] focus:border-transparent"
+            >
+              <option value="unpaid">Unpaid Payouts</option>
+              <option value="paid">Paid Payouts</option>
+              <option value="all">All Payouts</option>
+            </select>
+          )}
         </div>
       </motion.div>
 
@@ -561,44 +669,79 @@ const AdminOrders = () => {
               );
             }
 
-            return summaryArray.map((org) => (
-              <motion.div
-                key={org.organizer._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-[#4f0f69]/10 rounded-lg">
-                      <Building2 className="w-6 h-6 text-[#4f0f69]" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                        {org.organizer.name || "Unnamed Organizer"}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                        <Mail className="w-4 h-4" />
-                        {org.organizer.email}
-                      </p>
-                      <div className="flex items-center gap-4 mt-2">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {org.totalOrders} orders
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {org.events.length} event(s): {org.events.join(", ")}
-                        </span>
+            return summaryArray.map((org) => {
+              // Check if all orders for this organizer have been paid
+              const allOrdersPaid = org.orders.every(order =>
+                completedPayouts.has((order._id || order).toString())
+              );
+
+              return (
+                <motion.div
+                  key={org.organizer._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-[#4f0f69]/10 rounded-lg">
+                        <Building2 className="w-6 h-6 text-[#4f0f69]" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                            {org.organizer.name || "Unnamed Organizer"}
+                          </h3>
+                          {allOrdersPaid && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Paid
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                          <Mail className="w-4 h-4" />
+                          {org.organizer.email}
+                        </p>
+                        <div className="flex items-center gap-4 mt-2">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {org.totalOrders} orders
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {org.events.length} event(s): {org.events.join(", ")}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                      {!allOrdersPaid && (
+                        <button
+                          onClick={() => handleMarkAsPaid(org.organizer._id, org.organizer.name || org.organizer.email)}
+                          disabled={processingPayout}
+                          className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {processingPayout ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4" />
+                              Mark as Paid
+                            </>
+                          )}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => exportDetailedPayoutData(org.organizer._id)}
+                        className="flex items-center gap-2 px-3 py-2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors text-sm"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export Details
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => exportDetailedPayoutData(org.organizer._id)}
-                    className="flex items-center gap-2 px-3 py-2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors text-sm"
-                  >
-                    <Download className="w-4 h-4" />
-                    Export Details
-                  </button>
-                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {/* Total Revenue */}
@@ -691,7 +834,8 @@ const AdminOrders = () => {
                   </div>
                 </div>
               </motion.div>
-            ));
+              );
+            });
           })()}
         </div>
       )}

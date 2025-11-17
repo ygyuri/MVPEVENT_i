@@ -219,6 +219,24 @@ const AdminDashboard = () => {
       icon: Clock,
       color: "text-yellow-600 dark:text-yellow-400",
     },
+    {
+      label: "Company Revenue (Fees)",
+      value: formatCurrency(overview?.companyRevenue?.totalEarned || 0),
+      icon: DollarSign,
+      color: "text-emerald-600 dark:text-emerald-400",
+    },
+    {
+      label: "Paid to Organizers",
+      value: formatCurrency(overview?.companyRevenue?.totalPaidToOrganizers || 0),
+      icon: Users,
+      color: "text-blue-600 dark:text-blue-400",
+    },
+    {
+      label: "Completed Payouts",
+      value: overview?.companyRevenue?.completedPayoutsCount || 0,
+      icon: CheckCircle,
+      color: "text-purple-600 dark:text-purple-400",
+    },
   ];
 
   return (

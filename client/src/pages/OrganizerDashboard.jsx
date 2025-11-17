@@ -358,6 +358,130 @@ const OrganizerDashboard = () => {
         ))}
       </div>
 
+      {/* Payout Status Section */}
+      {overview && overview.payouts && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            💰 Payout Status
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-5 border-2 border-green-200 dark:border-green-800">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">
+                    Total Paid Out
+                  </p>
+                  <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+                    KES {(overview.payouts.totalPaidOut || 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    {overview.payouts.completedPayoutsCount || 0} payment{overview.payouts.completedPayoutsCount !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-5 border-2 border-yellow-200 dark:border-yellow-800">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-yellow-700 dark:text-yellow-300 mb-1">
+                    Pending Payout
+                  </p>
+                  <p className="text-2xl font-bold text-yellow-900 dark:text-yellow-100">
+                    KES {(overview.payouts.pendingPayout || 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                    {overview.payouts.pendingOrdersCount || 0} unpaid order{overview.payouts.pendingOrdersCount !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <div className="p-2 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                  <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-5 border-2 border-blue-200 dark:border-blue-800">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">
+                    Transaction Fees (Paid)
+                  </p>
+                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                    KES {(overview.payouts.totalFeesPaid || 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    On completed payouts
+                  </p>
+                </div>
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <DollarSign className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-5 border-2 border-purple-200 dark:border-purple-800">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
+                    Pending Fees
+                  </p>
+                  <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                    KES {(overview.payouts.pendingFees || 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                    On unpaid orders
+                  </p>
+                </div>
+                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                  <AlertTriangle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Payouts */}
+          {overview.payouts.recentPayouts && overview.payouts.recentPayouts.length > 0 && (
+            <div className="mt-4 bg-web3-card rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                Recent Payouts
+              </h3>
+              <div className="space-y-2">
+                {overview.payouts.recentPayouts.map((payout, index) => (
+                  <div
+                    key={payout._id || index}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {payout.payoutNumber}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        {new Date(payout.completedAt || payout.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-green-600 dark:text-green-400">
+                        KES {(payout.amounts.netAmount || 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        via {payout.paymentMethod || 'manual'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Additional Insights Grid */}
       {overview && Object.keys(overview).length > 0 && (
         <div className="mb-8">
