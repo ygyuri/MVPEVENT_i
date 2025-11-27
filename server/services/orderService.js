@@ -8,9 +8,9 @@ const payheroService = require('./payheroService');
 const ticketService = require('./ticketService');
 
 class OrderService {
-  // Calculate service fee (5% of subtotal)
+  // Calculate service fee (0% of subtotal - currently waived)
   calculateServiceFee(subtotal) {
-    return Math.round(subtotal * 0.05);
+    return Math.round(subtotal * 0.00); // 0% - no platform fee for now
   }
 
   // Calculate total amount

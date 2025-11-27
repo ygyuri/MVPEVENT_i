@@ -17,6 +17,11 @@ import {
   Mail,
   QrCode,
   Ticket,
+  Download,
+  TrendingUp,
+  Building2,
+  Wallet,
+  Users,
 } from "lucide-react";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
@@ -31,7 +36,10 @@ const AdminOrders = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
+  const [organizerFilter, setOrganizerFilter] = useState("all");
   const [events, setEvents] = useState([]);
+  const [organizers, setOrganizers] = useState([]);
+  const [allPaidOrders, setAllPaidOrders] = useState([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -40,6 +48,13 @@ const AdminOrders = () => {
   const [resendingTickets, setResendingTickets] = useState({});
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
+  const [viewMode, setViewMode] = useState("orders"); // "orders" or "payouts"
+  const [showPayoutModal, setShowPayoutModal] = useState(false);
+  const [selectedOrganizerForPayout, setSelectedOrganizerForPayout] = useState(null);
+  const [processingPayout, setProcessingPayout] = useState(false);
+  const [payoutFilter, setPayoutFilter] = useState("unpaid"); // "all", "unpaid", "paid"
+  const [completedPayouts, setCompletedPayouts] = useState(new Set());
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== "admin") {
@@ -50,17 +65,41 @@ const AdminOrders = () => {
     fetchOrders();
   }, [isAuthenticated, user, navigate]);
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500); // Wait 500ms after user stops typing
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   useEffect(() => {
     if (isAuthenticated && user && user.role === "admin") {
       fetchOrders();
     }
-  }, [page, statusFilter, eventFilter]);
+  }, [page, statusFilter, eventFilter, organizerFilter, debouncedSearchTerm]);
+
+  useEffect(() => {
+    // Fetch all paid orders when switching to payout view or when organizer filter changes
+    if (viewMode === "payouts" && isAuthenticated && user && user.role === "admin") {
+      fetchAllPaidOrders();
+      fetchCompletedPayouts();
+    }
+  }, [viewMode, organizerFilter]);
 
   const fetchEvents = async () => {
     try {
       const response = await api.get(`/api/admin/events?limit=100`);
       if (response.data?.success) {
         setEvents(response.data.data.events || []);
+        // Extract unique organizers
+        const uniqueOrganizers = [...new Map(
+          response.data.data.events
+            .filter(e => e.organizer)
+            .map(e => [e.organizer._id, e.organizer])
+        ).values()];
+        setOrganizers(uniqueOrganizers);
       }
     } catch (err) {
       console.error("Failed to fetch events:", err);
@@ -77,7 +116,8 @@ const AdminOrders = () => {
       });
       if (statusFilter !== "all") params.append("status", statusFilter);
       if (eventFilter !== "all") params.append("eventId", eventFilter);
-      if (searchTerm) params.append("search", searchTerm);
+      if (organizerFilter !== "all") params.append("organizerId", organizerFilter);
+      if (debouncedSearchTerm) params.append("search", debouncedSearchTerm);
 
       const response = await api.get(`/api/admin/orders?${params.toString()}`);
       if (response.data?.success) {
@@ -91,6 +131,145 @@ const AdminOrders = () => {
       toast.error("Failed to load orders");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAllPaidOrders = async () => {
+    try {
+      // Fetch all paid/completed orders (with high limit) for payout calculation
+      const params = new URLSearchParams({
+        page: "1",
+        limit: "1000", // Get a large batch of orders
+      });
+      if (organizerFilter !== "all") params.append("organizerId", organizerFilter);
+
+      const response = await api.get(`/api/admin/orders?${params.toString()}`);
+      if (response.data?.success) {
+        // Filter for paid/completed orders on the frontend
+        const paidOrders = response.data.data.orders.filter(order =>
+          order.paymentStatus === "paid" ||
+          order.paymentStatus === "completed" ||
+          order.status === "paid" ||
+          order.status === "completed"
+        );
+        console.log('Fetched all paid orders:', paidOrders.length);
+        setAllPaidOrders(paidOrders);
+      }
+    } catch (err) {
+      console.error("Failed to fetch paid orders:", err);
+    }
+  };
+
+  const fetchCompletedPayouts = async () => {
+    try {
+      const response = await api.get('/api/admin/payouts?status=completed&limit=1000');
+      if (response.data?.success) {
+        const paidOrderIds = new Set();
+        console.log('Completed payouts response:', response.data.data.payouts.length, 'payouts');
+        response.data.data.payouts.forEach(payout => {
+          console.log('Payout orders:', payout.orders);
+          if (Array.isArray(payout.orders)) {
+            payout.orders.forEach(orderId => {
+              const idStr = typeof orderId === 'string' ? orderId : orderId.toString();
+              paidOrderIds.add(idStr);
+              console.log('Added paid order ID:', idStr);
+            });
+          }
+        });
+        console.log('Total paid order IDs:', paidOrderIds.size);
+        setCompletedPayouts(paidOrderIds);
+      }
+    } catch (err) {
+      console.error("Failed to fetch completed payouts:", err);
+    }
+  };
+
+  const handleRefresh = async () => {
+    await fetchOrders();
+    if (viewMode === "payouts") {
+      await fetchAllPaidOrders();
+      await fetchCompletedPayouts();
+    }
+  };
+
+  const handleMarkAsPaid = async (organizerId, organizerName) => {
+    const summary = calculatePayoutSummary();
+    const orgData = summary[organizerId];
+
+    if (!orgData) {
+      toast.error('No payout data found for this organizer');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Mark payout as completed for ${organizerName}?\n\n` +
+      `Net Amount: ${orgData.netPayout.toLocaleString()} KES\n` +
+      `Orders: ${orgData.totalOrders}\n\n` +
+      `This will record that the organizer has been paid.`
+    );
+
+    if (!confirmed) return;
+
+    const reference = window.prompt(
+      'Enter payment reference/transaction ID (optional):'
+    );
+
+    try {
+      setProcessingPayout(true);
+
+      // Extract order IDs properly
+      const orderIds = orgData.orders.map(order => {
+        // Get the actual order object from allPaidOrders
+        const fullOrder = allPaidOrders.find(o =>
+          (o._id === order._id) ||
+          (o.orderNumber === order.orderNumber)
+        );
+        return fullOrder?._id || order._id;
+      }).filter(Boolean);
+
+      if (orderIds.length === 0) {
+        throw new Error('No valid order IDs found');
+      }
+
+      console.log('Creating payout for orders:', orderIds);
+
+      // Create payout record
+      const createResponse = await api.post('/api/admin/payouts', {
+        organizerId,
+        orderIds,
+        paymentMethod: 'manual',
+        paymentReference: reference || undefined,
+        notes: `Payout for ${orgData.events.length} event(s): ${orgData.events.join(', ')}`,
+      });
+
+      if (!createResponse.data?.success) {
+        throw new Error(createResponse.data?.error || 'Failed to create payout');
+      }
+
+      const payoutId = createResponse.data.data.payout._id;
+      console.log('Created payout:', payoutId);
+
+      // Mark as completed
+      const completeResponse = await api.patch(`/api/admin/payouts/${payoutId}/complete`, {
+        paymentReference: reference || undefined,
+      });
+
+      if (completeResponse.data?.success) {
+        toast.success(`Payout completed for ${organizerName}! Refreshing data...`);
+        // Refresh all payout-related data
+        await Promise.all([
+          fetchCompletedPayouts(),
+          fetchAllPaidOrders(),
+        ]);
+        toast.success('Data refreshed successfully');
+      } else {
+        throw new Error(completeResponse.data?.error || 'Failed to complete payout');
+      }
+    } catch (err) {
+      console.error('Failed to mark payout as paid:', err);
+      toast.error(err.response?.data?.error || err.message || 'Failed to process payout');
+    } finally {
+      setProcessingPayout(false);
     }
   };
 
@@ -203,6 +382,152 @@ const AdminOrders = () => {
     }
   };
 
+  const calculatePayoutSummary = () => {
+    const summary = {};
+
+    // Use allPaidOrders if in payout view, otherwise use current orders
+    const ordersToProcess = viewMode === "payouts" ? allPaidOrders : orders;
+
+    ordersToProcess
+      .filter(order => {
+        // Filter by payment status
+        const isPaid = order.paymentStatus === "paid" || order.status === "paid" || order.status === "completed";
+        // Filter by payout filter
+        const orderId = order._id.toString();
+        const isAlreadyPaid = completedPayouts.has(orderId);
+
+        if (viewMode === "payouts") {
+          console.log('Checking order:', orderId, 'isPaid:', isPaid, 'isAlreadyPaid:', isAlreadyPaid, 'filter:', payoutFilter);
+        }
+
+        if (payoutFilter === "unpaid") {
+          return isPaid && !isAlreadyPaid;
+        } else if (payoutFilter === "paid") {
+          return isPaid && isAlreadyPaid;
+        } else {
+          return isPaid; // "all"
+        }
+      })
+      .forEach(order => {
+        order.items?.forEach(item => {
+          const event = item.eventId;
+          if (!event || !event.organizer) return;
+
+          const organizerId = event.organizer._id;
+          if (!summary[organizerId]) {
+            summary[organizerId] = {
+              organizer: event.organizer,
+              events: new Set(),
+              totalOrders: 0,
+              totalRevenue: 0,
+              totalFees: 0,
+              netPayout: 0,
+              orders: []
+            };
+          }
+
+          // Calculate order amounts
+          const orderAmount = order.totalAmount || order.pricing?.total || 0;
+          // Platform takes serviceFee (currently 0%) + transactionFee (payment processing)
+          const serviceFee = order.pricing?.serviceFee || 0;
+          const transactionFee = order.pricing?.transactionFee || 0;
+          const totalFees = serviceFee + transactionFee;
+          const netAmount = orderAmount - totalFees;
+
+          summary[organizerId].events.add(event.title);
+          summary[organizerId].totalOrders++;
+          summary[organizerId].totalRevenue += orderAmount;
+          summary[organizerId].totalFees += totalFees;
+          summary[organizerId].netPayout += netAmount;
+          summary[organizerId].orders.push({
+            _id: order._id,
+            orderNumber: order.orderNumber,
+            customer: order.customer?.email,
+            amount: orderAmount,
+            fee: totalFees,
+            serviceFee: serviceFee,
+            transactionFee: transactionFee,
+            net: netAmount,
+            date: order.createdAt,
+            event: event.title
+          });
+        });
+      });
+
+    // Convert Set to Array for events
+    Object.keys(summary).forEach(key => {
+      summary[key].events = Array.from(summary[key].events);
+    });
+
+    return summary;
+  };
+
+  const exportPayoutData = () => {
+    const summary = calculatePayoutSummary();
+
+    // Create CSV content
+    let csv = "Organizer Name,Email,Total Orders,Total Revenue (KES),Platform Fees (KES),Net Payout (KES),Events\n";
+
+    Object.values(summary).forEach(org => {
+      csv += `"${org.organizer.name || org.organizer.email}",`;
+      csv += `"${org.organizer.email}",`;
+      csv += `${org.totalOrders},`;
+      csv += `${org.totalRevenue.toFixed(2)},`;
+      csv += `${org.totalFees.toFixed(2)},`;
+      csv += `${org.netPayout.toFixed(2)},`;
+      csv += `"${org.events.join(', ')}"\n`;
+    });
+
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `event-i-payouts-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    toast.success('Payout data exported successfully!');
+  };
+
+  const exportDetailedPayoutData = (organizerId) => {
+    const summary = calculatePayoutSummary();
+    const orgData = summary[organizerId];
+
+    if (!orgData) return;
+
+    // Create detailed CSV for specific organizer
+    let csv = "Order Number,Customer Email,Event,Order Amount (KES),Service Fee (0%),Transaction Fee,Total Fees (KES),Net Amount (KES),Date\n";
+
+    orgData.orders.forEach(order => {
+      csv += `"${order.orderNumber}",`;
+      csv += `"${order.customer}",`;
+      csv += `"${order.event}",`;
+      csv += `${order.amount.toFixed(2)},`;
+      csv += `${order.serviceFee.toFixed(2)},`;
+      csv += `${order.transactionFee.toFixed(2)},`;
+      csv += `${order.fee.toFixed(2)},`;
+      csv += `${order.net.toFixed(2)},`;
+      csv += `"${new Date(order.date).toLocaleDateString()}"\n`;
+    });
+
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const filename = `payout-details-${orgData.organizer.name?.replace(/\s+/g, '-') || 'organizer'}-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+    toast.success(`Detailed payout data exported for ${orgData.organizer.name || orgData.organizer.email}!`);
+  };
+
   if (loading && orders.length === 0) {
     return (
       <div className="container-modern py-12">
@@ -233,7 +558,9 @@ const AdminOrders = () => {
               Order Management
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
-              View and manage all orders and transactions
+              {viewMode === "orders"
+                ? "View and manage all orders and transactions"
+                : "View organizer payout summary for paid orders"}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -245,14 +572,65 @@ const AdminOrders = () => {
                 Revenue: {totalRevenue.toLocaleString()} KES
               </span>
             </div>
+            {viewMode === "payouts" && (
+              <button
+                onClick={exportPayoutData}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Export Payouts
+              </button>
+            )}
             <button
-              onClick={fetchOrders}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </button>
           </div>
+        </div>
+
+        {/* View Mode Toggle */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode("orders")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                viewMode === "orders"
+                  ? "bg-[#4f0f69] text-white"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+              }`}
+            >
+              <ShoppingBag className="w-4 h-4" />
+              Orders View
+            </button>
+            <button
+              onClick={() => setViewMode("payouts")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                viewMode === "payouts"
+                  ? "bg-[#4f0f69] text-white"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+              }`}
+            >
+              <Wallet className="w-4 h-4" />
+              Payout Summary
+            </button>
+          </div>
+
+          {/* Payout Status Filter (only show in payout view) */}
+          {viewMode === "payouts" && (
+            <select
+              value={payoutFilter}
+              onChange={(e) => setPayoutFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4f0f69] focus:border-transparent"
+            >
+              <option value="unpaid">Unpaid Payouts</option>
+              <option value="paid">Paid Payouts</option>
+              <option value="all">All Payouts</option>
+            </select>
+          )}
         </div>
       </motion.div>
 
@@ -265,7 +643,7 @@ const AdminOrders = () => {
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -312,6 +690,23 @@ const AdminOrders = () => {
               </option>
             ))}
           </select>
+
+          {/* Organizer Filter */}
+          <select
+            value={organizerFilter}
+            onChange={(e) => {
+              setOrganizerFilter(e.target.value);
+              setPage(1);
+            }}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4f0f69] focus:border-transparent"
+          >
+            <option value="all">All Organizers</option>
+            {organizers.map((organizer) => (
+              <option key={organizer._id} value={organizer._id}>
+                {organizer.name || organizer.email}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
@@ -319,9 +714,199 @@ const AdminOrders = () => {
         </div>
       </div>
 
+      {/* Payout Summary View */}
+      {viewMode === "payouts" && (
+        <div className="space-y-4 mb-8">
+          {(() => {
+            const summary = calculatePayoutSummary();
+            const summaryArray = Object.values(summary);
+
+            if (summaryArray.length === 0) {
+              return (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center border border-gray-200 dark:border-gray-700">
+                  <Wallet className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 dark:text-gray-400 text-lg">
+                    No paid orders found to calculate payouts
+                  </p>
+                </div>
+              );
+            }
+
+            return summaryArray.map((org) => {
+              // Check if all orders for this organizer have been paid
+              const allOrdersPaid = org.orders.every(order =>
+                completedPayouts.has((order._id || order).toString())
+              );
+
+              return (
+                <motion.div
+                  key={org.organizer._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-[#4f0f69]/10 rounded-lg">
+                        <Building2 className="w-6 h-6 text-[#4f0f69]" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                            {org.organizer.name || "Unnamed Organizer"}
+                          </h3>
+                          {allOrdersPaid && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Paid
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                          <Mail className="w-4 h-4" />
+                          {org.organizer.email}
+                        </p>
+                        <div className="flex items-center gap-4 mt-2">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {org.totalOrders} orders
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {org.events.length} event(s): {org.events.join(", ")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!allOrdersPaid && (
+                        <button
+                          onClick={() => handleMarkAsPaid(org.organizer._id, org.organizer.name || org.organizer.email)}
+                          disabled={processingPayout}
+                          className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {processingPayout ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4" />
+                              Mark as Paid
+                            </>
+                          )}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => exportDetailedPayoutData(org.organizer._id)}
+                        className="flex items-center gap-2 px-3 py-2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors text-sm"
+                      >
+                        <Download className="w-4 h-4" />
+                        Export Details
+                      </button>
+                    </div>
+                  </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {/* Total Revenue */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1">
+                      <TrendingUp className="w-4 h-4" />
+                      <span className="text-xs font-medium">Total Revenue</span>
+                    </div>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {org.totalRevenue.toLocaleString()} KES
+                    </p>
+                  </div>
+
+                  {/* Platform Fees */}
+                  <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 mb-1">
+                      <DollarSign className="w-4 h-4" />
+                      <span className="text-xs font-medium">Transaction Fees</span>
+                    </div>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {org.totalFees.toLocaleString()} KES
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {org.totalRevenue > 0 ? ((org.totalFees / org.totalRevenue) * 100).toFixed(1) : 0}% of revenue (Payment processing only)
+                    </p>
+                  </div>
+
+                  {/* Net Payout */}
+                  <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 md:col-span-2">
+                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-1">
+                      <Wallet className="w-5 h-5" />
+                      <span className="text-sm font-medium">Net Payout (Amount to Transfer)</span>
+                    </div>
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                      {org.netPayout.toLocaleString()} KES
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Full ticket revenue minus payment processing fees only
+                    </p>
+                  </div>
+                </div>
+
+                {/* Order Breakdown */}
+                <div className="mt-4">
+                  <button
+                    onClick={() => {
+                      const elem = document.getElementById(`orders-${org.organizer._id}`);
+                      if (elem) {
+                        elem.classList.toggle("hidden");
+                      }
+                    }}
+                    className="text-sm text-[#4f0f69] dark:text-purple-400 hover:underline flex items-center gap-1"
+                  >
+                    <Eye className="w-4 h-4" />
+                    View {org.orders.length} order details
+                  </button>
+                  <div id={`orders-${org.organizer._id}`} className="hidden mt-3">
+                    <div className="max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Order</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Event</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Customer</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">Amount</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">Service Fee (0%)</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">Total Fees</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">Net</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {org.orders.map((order, idx) => (
+                            <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                              <td className="px-3 py-2 text-xs text-gray-900 dark:text-white">{order.orderNumber}</td>
+                              <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{order.event}</td>
+                              <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{order.customer}</td>
+                              <td className="px-3 py-2 text-xs text-gray-900 dark:text-white text-right">{order.amount.toLocaleString()}</td>
+                              <td className="px-3 py-2 text-xs text-orange-600 dark:text-orange-400 text-right" title={`Service: ${order.serviceFee.toLocaleString()} + Transaction: ${order.transactionFee.toLocaleString()}`}>
+                                {order.serviceFee.toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2 text-xs text-orange-600 dark:text-orange-400 text-right font-semibold">{order.fee.toLocaleString()}</td>
+                              <td className="px-3 py-2 text-xs font-semibold text-green-600 dark:text-green-400 text-right">{order.net.toLocaleString()}</td>
+                              <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{new Date(order.date).toLocaleDateString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+              );
+            });
+          })()}
+        </div>
+      )}
+
       {/* Orders List */}
-      <div className="space-y-4">
-        {orders.length === 0 ? (
+      {viewMode === "orders" && (
+        <div className="space-y-4">
+          {orders.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-12 text-center border border-gray-200 dark:border-gray-700">
             <ShoppingBag className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-600 dark:text-gray-400 text-lg">
@@ -411,23 +996,22 @@ const AdminOrders = () => {
                             0
                           ).toLocaleString()}
                         </span>
-                        {order.pricing?.transactionFee &&
-                          order.pricing.transactionFee > 0 && (
-                            <span className="text-xs text-gray-400 dark:text-gray-500">
-                              Subtotal:{" "}
-                              {(order.pricing.subtotal || 0).toLocaleString()} +
-                              Fee:{" "}
-                              {order.pricing.transactionFee.toLocaleString()}
-                              {order.pricing.transactionFeeDetails
-                                ?.tierName && (
-                                <span className="ml-1">
-                                  (
-                                  {order.pricing.transactionFeeDetails.tierName}
-                                  )
-                                </span>
-                              )}
-                            </span>
-                          )}
+                        {order.pricing?.serviceFee && order.pricing.serviceFee > 0 && (
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
+                            Subtotal:{" "}
+                            {(order.pricing.subtotal || 0).toLocaleString()} +
+                            Fee:{" "}
+                            {order.pricing.serviceFee.toLocaleString()}
+                            {order.pricing.transactionFee > 0 && (
+                              <span> + {order.pricing.transactionFee.toLocaleString()}</span>
+                            )}
+                            {order.pricing.transactionFeeDetails?.tierName && (
+                              <span className="ml-1">
+                                ({order.pricing.transactionFeeDetails.tierName})
+                              </span>
+                            )}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -505,9 +1089,10 @@ const AdminOrders = () => {
           ))
         )}
       </div>
+      )}
 
       {/* Pagination */}
-      {total > limit && (
+      {viewMode === "orders" && total > limit && (
         <div className="flex items-center justify-center gap-4 mt-8">
           <button
             onClick={() => setPage(page - 1)}
