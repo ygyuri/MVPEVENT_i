@@ -387,21 +387,21 @@ const eventFormSlice = createSlice({
       // If we have a stored currentStep in metadata, use that instead
       if (event.metadata?.currentStep) {
         state.currentStep = Math.min(event.metadata.currentStep, 7);
-        console.log('🔄 [LOAD EVENT] Restored step from metadata:', event.metadata.currentStep);
+        // console.log('🔄 [LOAD EVENT] Restored step from metadata:', event.metadata.currentStep);
       }
       
-      console.log('🔄 [LOAD EVENT] Determined current step:', {
-        lastCompletedStep,
-        currentStep: state.currentStep,
-        hasTitle: !!event.title,
-        hasDescription: !!event.description,
-        hasLocation: !!(event.location?.venueName || event.location?.city),
-        hasDates: !!(event.dates?.startDate && event.dates?.endDate),
-        hasCapacity: event.capacity !== null,
-        hasPricing: !!event.pricing,
-        hasTicketTypes: !!(event.ticketTypes && event.ticketTypes.length > 0),
-        hasMedia: !!(event.media?.coverImageUrl || event.media?.galleryUrls?.length)
-      });
+      // console.log('🔄 [LOAD EVENT] Determined current step:', {
+      //   lastCompletedStep,
+      //   currentStep: state.currentStep,
+      //   hasTitle: !!event.title,
+      //   hasDescription: !!event.description,
+      //   hasLocation: !!(event.location?.venueName || event.location?.city),
+      //   hasDates: !!(event.dates?.startDate && event.dates?.endDate),
+      //   hasCapacity: event.capacity !== null,
+      //   hasPricing: !!event.pricing,
+      //   hasTicketTypes: !!(event.ticketTypes && event.ticketTypes.length > 0),
+      //   hasMedia: !!(event.media?.coverImageUrl || event.media?.galleryUrls?.length)
+      // });
       
       state.isDirty = false;
     },
