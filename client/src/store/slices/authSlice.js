@@ -82,7 +82,7 @@ export const getCurrentUser = createAsyncThunk(
         const lastRequest = authRequestCache.get(requestKey);
         if (now - lastRequest < 5000) {
           // 5 seconds cache for auth
-          console.log("🚫 [API AUTH] Deduplicating request:", requestKey);
+          // console.log("🚫 [API AUTH] Deduplicating request:", requestKey);
           return new Promise((resolve) => {
             // Return cached promise or wait for ongoing request
             setTimeout(() => {
@@ -95,21 +95,21 @@ export const getCurrentUser = createAsyncThunk(
       // Store request timestamp
       authRequestCache.set(requestKey, now);
 
-      console.log("🔄 [API AUTH] Request:", {
-        url: requestKey,
-        timestamp: new Date().toISOString(),
-      });
+      // console.log("🔄 [API AUTH] Request:", {
+      //   url: requestKey,
+      //   timestamp: new Date().toISOString(),
+      // });
 
       const response = await api.get(requestKey);
 
       // Store result in cache
       authRequestCache.set(requestKey + "_result", response.data.user);
 
-      console.log("✅ [API AUTH] Response:", {
-        status: response.status,
-        data: response.data.user,
-        timestamp: new Date().toISOString(),
-      });
+      // console.log("✅ [API AUTH] Response:", {
+      //   status: response.status,
+      //   data: response.data.user,
+      //   timestamp: new Date().toISOString(),
+      // });
 
       return response.data.user;
     } catch (error) {

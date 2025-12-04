@@ -9,12 +9,14 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        // Use server container name in Docker (works from within Docker network)
+        // For local dev outside Docker, this will be overridden by axios baseURL
+        target: 'http://server:5001',
         changeOrigin: true,
         secure: false
       },
       '/socket.io': {
-        target: 'http://localhost:5000',
+        target: 'http://server:5001',
         ws: true,
         changeOrigin: true
       }

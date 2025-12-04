@@ -79,10 +79,6 @@ const MediaStep = () => {
     const files = Array.from(event.target.files);
     if (!files.length) return;
 
-    console.log('📁 [MULTIPLE FILE UPLOAD]', { 
-      fileCount: files.length,
-      files: files.map(f => ({ name: f.name, type: f.type, size: imageUtils.getFileSizeMB(f) + 'MB' }))
-    });
 
     // Clear previous upload errors
     setUploadErrors({});
@@ -129,11 +125,6 @@ const MediaStep = () => {
 
         // Compress image if it's an image file
         processedFile = await imageUtils.compressImage(processedFile, 1.5, 0.85);
-        console.log('🗜️ [FILE COMPRESSION]', { 
-          fileName: file.name,
-          originalSize: imageUtils.getFileSizeMB(file) + 'MB',
-          compressedSize: imageUtils.getFileSizeMB(processedFile) + 'MB'
-        });
         
         // Update progress
         setUploadProgress(prev => ({ ...prev, [index]: 50 }));
@@ -151,11 +142,9 @@ const MediaStep = () => {
         
         if (event.target.id === 'coverImage') {
           updateMedia('coverImageUrl', dataUrl);
-          console.log('✅ [COVER IMAGE PROCESSED]', { fileName: file.name, size: imageUtils.getFileSizeMB(processedFile) + 'MB' });
         } else {
           // Collect successful data URLs for batch update
           successfulDataUrls.push(dataUrl);
-          console.log('✅ [GALLERY IMAGE PROCESSED]', { fileName: file.name, size: imageUtils.getFileSizeMB(processedFile) + 'MB' });
         }
         
         uploadResults.push({ success: true, fileName: file.name, dataUrl });
@@ -183,25 +172,11 @@ const MediaStep = () => {
     if (event.target.id !== 'coverImage' && successfulDataUrls.length > 0) {
       const currentGallery = formData.media?.galleryUrls || [];
       updateMedia('galleryUrls', [...currentGallery, ...successfulDataUrls]);
-      console.log('✅ [BATCH GALLERY UPDATE]', { 
-        added: successfulDataUrls.length, 
-        total: currentGallery.length + successfulDataUrls.length 
-      });
     }
     
     setUploading(false);
     
-    // Show results
-    if (uploadResults.length > 0) {
-      console.log('✅ [PROCESSING COMPLETE]', { 
-        successful: uploadResults.length, 
-        failed: errors.length,
-        results: uploadResults 
-      });
-    }
-    
     if (errors.length > 0) {
-      console.error('❌ [PROCESSING ERRORS]', errors);
       // Show error summary
       const errorMessage = errors.length === 1 
         ? errors[0].error 

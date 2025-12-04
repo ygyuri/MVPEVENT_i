@@ -72,7 +72,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     loading,
     error 
   } = useSelector(state => state.eventForm);
-  const { currentEvent } = useSelector(state => state.organizer);
+  const { currentEvent, events } = useSelector(state => state.organizer);
   
   // Show toast notifications for auto-save status
   useEffect(() => {
@@ -117,7 +117,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       
       try {
         localStorage.setItem('eventForm_recovery', JSON.stringify(recoveryData));
-        console.log('💾 [RECOVERY] Form data saved to localStorage');
+        // console.log('💾 [RECOVERY] Form data saved to localStorage');
       } catch (error) {
         console.warn('⚠️ [RECOVERY] Failed to save to localStorage:', error);
       }
@@ -135,7 +135,6 @@ const EventFormWrapper = ({ children, onSubmit }) => {
           const parsed = JSON.parse(recoveryData);
           // Only clear recovery data if it's for a different event
           if (parsed.eventId && parsed.eventId !== eventId) {
-            console.log('🧹 [RECOVERY] Clearing recovery data for different event');
             localStorage.removeItem('eventForm_recovery');
           }
         }
@@ -154,8 +153,6 @@ const EventFormWrapper = ({ children, onSubmit }) => {
         
         // Only recover if data is less than 1 hour old
         if (age < 60 * 60 * 1000) {
-          console.log('🔄 [RECOVERY] Found recent form data, age:', Math.round(age / 1000), 'seconds');
-          
           // Only show recovery modal if we have a real draft (with eventId) or meaningful data
           // For "Create Event", we need to have an actual saved draft, not just empty form data
           const hasRealDraft = parsed.eventId && parsed.eventId !== null;
@@ -170,7 +167,6 @@ const EventFormWrapper = ({ children, onSubmit }) => {
           // 1. A real draft (with eventId) that was saved
           // 2. Significant unsaved data that's worth recovering
           if (hasRealDraft || hasSignificantData) {
-            console.log('✅ [RECOVERY] Recovery data is significant, showing modal');
             
             // Show recovery modal
             setRecoveryModal({
@@ -180,10 +176,9 @@ const EventFormWrapper = ({ children, onSubmit }) => {
               onRecover: () => {
                 // Load recovery data into form
                 // If we have eventId, load the draft from server
-                if (parsed.eventId && parsed.eventId !== null) {
-                  // Navigate to the draft event to load it properly
-                  console.log('🔄 [RECOVERY] Loading draft event:', parsed.eventId);
-                  navigate(`/organizer/events/${parsed.eventId}/edit`);
+          if (parsed.eventId && parsed.eventId !== null) {
+            // Navigate to the draft event to load it properly
+            navigate(`/organizer/events/${parsed.eventId}/edit`);
                 } else {
                   // Just load form data for unsaved draft
                   dispatch(loadExistingEvent(parsed.formData));
@@ -239,21 +234,22 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       dispatch(setSaving(true));
       dispatch(setSaveError(null));
       
-      // Always save to localStorage first for immediate persistence
-      formPersistence.saveFormData(data, formEventId);
+      // Use route eventId if we're editing an existing event (prevents creating new draft)
+      const effectiveEventId = (eventId && eventId !== 'create') ? eventId : formEventId;
       
       // Transform form data to API format
       const apiData = formUtils.transformFormDataToAPI(data);
-      console.log('📤 [SAVE DRAFT] API payload:', apiData);
-      console.log('📍 [SAVE DRAFT] POST call location: EventFormWrapper.jsx - saveDraft function');
-      console.log('🔄 [SAVE DRAFT] Current form data state:', data);
+      
+      // Always save to localStorage with effective event ID for consistency
+      if (effectiveEventId) {
+        formPersistence.saveFormData(data, effectiveEventId);
+      }
       
       let result;
-      if (formEventId) {
-        // Update existing draft
-        console.log('🔄 [SAVE DRAFT] Updating existing draft...', formEventId);
+      if (effectiveEventId) {
+        // Update existing event (draft or published)
         result = await dispatch(updateEventDraft({ 
-          eventId: formEventId, 
+          eventId: effectiveEventId, 
           eventData: apiData, 
           version 
         })).unwrap();
@@ -261,19 +257,51 @@ const EventFormWrapper = ({ children, onSubmit }) => {
         if (result?.data?.version !== undefined) {
           dispatch(setVersion(result.data.version));
         }
+        // Ensure eventId is set in state
+        if (effectiveEventId !== formEventId) {
+          dispatch(setEventId(effectiveEventId));
+        }
         // Return the existing ID for callers
-        console.log('✅ [SAVE DRAFT] Updated draft:', { id: formEventId, result });
         dispatch(setLastSaved(new Date().toISOString()));
         dispatch(setSaving(false));
-        console.log('✅ [SAVE DRAFT] Success:', result);
         dispatch(setSaveError(null));
-        if (isManual) toast.success('Draft saved successfully');
-        return { id: formEventId };
+        if (isManual) {
+          // Check if this is a published event for a more informative message
+          // Check multiple sources: currentEvent, events list, formData
+          const eventFromList = events?.find(e => e._id === effectiveEventId);
+          const eventStatus = currentEvent?.status || eventFromList?.status || data?.status || 'draft';
+          const isPublished = eventStatus === 'published';
+          
+          if (isPublished) {
+            toast.success(
+              <div className="space-y-1">
+                <div className="font-semibold">✅ Event Updated Successfully!</div>
+                <div className="text-sm opacity-90">Your changes have been saved.</div>
+              </div>,
+              {
+                duration: 4000,
+                position: 'top-center',
+                style: {
+                  background: '#F0FDF4',
+                  border: '1px solid #BBF7D0',
+                  color: '#166534',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                }
+              }
+            );
+          } else {
+            toast.success('Changes saved successfully', {
+              duration: 3000,
+              position: 'top-center'
+            });
+          }
+        }
+        return { id: effectiveEventId };
       } else {
-        // Create new draft
-        console.log('🔄 [SAVE DRAFT] Creating new draft...');
+        // Create new draft (only for new events)
         result = await dispatch(createEventDraft(apiData)).unwrap();
-        console.log('✅ [SAVE DRAFT] Created draft result:', result);
         if (result.data?.id) {
           // Persist eventId in the correct place in state
           dispatch(setEventId(result.data.id));
@@ -287,19 +315,12 @@ const EventFormWrapper = ({ children, onSubmit }) => {
         // Update last saved timestamp
         dispatch(setLastSaved(new Date().toISOString()));
         dispatch(setSaving(false));
-        console.log('✅ [SAVE DRAFT] Success:', result);
         dispatch(setSaveError(null));
         if (isManual) toast.success('Draft saved successfully');
         return { id: result.data?.id };
       }
 
     } catch (error) {
-      console.error('❌ [SAVE DRAFT] Error:', {
-        message: error.message,
-        error,
-        data,
-        timestamp: new Date().toISOString()
-      });
       
       // Extract meaningful error message
       let errorMessage = 'Failed to save draft';
@@ -319,18 +340,15 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       // Show error message for manual saves
       toast.error(errorMessage);
     }
-  }, [formEventId, autoSave.isSaving, version, dispatch]);
+  }, [eventId, formEventId, autoSave.isSaving, version, dispatch, currentEvent, events]);
 
   // Note: Auto-save is now handled by individual form fields using optimized persistence
 
   // Ensure user is authenticated using Redux state
   useEffect(() => {
     if (!user) {
-      console.warn('⚠️ No authenticated user found for organizer access');
       toast.error('Please log in to access organizer features');
       navigate('/');
-    } else {
-      console.log('✅ User authenticated for organizer access:', user.email || user.username);
     }
   }, [user, navigate]);
 
@@ -339,24 +357,49 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     if (eventId && eventId !== 'create') {
       const loadEvent = async () => {
         try {
-          console.log('🔄 [LOAD EVENT] Loading event with ID:', eventId);
+          // Set event ID immediately to prevent creating new draft during auto-save
+          dispatch(setEventId(eventId));
+          
           dispatch(setLoading({ key: 'loading', loading: true }));
           const eventData = await dispatch(getEventDetails(eventId)).unwrap();
           
-          console.log('📥 [LOAD EVENT] Raw event data from API:', eventData);
+          // Create a deep copy to avoid modifying a frozen/sealed object
+          // Use structuredClone if available, otherwise fall back to JSON parse/stringify
+          let eventDataCopy;
+          try {
+            if (typeof structuredClone !== 'undefined') {
+              eventDataCopy = structuredClone(eventData);
+            } else {
+              eventDataCopy = JSON.parse(JSON.stringify(eventData));
+            }
+          } catch (e) {
+            // If structuredClone fails or is not available, use Object.assign with spread
+            eventDataCopy = Object.assign({}, eventData);
+            // Deep copy nested objects
+            if (eventDataCopy.location) eventDataCopy.location = { ...eventDataCopy.location };
+            if (eventDataCopy.dates) eventDataCopy.dates = { ...eventDataCopy.dates };
+            if (eventDataCopy.pricing) eventDataCopy.pricing = { ...eventDataCopy.pricing };
+            if (eventDataCopy.media) eventDataCopy.media = { ...eventDataCopy.media };
+          }
+          
+          // Ensure _id is set correctly (in case API returns id instead of _id)
+          const eventIdValue = eventData._id || eventData.id || eventId;
+          eventDataCopy._id = eventIdValue;
           
           // Transform API data to form format
-          const formData = formUtils.transformAPIToFormData(eventData);
-          const combinedData = { ...eventData, ...formData };
+          const formData = formUtils.transformAPIToFormData(eventDataCopy);
           
-          console.log('🔄 [LOAD EVENT] Combined data for loadExistingEvent:', combinedData);
+          // Combine into a new object
+          const combinedData = { 
+            ...eventDataCopy, 
+            ...formData, 
+            _id: eventIdValue 
+          };
           
           dispatch(loadExistingEvent(combinedData));
           
           dispatch(setLoading({ key: 'loading', loading: false }));
-          console.log('✅ [LOAD EVENT] Event loaded successfully');
         } catch (error) {
-          console.error('❌ [LOAD EVENT] Failed to load event:', error);
           toast.error('Failed to load event details');
           navigate('/organizer');
           dispatch(setLoading({ key: 'loading', loading: false }));
@@ -375,36 +418,33 @@ const EventFormWrapper = ({ children, onSubmit }) => {
 
   // Periodic auto-save (every 30 seconds)
   useEffect(() => {
-    if (!formEventId || !formData || isPublishing) return;
+    // Use route eventId if we're editing an existing event (prevents creating new draft)
+    const effectiveEventId = (eventId && eventId !== 'create') ? eventId : formEventId;
+    
+    if (!effectiveEventId || !formData || isPublishing) return;
     
     const hasBasicData = formData.title || formData.description || formData.dates?.startDate;
     if (!hasBasicData) return;
     
     const interval = setInterval(async () => {
       try {
-        console.log('⏰ [PERIODIC AUTO-SAVE] Saving every 30 seconds');
         if (isAutoSaving) {
-          console.log('🚫 [PERIODIC AUTO-SAVE] Save in-flight, skipping');
           return;
         }
         setIsAutoSaving(true);
         
         // Transform form data to API format
         const apiData = formUtils.transformFormDataToAPI(formData);
-        console.log('📤 [PERIODIC AUTO-SAVE] API payload:', apiData);
-        console.log('📍 [PERIODIC AUTO-SAVE] POST call location: EventFormWrapper.jsx - periodic auto-save useEffect');
-        console.log('🔄 [PERIODIC AUTO-SAVE] Current form data state:', formData);
         
-        // Update the draft with current data
+        // Update the event with current data
         const res = await dispatch(updateEventDraft({ 
-          eventId: formEventId, 
+          eventId: effectiveEventId, 
           eventData: apiData, 
           version 
         })).unwrap().catch(async (err) => {
           // If 409, try once without version to let server resolve latest
           if (typeof err === 'string' && err.toLowerCase().includes('conflict')) {
-            console.warn('🔁 [PERIODIC AUTO-SAVE] Retrying without version due to 409');
-            return await dispatch(updateEventDraft({ eventId: formEventId, eventData: apiData })).unwrap();
+            return await dispatch(updateEventDraft({ eventId: effectiveEventId, eventData: apiData })).unwrap();
           }
           throw err;
         });
@@ -412,20 +452,18 @@ const EventFormWrapper = ({ children, onSubmit }) => {
           dispatch(setVersion(res.data.version));
         }
         
-        console.log('✅ [PERIODIC AUTO-SAVE] Successfully saved');
-        
         // Update last saved timestamp
         dispatch(setLastSaved(new Date().toISOString()));
         
       } catch (error) {
-        console.warn('⚠️ [PERIODIC AUTO-SAVE] Failed to save:', error);
+        // Silent fail for periodic auto-save
       } finally {
         setIsAutoSaving(false);
       }
     }, 30000); // 30 seconds
     
     return () => clearInterval(interval);
-  }, [formEventId, formData, version, dispatch, isPublishing]);
+  }, [eventId, formEventId, formData, version, dispatch, isPublishing, isAutoSaving]);
 
   // Auto-save on page unload/refresh
   useEffect(() => {
@@ -554,7 +592,6 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       }
       
     } catch (error) {
-      console.error('❌ [AUTO SAVE] Failed to save draft:', error);
       dispatch(setSaving(false));
       
       // Don't show error toast for auto-saves to avoid spamming user
@@ -562,34 +599,32 @@ const EventFormWrapper = ({ children, onSubmit }) => {
         toast.error('Failed to save draft');
       }
     }
-  }, [formEventId, version, formData, dispatch, autoSave.isSaving]);
+  }, [eventId, formEventId, version, formData, dispatch, autoSave.isSaving]);
 
   // Auto-save function that triggers on step navigation
   const autoSaveOnStepChange = useCallback(async (newStep, previousStep) => {
+    // Use route eventId if we're editing an existing event (prevents creating new draft)
+    const effectiveEventId = (eventId && eventId !== 'create') ? eventId : formEventId;
+    
     // Only auto-save if we have meaningful data and an event ID
-    if (!formEventId || !formData) return;
+    if (!effectiveEventId || !formData) return;
     
     const hasBasicData = formData.title || formData.description || formData.dates?.startDate;
     if (!hasBasicData) return;
     
     try {
-      console.log('💾 [AUTO-SAVE] Saving on step change:', { from: previousStep, to: newStep });
-      
       // Transform form data to API format
       const apiData = formUtils.transformFormDataToAPI(formData);
-      console.log('📤 [AUTO-SAVE] API payload:', apiData);
-      console.log('📍 [AUTO-SAVE] POST call location: EventFormWrapper.jsx - autoSaveOnStepChange function');
-      console.log('🔄 [AUTO-SAVE] Current form data state:', formData);
       
-      // Update the draft with current data, handle 409 with a retry (no version)
+      // Update the event with current data, handle 409 with a retry (no version)
       let res = await dispatch(updateEventDraft({ 
-        eventId: formEventId, 
+        eventId: effectiveEventId, 
         eventData: apiData, 
         version 
       })).unwrap().catch(async (err) => {
         if (typeof err === 'string' && err.toLowerCase().includes('conflict')) {
-          console.warn('🔁 [AUTO-SAVE] Retrying without version due to 409');
-          return await dispatch(updateEventDraft({ eventId: formEventId, eventData: apiData })).unwrap();
+          // Retry without version to get latest version from server
+          return await dispatch(updateEventDraft({ eventId: effectiveEventId, eventData: apiData })).unwrap();
         }
         throw err;
       });
@@ -597,52 +632,33 @@ const EventFormWrapper = ({ children, onSubmit }) => {
         dispatch(setVersion(res.data.version));
       }
       
-      console.log('✅ [AUTO-SAVE] Successfully saved on step change');
-      
       // Update last saved timestamp
       dispatch(setLastSaved(new Date().toISOString()));
       
     } catch (error) {
-      console.warn('⚠️ [AUTO-SAVE] Failed to save on step change:', error);
       // Don't show error to user for auto-save failures
     }
-  }, [formEventId, formData, version, dispatch]);
+  }, [eventId, formEventId, formData, version, dispatch, currentEvent]);
 
   // Enhanced step navigation with auto-save
   const handleNextStep = async () => {
-    console.log('🔄 [NEXT STEP] Button clicked', { 
-      currentStep, 
-      totalSteps, 
-      formData: {
-        title: formData.title,
-        description: formData.description,
-        category: formData.category
-      }
-    });
-    
     // Basic validation for step 1
     if (currentStep === 1) {
       const hasBasicInfo = formData.title && formData.title.trim().length > 0;
       if (!hasBasicInfo) {
-        console.log('❌ [NEXT STEP] Validation failed - no title');
         toast.error('Please add an event title before continuing');
         return;
       }
     }
     
     if (currentStep < totalSteps) {
-      console.log('✅ [NEXT STEP] Moving to next step');
-      
       // Auto-save before moving to next step
       autoSaveOnStepChange(currentStep + 1, currentStep);
       
       dispatch(nextStep());
     } else {
       // We're at the last step (Preview), validate and call the parent submit handler
-      console.log('🚀 [FINAL STEP] Submitting event for publication');
-      
       if (isPublishing) {
-        console.log('🚫 [FINAL STEP] Already submitting, ignoring duplicate click');
         return;
       }
       
