@@ -76,7 +76,7 @@ const EventManagement = () => {
     
     // Prevent duplicate calls within 2 seconds unless forced
     if (!forceRefresh && timeSinceLastFetch < 2000) {
-      console.log('🚫 [DASHBOARD] Preventing duplicate API call (too soon)');
+      // console.log('🚫 [DASHBOARD] Preventing duplicate API call (too soon)');
       return;
     }
 
@@ -90,32 +90,32 @@ const EventManagement = () => {
       ...(filters.dateRange !== 'all' && { dateRange: filters.dateRange })
     };
     
-    console.log('🔄 [DASHBOARD] Fetching events data:', { params, forceRefresh, timeSinceLastFetch });
+    // console.log('🔄 [DASHBOARD] Fetching events data:', { params, forceRefresh, timeSinceLastFetch });
     setLastFetchTime(now);
     await dispatch(fetchMyEvents(params));
   }, [dispatch, currentPage, sortBy, sortOrder, debouncedSearch, filters, lastFetchTime, authLoading, isAuthenticated, user]);
   
   // Single useEffect for initial load and filter changes
   useEffect(() => {
-    console.log('🔄 [EVENT MANAGEMENT] useEffect triggered', {
-      authLoading,
-      isAuthenticated,
-      user: user?.email,
-      role: user?.role
-    });
+    // console.log('🔄 [EVENT MANAGEMENT] useEffect triggered', {
+    //   authLoading,
+    //   isAuthenticated,
+    //   user: user?.email,
+    //   role: user?.role
+    // });
     fetchEventsData();
   }, [fetchEventsData, authLoading, isAuthenticated, user]);
 
   // Refresh data when user returns to dashboard (focus/visibility events)
   useEffect(() => {
     const handleFocus = () => {
-      console.log('🔄 [DASHBOARD] Page focused - refreshing events data');
+      // console.log('🔄 [DASHBOARD] Page focused - refreshing events data');
       fetchEventsData(true); // Force refresh on focus
     };
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('🔄 [DASHBOARD] Page visible - refreshing events data');
+        // console.log('🔄 [DASHBOARD] Page visible - refreshing events data');
         fetchEventsData(true); // Force refresh on visibility change
       }
     };
@@ -160,8 +160,8 @@ const EventManagement = () => {
 
   // Filtered and sorted events
   const filteredEvents = useMemo(() => {
-    console.log('📊 [EVENT MANAGEMENT] Total events in state:', events.length);
-    console.log('📊 [EVENT MANAGEMENT] Events:', events);
+    // console.log('📊 [EVENT MANAGEMENT] Total events in state:', events.length);
+    // console.log('📊 [EVENT MANAGEMENT] Events:', events);
     
     let filtered = [...events];
     
@@ -203,7 +203,7 @@ const EventManagement = () => {
       });
     }
     
-    console.log('📊 [EVENT MANAGEMENT] Filtered events:', filtered.length);
+    // console.log('📊 [EVENT MANAGEMENT] Filtered events:', filtered.length);
     
     return filtered;
   }, [events, debouncedSearch, filters]);

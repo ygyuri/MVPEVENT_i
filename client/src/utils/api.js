@@ -4,7 +4,19 @@ import axios from 'axios';
 const getApiBaseUrl = () => {
   // Use VITE_API_URL if available (for Docker environments)
   if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+    const viteUrl = import.meta.env.VITE_API_URL;
+    // If VITE_API_URL is localhost but we're accessing from a different hostname,
+    // use the current hostname instead (for network access)
+    if (viteUrl.includes('localhost') && typeof window !== 'undefined') {
+      const currentHostname = window.location.hostname;
+      if (currentHostname !== 'localhost' && currentHostname !== '127.0.0.1') {
+        // Extract port from VITE_API_URL or use default
+        const urlMatch = viteUrl.match(/:(\d+)/);
+        const port = urlMatch ? urlMatch[1] : '5001';
+        return `http://${currentHostname}:${port}`;
+      }
+    }
+    return viteUrl;
   }
   
   // Check if we're in development
@@ -22,12 +34,12 @@ const getApiBaseUrl = () => {
 const API_BASE_URL = getApiBaseUrl();
 
 // Console log for debugging API configuration
-console.log('🔧 API Configuration:', {
-  environment: import.meta.env.DEV ? 'development' : 'production',
-  viteApiUrl: import.meta.env.VITE_API_URL,
-  resolvedApiBaseUrl: API_BASE_URL,
-  currentHostname: typeof window !== 'undefined' ? window.location.hostname : 'server-side'
-});
+// console.log('🔧 API Configuration:', {
+//   environment: import.meta.env.DEV ? 'development' : 'production',
+//   viteApiUrl: import.meta.env.VITE_API_URL,
+//   resolvedApiBaseUrl: API_BASE_URL,
+//   currentHostname: typeof window !== 'undefined' ? window.location.hostname : 'server-side'
+// });
 
 // Create axios instance
 const api = axios.create({
@@ -40,13 +52,13 @@ const api = axios.create({
 // Add request interceptor for logging
 api.interceptors.request.use(
   (config) => {
-    console.log('📤 API Request:', {
-      method: config.method?.toUpperCase(),
-      url: config.url,
-      baseURL: config.baseURL,
-      fullUrl: `${config.baseURL}${config.url}`,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('📤 API Request:', {
+    //   method: config.method?.toUpperCase(),
+    //   url: config.url,
+    //   baseURL: config.baseURL,
+    //   fullUrl: `${config.baseURL}${config.url}`,
+    //   timestamp: new Date().toISOString()
+    // });
     return config;
   },
   (error) => {
@@ -72,12 +84,12 @@ api.interceptors.request.use(
 // Response interceptor to handle token expiration
 api.interceptors.response.use(
   (response) => {
-    console.log('📥 API Response:', {
-      status: response.status,
-      statusText: response.statusText,
-      url: response.config.url,
-      timestamp: new Date().toISOString()
-    });
+    // console.log('📥 API Response:', {
+    //   status: response.status,
+    //   statusText: response.statusText,
+    //   url: response.config.url,
+    //   timestamp: new Date().toISOString()
+    // });
     return response;
   },
   async (error) => {

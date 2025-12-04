@@ -25,7 +25,7 @@ const EventCreate = () => {
   // Handle form submission (publish draft or update published event)
   const handleSubmit = async (formData) => {
     try {
-      // Determine effective eventId (route param may be 'create')
+      // Determine effective eventId (route param takes priority when editing)
       const effectiveEventId = (eventId && eventId !== 'create') ? eventId : storedEventId;
 
       // Additional checks
@@ -63,11 +63,25 @@ const EventCreate = () => {
       });
       
       // Update the event (works for both drafts and published events now)
-      const saveRes = await dispatch(updateEventDraft({ 
-        eventId: effectiveEventId, 
-        eventData: apiData, 
-        version: version || 0
-      })).unwrap();
+      // Handle version conflict by retrying without version if needed
+      let saveRes;
+      try {
+        saveRes = await dispatch(updateEventDraft({ 
+          eventId: effectiveEventId, 
+          eventData: apiData, 
+          version: version || 0
+        })).unwrap();
+      } catch (error) {
+        // If version conflict, retry without version to get latest from server
+        if (error.response?.status === 409 || (typeof error === 'string' && error.toLowerCase().includes('conflict'))) {
+          saveRes = await dispatch(updateEventDraft({ 
+            eventId: effectiveEventId, 
+            eventData: apiData
+          })).unwrap();
+        } else {
+          throw error;
+        }
+      }
 
       // If event is already published, we're done - just update it
       if (isPublished) {
@@ -149,8 +163,6 @@ const EventCreate = () => {
       });
       
     } catch (error) {
-      console.error('Failed to save event:', error);
-      
       // Dismiss loading toast if it's still showing
       toast.dismiss('publish-loading');
       

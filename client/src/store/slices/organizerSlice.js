@@ -49,10 +49,10 @@ export const fetchMyEvents = createAsyncThunk(
         const lastRequest = requestCache.get(requestKey);
         if (now - lastRequest < 2000) {
           // 2 seconds cache
-          console.log(
-            "🚫 [API FETCH EVENTS] Deduplicating request:",
-            requestKey
-          );
+          // console.log(
+          //   "🚫 [API FETCH EVENTS] Deduplicating request:",
+          //   requestKey
+          // );
           return new Promise((resolve) => {
             // Return cached promise or wait for ongoing request
             setTimeout(() => {
@@ -65,23 +65,23 @@ export const fetchMyEvents = createAsyncThunk(
       // Store request timestamp
       requestCache.set(requestKey, now);
 
-      console.log("🔄 [API FETCH EVENTS] Request:", {
-        url: requestKey,
-        method: "GET",
-        params: { status, page, pageSize, sort, order, search, dateRange },
-        timestamp: new Date().toISOString(),
-      });
+      // console.log("🔄 [API FETCH EVENTS] Request:", {
+      //   url: requestKey,
+      //   method: "GET",
+      //   params: { status, page, pageSize, sort, order, search, dateRange },
+      //   timestamp: new Date().toISOString(),
+      // });
 
       const response = await api.get(requestKey);
 
       // Store result in cache
       requestCache.set(requestKey + "_result", response.data);
 
-      console.log("✅ [API FETCH EVENTS] Response:", {
-        status: response.status,
-        data: response.data,
-        timestamp: new Date().toISOString(),
-      });
+      // console.log("✅ [API FETCH EVENTS] Response:", {
+      //   status: response.status,
+      //   data: response.data,
+      //   timestamp: new Date().toISOString(),
+      // });
 
       return response.data;
     } catch (error) {
@@ -105,20 +105,7 @@ export const createEventDraft = createAsyncThunk(
   "organizer/createEventDraft",
   async (eventData, { rejectWithValue }) => {
     try {
-      console.log("🚀 [API CREATE DRAFT] Request:", {
-        url: "/api/organizer/events",
-        method: "POST",
-        payload: eventData,
-        timestamp: new Date().toISOString(),
-      });
-
       const response = await api.post("/api/organizer/events", eventData);
-
-      console.log("✅ [API CREATE DRAFT] Response:", {
-        status: response.status,
-        data: response.data,
-        timestamp: new Date().toISOString(),
-      });
 
       return response.data;
     } catch (error) {
@@ -145,26 +132,10 @@ export const updateEventDraft = createAsyncThunk(
       const payload = { ...eventData };
       if (version !== undefined) payload.version = version;
 
-      console.log("🔄 [API UPDATE DRAFT] Request:", {
-        url: `/api/organizer/events/${eventId}`,
-        method: "PATCH",
-        eventId,
-        version,
-        payload,
-        timestamp: new Date().toISOString(),
-      });
-
       const response = await api.patch(
         `/api/organizer/events/${eventId}`,
         payload
       );
-
-      console.log("✅ [API UPDATE DRAFT] Response:", {
-        status: response.status,
-        data: response.data,
-        eventId,
-        timestamp: new Date().toISOString(),
-      });
 
       return { eventId, ...response.data };
     } catch (error) {
