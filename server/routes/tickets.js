@@ -1,5 +1,5 @@
 const express = require("express");
-const { body, param, validationResult } = require("express-validator");
+const { body, param, query, validationResult } = require("express-validator");
 const {
   verifyToken,
   requireRole,
@@ -759,6 +759,87 @@ router.post(
     } catch (error) {
       console.error("❌ Issue QR failed:", error.message);
       res.status(500).json({ success: false, error: "Failed to issue QR" });
+    }
+  }
+);
+
+// GET /api/tickets/scans/recent - Get paginated recent scans for current user
+router.get(
+  "/scans/recent",
+  verifyToken,
+  requireRole(["organizer", "admin"]),
+  [
+    query("page").optional().isInt({ min: 1 }).withMessage("Page must be a positive integer"),
+    query("limit").optional().isInt({ min: 1, max: 100 }).withMessage("Limit must be between 1 and 100"),
+    query("eventId").optional().isMongoId().withMessage("Invalid event ID"),
+  ],
+  async (req, res) => {
+    const v = handleValidation(req, res);
+    if (v) return v;
+    
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const skip = (page - 1) * limit;
+      const eventId = req.query.eventId;
+
+      // Build query - only scans by current user
+      const query = { scannedBy: req.user._id };
+      if (eventId) {
+        query.eventId = eventId;
+      }
+
+      // Get scans with populated data
+      const scans = await ScanLog.find(query)
+        .populate("ticketId", "ticketNumber holder ticketType")
+        .populate("eventId", "title dates location")
+        .populate("scannedBy", "firstName lastName email")
+        .sort({ scannedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
+
+      // Get total count
+      const total = await ScanLog.countDocuments(query);
+
+      // Format response
+      const formattedScans = scans.map((scan) => ({
+        id: scan._id,
+        ticketId: scan.ticketId?._id,
+        ticketNumber: scan.ticketId?.ticketNumber,
+        holderName: scan.ticketId?.holder
+          ? `${scan.ticketId.holder.firstName || ""} ${scan.ticketId.holder.lastName || ""}`.trim()
+          : "Unknown",
+        eventId: scan.eventId?._id,
+        eventTitle: scan.eventId?.title,
+        scannedAt: scan.scannedAt,
+        location: scan.location,
+        result: scan.result,
+        valid: scan.result === "success",
+        device: scan.device,
+      }));
+
+      res.json({
+        success: true,
+        data: {
+          scans: formattedScans,
+          pagination: {
+            page,
+            limit,
+            total,
+            pages: Math.ceil(total / limit),
+            hasNext: page * limit < total,
+            hasPrev: page > 1,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("❌ Error fetching recent scans:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch recent scans",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
     }
   }
 );

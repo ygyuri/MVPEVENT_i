@@ -16,6 +16,7 @@ const scanLogSchema = new mongoose.Schema({
 
 scanLogSchema.index({ eventId: 1, scannedAt: -1 });
 scanLogSchema.index({ ticketId: 1, scannedAt: -1 });
+scanLogSchema.index({ scannedBy: 1, scannedAt: -1 }); // For user's recent scans
 
 module.exports = mongoose.model('ScanLog', scanLogSchema);
 

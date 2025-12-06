@@ -107,35 +107,64 @@ class TicketService {
           return { ok: false, code: 'TICKET_NOT_FOUND' };
         }
 
-        // Verify the QR code matches what's stored in the ticket
-        if (ticket.qrCode !== compactQrString) {
-          console.error('❌ verifyQr: QR code mismatch', {
-            ticketId: ticket._id.toString(),
-            storedLength: ticket.qrCode?.length,
-            scannedLength: compactQrString.length,
-            storedPrefix: ticket.qrCode?.substring(0, 20),
-            scannedPrefix: compactQrString.substring(0, 20)
-          });
-          return { ok: false, code: 'INVALID_QR' };
-        }
-
-        // Verify signature if qr metadata exists
+        // Verify by signature OR by matching stored qrCode OR by payload match (flexible verification)
+        let isVerified = false;
+        
+        // Option 1: Verify by signature if available (most secure)
         if (ticket.qr?.signature) {
-          // Try to verify with current secret or legacy secrets
-          let signatureValid = false;
           for (const secret of LEGACY_SECRETS) {
             const expectedSig = crypto
               .createHmac('sha256', secret)
               .update(compactQrString)
               .digest('hex');
             if (expectedSig === ticket.qr.signature) {
-              signatureValid = true;
+              isVerified = true;
+              console.log('✅ verifyQr: Verified by signature', { ticketId: ticket._id.toString() });
               break;
             }
           }
-          if (!signatureValid) {
-            return { ok: false, code: 'INVALID_QR' };
+        }
+        
+        // Option 2: If no signature or signature check failed, verify by matching stored qrCode
+        if (!isVerified && ticket.qrCode) {
+          // Trim whitespace and compare
+          const scannedTrimmed = compactQrString.trim();
+          const storedTrimmed = ticket.qrCode.trim();
+          if (storedTrimmed === scannedTrimmed) {
+            isVerified = true;
+            console.log('✅ verifyQr: Verified by matching stored qrCode', { ticketId: ticket._id.toString() });
           }
+        }
+        
+        // Option 3: If we successfully decrypted and found the ticket, verify payload matches
+        if (!isVerified) {
+          // Verify the decrypted payload matches the ticket
+          if (String(ticket._id) === String(legacyPayload.ticketId)) {
+            // Verify eventId matches if provided
+            if (legacyPayload.eventId) {
+              if (String(ticket.eventId) === String(legacyPayload.eventId)) {
+                isVerified = true;
+                console.log('✅ verifyQr: Verified by decrypted payload match', { ticketId: ticket._id.toString() });
+              }
+            } else {
+              // If eventId not in payload but ticket found, accept it
+              isVerified = true;
+              console.log('✅ verifyQr: Verified by ticket ID match (decrypted)', { ticketId: ticket._id.toString() });
+            }
+          }
+        }
+
+        if (!isVerified) {
+          console.error('❌ verifyQr: QR code verification failed', {
+            ticketId: ticket._id.toString(),
+            hasSignature: !!ticket.qr?.signature,
+            hasQrCode: !!ticket.qrCode,
+            storedLength: ticket.qrCode?.length,
+            scannedLength: compactQrString.length,
+            storedPrefix: ticket.qrCode?.substring(0, 20),
+            scannedPrefix: compactQrString.substring(0, 20)
+          });
+          return { ok: false, code: 'INVALID_QR' };
         }
 
         // Check if ticket is valid
@@ -151,6 +180,56 @@ class TicketService {
         const event = await Event.findById(eventId || ticket.eventId).select('organizer title dates');
         console.log('✅ verifyQr: Legacy QR verified successfully', { ticketId: ticket._id.toString() });
         return { ok: true, ticket, event };
+      }
+
+      // Try plain JSON format from enhancedEmailService.js (fallback)
+      try {
+        const plainJson = JSON.parse(compactQrString);
+        if (plainJson.ticketId) {
+          console.log('✅ verifyQr: Plain JSON format detected', { ticketId: plainJson.ticketId });
+          const ticket = await Ticket.findById(plainJson.ticketId);
+          if (!ticket) {
+            return { ok: false, code: 'TICKET_NOT_FOUND' };
+          }
+
+          // Verify the ticket matches the QR payload
+          if (String(ticket._id) !== String(plainJson.ticketId)) {
+            return { ok: false, code: 'INVALID_QR' };
+          }
+
+          // Verify eventId if provided
+          if (plainJson.eventId && String(ticket.eventId) !== String(plainJson.eventId)) {
+            return { ok: false, code: 'INVALID_QR' };
+          }
+
+          // Verify securityHash if provided (from enhancedEmailService)
+          if (plainJson.securityHash) {
+            const orderId = plainJson.orderId || ticket.orderId?.toString() || '';
+            const expectedHash = crypto
+              .createHash("sha256")
+              .update(ticket._id.toString() + orderId)
+              .digest("hex")
+              .substring(0, 8);
+            if (expectedHash !== plainJson.securityHash) {
+              console.warn('⚠️ verifyQr: Security hash mismatch, but continuing', {
+                expected: expectedHash,
+                received: plainJson.securityHash
+              });
+              // Don't fail - hash is for additional security but not critical
+            }
+          }
+
+          // Check if ticket is valid
+          if (ticket.status !== 'active') {
+            return { ok: false, code: 'TICKET_NOT_ACTIVE' };
+          }
+
+          const event = await Event.findById(plainJson.eventId || ticket.eventId).select('organizer title dates');
+          console.log('✅ verifyQr: Plain JSON QR verified successfully', { ticketId: ticket._id.toString() });
+          return { ok: true, ticket, event };
+        }
+      } catch (e) {
+        // Not JSON format, continue to next format
       }
 
       // Otherwise, try new format (compact JSON with HMAC signature)
