@@ -86,6 +86,9 @@ const getAllowedOrigins = () => {
     "http://localhost:3001",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
+    // Allow access from local network IPs (for mobile testing)
+    "http://192.168.100.34:3001",
+    "http://192.168.100.34:3000",
   ];
 
   // Add production domains from environment
