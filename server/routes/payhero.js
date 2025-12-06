@@ -8,6 +8,7 @@ const enhancedEmailService = require("../services/enhancedEmailService");
 const mergedTicketReceiptService = require("../services/mergedTicketReceiptService");
 const orderStatusNotifier = require("../services/orderStatusNotifier");
 const payheroResultMapper = require("../services/payheroResultMapper");
+const ticketService = require("../services/ticketService");
 const Order = require("../models/Order");
 const Ticket = require("../models/Ticket");
 const User = require("../models/User");
@@ -437,69 +438,51 @@ router.post(
       // ========== ENHANCED PROCESSING FOR SUCCESSFUL PAYMENTS ==========
       if (paymentStatus === "completed") {
         // ===== STEP 1: Generate QR Codes for All Tickets =====
+        // Use ticketService.issueQr() - same format as wallet for consistency and better scanning
+        // Scanner supports both old and new formats, so existing tickets still work
         try {
           const tickets = await Ticket.find({ orderId: order._id });
           console.log(
             `🎫 Processing ${tickets.length} tickets for QR generation...`
           );
 
-          const QR_SECRET =
-            process.env.TICKET_QR_SECRET ||
-            "default-secret-change-in-production";
-
           for (const ticket of tickets) {
-            // Generate encrypted QR code payload
-            const qrPayload = {
-              ticketId: ticket._id.toString(),
-              eventId: ticket.eventId.toString(),
-              userId: ticket.ownerUserId.toString(),
-              ticketNumber: ticket.ticketNumber,
-              timestamp: Date.now(),
-            };
+            try {
+              // Use ticketService.issueQr() - same format as wallet (scannable and secure)
+              const qrResult = await ticketService.issueQr(ticket._id.toString(), {
+                rotate: false, // Don't rotate, just generate initial QR
+              });
 
-            // Encrypt the payload using AES-256-CBC
-            const algorithm = "aes-256-cbc";
-            const key = crypto.scryptSync(QR_SECRET, "salt", 32);
-            const iv = crypto.randomBytes(16);
-            const cipher = crypto.createCipheriv(algorithm, key, iv);
+              // Generate HIGH QUALITY QR code image for emails - optimized size for mobile
+              const qrCodeDataURL = await QRCode.toDataURL(qrResult.qr, {
+                errorCorrectionLevel: "H", // Highest error correction for reliability
+                type: "image/png",
+                width: 350, // Optimized size for mobile viewing (was 500)
+                margin: 3, // Good margin for better scanning
+                color: {
+                  dark: "#000000", // Pure black for maximum contrast
+                  light: "#FFFFFF", // Pure white for maximum contrast
+                },
+              });
 
-            let encrypted = cipher.update(
-              JSON.stringify(qrPayload),
-              "utf8",
-              "hex"
-            );
-            encrypted += cipher.final("hex");
+              // Store QR code data
+              ticket.qrCode = qrResult.qr; // New format string (same as wallet)
+              ticket.qrCodeUrl = qrCodeDataURL; // High quality image for email
 
-            // Combine IV and encrypted data for decryption later
-            const encryptedQRData = iv.toString("hex") + ":" + encrypted;
+              // ticket.qr is already set by ticketService.issueQr()
+              // Includes: nonce, issuedAt, expiresAt, signature
 
-            // Generate QR code image as base64 data URL
-            const qrCodeDataURL = await QRCode.toDataURL(encryptedQRData, {
-              errorCorrectionLevel: "H",
-              type: "image/png",
-              width: 300,
-              margin: 2,
-            });
-
-            // Update ticket with QR code data
-            ticket.qrCode = encryptedQRData;
-            ticket.qrCodeUrl = qrCodeDataURL; // Store base64 data URL (no cloud upload)
-
-            // Set QR metadata for enhanced security
-            ticket.qr = {
-              nonce: crypto.randomBytes(16).toString("hex"),
-              issuedAt: new Date(),
-              expiresAt: ticket.metadata?.validUntil || null,
-              signature: crypto
-                .createHmac("sha256", QR_SECRET)
-                .update(encryptedQRData)
-                .digest("hex"),
-            };
-
-            await ticket.save();
-            console.log(
-              `✅ QR code generated for ticket: ${ticket.ticketNumber}`
-            );
+              await ticket.save();
+              console.log(
+                `✅ QR code generated for ticket: ${ticket.ticketNumber} (wallet format, high quality)`
+              );
+            } catch (ticketQrError) {
+              console.error(
+                `❌ Failed to generate QR for ticket ${ticket.ticketNumber}:`,
+                ticketQrError
+              );
+              // Continue with other tickets
+            }
           }
 
           console.log(
