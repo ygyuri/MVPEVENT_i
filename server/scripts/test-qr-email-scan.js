@@ -16,6 +16,8 @@ const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 const QRCode = require('qrcode');
 const ticketService = require('../services/ticketService');
+const mergedTicketReceiptService = require('../services/mergedTicketReceiptService');
+const { connectMongoDB } = require('../config/database');
 const Ticket = require('../models/Ticket');
 const Order = require('../models/Order');
 const Event = require('../models/Event');
@@ -23,27 +25,31 @@ const User = require('../models/User');
 
 async function createTestTicketWithQR() {
   try {
-    // Connect to MongoDB - Use Docker MongoDB connection (same as server)
-    // From host machine, connect via 127.0.0.1 (Docker port mapping)
-    // From Docker container, use 'mongodb' hostname
-    const dockerMongoURI = process.env.MONGODB_URI || 'mongodb://admin:password123@127.0.0.1:27017/event_i?authSource=admin';
-    const mongoURI = dockerMongoURI;
-    
-    // Log connection attempt (hide credentials)
-    const safeURI = mongoURI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:***@');
-    console.log(`🔗 Connecting to MongoDB: ${safeURI}\n`);
-    
-    const finalURI = mongoURI;
+    // Connect to MongoDB using the same method as the server
+    // This ensures consistency and handles auth properly
+    console.log('🔗 Connecting to MongoDB...\n');
     
     try {
-      await mongoose.connect(finalURI);
+      // Override MONGODB_URI to use 127.0.0.1 instead of localhost for Docker compatibility
+      const originalMongoURI = process.env.MONGODB_URI;
+      if (originalMongoURI && originalMongoURI.includes('localhost')) {
+        process.env.MONGODB_URI = originalMongoURI.replace('localhost', '127.0.0.1');
+        console.log('   Using 127.0.0.1 instead of localhost for Docker compatibility\n');
+      } else if (!process.env.MONGODB_URI) {
+        // Set default if not in .env
+        process.env.MONGODB_URI = 'mongodb://admin:password123@127.0.0.1:27017/event_i?authSource=admin';
+      }
+      
+      // Use the server's database connection function
+      await connectMongoDB();
       console.log('✅ Connected to MongoDB successfully\n');
     } catch (connectError) {
       console.error('❌ MongoDB connection failed:', connectError.message);
       console.error('\n💡 Troubleshooting:');
       console.error('   1. Check if MongoDB Docker container is running: docker ps | grep mongodb');
       console.error('   2. Verify MongoDB is accessible: docker exec event_i_mongodb mongosh --version');
-      console.error('   3. Connection string: mongodb://admin:password123@127.0.0.1:27017/event_i?authSource=admin\n');
+      console.error('   3. Test auth: docker exec event_i_mongodb mongosh -u admin -p password123 --authenticationDatabase admin');
+      console.error('   4. Check .env file MONGODB_URI setting\n');
       throw connectError;
     }
 
@@ -222,8 +228,9 @@ async function createTestTicketWithQR() {
       imap: testAccount.imap.host
     });
 
-    // Create transporter
-    const transporter = nodemailer.createTransport({
+    // Override mergedTicketReceiptService transporter with Ethereal test account
+    // This allows us to test the actual email template
+    mergedTicketReceiptService.transporter = nodemailer.createTransport({
       host: testAccount.smtp.host,
       port: testAccount.smtp.port,
       secure: testAccount.smtp.secure,
@@ -233,170 +240,37 @@ async function createTestTicketWithQR() {
       },
     });
 
-    // Extract base64 data from QR code image
-    const base64Match = qrCodeDataURL.match(/^data:image\/(\w+);base64,(.+)$/);
-    if (!base64Match) {
-      throw new Error('Failed to extract base64 data from QR code');
-    }
-    const imageType = base64Match[1] || 'png';
-    const base64Data = base64Match[2];
-    const imageBuffer = Buffer.from(base64Data, 'base64');
+    // Send test email using the actual mergedTicketReceiptService
+    // This tests the real email template with centered QR code
+    console.log('\n📧 Sending test email using mergedTicketReceiptService...');
+    const emailResult = await mergedTicketReceiptService.sendTicketAndReceipt({
+      order: testOrder,
+      tickets: [testTicket],
+      customerEmail: testAccount.user, // Send to Ethereal inbox
+      customerName: `${testCustomer.firstName} ${testCustomer.lastName}`,
+      event: testEvent
+    });
 
-    // Send test email with QR code
-    console.log('\n📧 Sending test email with QR code...');
-    const mailOptions = {
-      from: `"Event-i Test" <${testAccount.user}>`,
-      to: testAccount.user, // Send to Ethereal inbox
-      subject: `🧪 Test QR Code Email - Ticket ${testTicket.ticketNumber}`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Test QR Code Email</title>
-          <style>
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              line-height: 1.6;
-              color: #333;
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 20px;
-            }
-            .header {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 30px;
-              border-radius: 12px;
-              text-align: center;
-              margin-bottom: 30px;
-            }
-            .ticket-card {
-              background: #f8f9fa;
-              border: 2px solid #667eea;
-              border-radius: 12px;
-              padding: 24px;
-              margin: 20px 0;
-            }
-            .qr-container {
-              text-align: center;
-              background: white;
-              padding: 20px;
-              border-radius: 10px;
-              margin: 20px 0;
-            }
-            .qr-code {
-              width: 400px;
-              height: 400px;
-              border: 4px solid #667eea;
-              border-radius: 10px;
-              padding: 16px;
-              background: white;
-              display: block;
-              margin: 0 auto;
-            }
-            .info-box {
-              background: #e7f3ff;
-              border-left: 4px solid #667eea;
-              padding: 16px;
-              margin: 20px 0;
-              border-radius: 4px;
-            }
-            .footer {
-              text-align: center;
-              margin-top: 30px;
-              color: #666;
-              font-size: 12px;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>🧪 Test QR Code Email</h1>
-            <p>This is a test email to verify QR code scanning</p>
-          </div>
-
-          <div class="ticket-card">
-            <h2>Ticket Information</h2>
-            <p><strong>Ticket Number:</strong> ${testTicket.ticketNumber}</p>
-            <p><strong>Event:</strong> ${testEvent.title}</p>
-            <p><strong>Organizer:</strong> organizer@example.com</p>
-            <p><strong>Event ID:</strong> ${testEvent._id}</p>
-            <p><strong>Ticket Type:</strong> ${testTicket.ticketType}</p>
-            <p><strong>Holder:</strong> ${testTicket.holder.firstName} ${testTicket.holder.lastName}</p>
-          </div>
-
-          <div class="qr-container">
-            <h3>📱 Scan This QR Code</h3>
-            <p style="color: #666; margin-bottom: 20px;">
-              This QR code uses the same format as wallet QR codes.<br>
-              It should scan instantly with the scanner.
-            </p>
-            <img src="cid:qr-code" alt="QR Code" class="qr-code" style="width: 280px; height: 280px; max-width: 100%;" />
-            <p style="margin-top: 20px; color: #666; font-size: 14px;">
-              <strong>Instructions:</strong><br>
-              1. Open the scanner in organizer dashboard<br>
-              2. Point camera at this QR code<br>
-              3. It should scan instantly ✅
-            </p>
-          </div>
-
-          <div class="info-box">
-            <h4>🔍 QR Code Details</h4>
-            <p><strong>Format:</strong> New format (same as wallet)</p>
-            <p><strong>QR String Length:</strong> ${qrResult.qr.length} characters</p>
-            <p><strong>QR Prefix:</strong> ${qrResult.qr.substring(0, 50)}...</p>
-            <p><strong>Expires At:</strong> ${new Date(qrResult.expiresAt).toLocaleString()}</p>
-            <p><strong>Image Size:</strong> 350x350px (generated), 280x280px (displayed)</p>
-            <p><strong>Error Correction:</strong> Level H (Highest)</p>
-          </div>
-
-          <div class="info-box">
-            <h4>📋 Test Checklist</h4>
-            <ul>
-              <li>✅ QR code is large and clear</li>
-              <li>✅ QR code scans instantly</li>
-              <li>✅ Scanner recognizes the format</li>
-              <li>✅ Ticket verification succeeds</li>
-            </ul>
-          </div>
-
-          <div class="footer">
-            <p>This is a test email sent via Ethereal</p>
-            <p>View this email at: <a href="https://ethereal.email">https://ethereal.email</a></p>
-            <p>Ticket ID: ${testTicket._id}</p>
-          </div>
-        </body>
-        </html>
-      `,
-      attachments: [{
-        filename: `qr-${testTicket.ticketNumber}.${imageType}`,
-        content: imageBuffer,
-        contentType: `image/${imageType}`,
-        cid: 'qr-code' // Content-ID for inline embedding
-      }]
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    const previewUrl = nodemailer.getTestMessageUrl(info);
+    const previewUrl = emailResult.previewUrl;
 
     console.log('✅ Test email sent successfully!');
     console.log('\n📧 Email Details:');
-    console.log('   Message ID:', info.messageId);
+    console.log('   Message ID:', emailResult.messageId);
     console.log('   Preview URL:', previewUrl);
     console.log('\n🔍 Next Steps:');
     console.log('   1. Open the preview URL above in your browser');
-    console.log('   2. You will see the email with the QR code');
-    console.log('   3. Open the scanner in organizer dashboard');
-    console.log('   4. Point camera at the QR code in the email');
-    console.log('   5. It should scan instantly! ✅');
+    console.log('   2. You will see the ACTUAL email template with centered QR code');
+    console.log('   3. Verify the QR code is centered and 350x350px in size');
+    console.log('   4. Open the scanner in organizer dashboard');
+    console.log('   5. Point camera at the QR code in the email');
+    console.log('   6. It should scan instantly! ✅');
     console.log('\n📊 Test Summary:');
     console.log('   Ticket Number:', testTicket.ticketNumber);
     console.log('   Ticket ID:', testTicket._id.toString());
     console.log('   QR Format: New format (same as wallet)');
-    console.log('   QR Image Size: 350x350px (generated), 280x280px (displayed)');
+    console.log('   QR Image Size: 350x350px (centered in email)');
     console.log('   QR Error Correction: Level H (Highest)');
+    console.log('   Email Template: mergedTicketReceiptService (actual production template)');
     console.log('\n✅ Test setup complete!');
 
     // Cleanup option (commented out - uncomment if you want to delete test data)
