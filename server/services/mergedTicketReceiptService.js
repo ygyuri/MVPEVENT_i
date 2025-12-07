@@ -145,20 +145,26 @@ class MergedTicketReceiptService {
           return `
           <tr>
             <td style="padding: 24px; border-bottom: 1px solid #E5E7EB;">
-              <table width="100%" cellpadding="0" cellspacing="0">
+              <!-- Centered QR Code Section -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
                 <tr>
-                  <td width="200" style="vertical-align: top; padding-right: 20px;">
-                    <!-- QR Code -->
-                    <div style="background: #FFFFFF; padding: 12px; border-radius: 12px; border: 3px solid #3A7DFF; display: inline-block;">
+                  <td align="center" style="padding-bottom: 24px;">
+                    <div style="background: #FFFFFF; padding: 16px; border-radius: 12px; border: 3px solid #3A7DFF; display: inline-block;">
                       ${
                         qrCodeUrl
-                          ? `<img src="cid:${qrCid}" alt="Ticket QR Code" style="width: 280px; height: 280px; max-width: 100%; display: block;" />`
+                          ? `<img src="cid:${qrCid}" alt="Ticket QR Code" style="width: 350px; height: 350px; max-width: 100%; display: block; margin: 0 auto;" />`
                           : '<p style="color: #6B7280; font-size: 12px;">QR Code pending</p>'
                       }
                     </div>
+                    <p style="margin: 16px 0 0 0; font-size: 14px; color: #6B7280; font-weight: 600; text-align: center;">Show this code at the entrance</p>
                   </td>
-                  <td style="vertical-align: top;">
-                    <!-- Ticket Details -->
+                </tr>
+              </table>
+              
+              <!-- Ticket Details Section -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
                     <h3 style="margin: 0 0 16px 0; color: #1A1A1A; font-size: 20px; font-weight: 700;">
                       ${ticketType}
                     </h3>
