@@ -405,22 +405,12 @@ jobs:
             fi
             echo "✅ All containers are running"
             
-            # Get server IP for health checks (use IP if DNS not updated)
-            SERVER_IP=$(curl -s ifconfig.me || curl -s icanhazip.com || echo "34.35.103.163")
-            echo "🌐 Using IP address for health checks: $SERVER_IP"
-            
-            # Test API health endpoint (try domain first, fallback to IP)
+            # Test API health endpoint
             echo "🔍 Testing API health endpoint..."
             api_healthy=false
             for i in {1..5}; do
-              # Try domain first, then IP
-              if curl -f -s -k --connect-timeout 5 https://event-i.co.ke/api/health > /dev/null 2>&1; then
-                echo "✅ API health check passed via domain (attempt $i)"
-                api_healthy=true
-                break
-              elif curl -f -s -k --connect-timeout 5 https://${SERVER_IP}/api/health > /dev/null 2>&1; then
-                echo "✅ API health check passed via IP (attempt $i)"
-                echo "⚠️  Note: DNS may not be updated yet, but service is working"
+              if curl -f -s -k https://event-i.co.ke/api/health > /dev/null 2>&1; then
+                echo "✅ API health check passed (attempt $i)"
                 api_healthy=true
                 break
               else
@@ -431,30 +421,17 @@ jobs:
             
             if [ "$api_healthy" = false ]; then
               echo "❌ API health check failed after 5 attempts"
-              echo "📋 Testing localhost..."
-              if curl -f -s http://localhost/api/health > /dev/null 2>&1; then
-                echo "✅ Local API is working - DNS/domain issue, not service issue"
-                api_healthy=true
-              else
-                echo "❌ Local API also failing - checking logs..."
-                echo "📋 Server logs:"
-                sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs server --tail=50
-                exit 1
-              fi
+              echo "📋 Server logs:"
+              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs server --tail=50
+              exit 1
             fi
             
-            # Test frontend accessibility (try domain first, fallback to IP)
+            # Test frontend accessibility
             echo "🔍 Testing frontend accessibility..."
             frontend_healthy=false
             for i in {1..5}; do
-              # Try domain first, then IP
-              if curl -f -s -k --connect-timeout 5 https://event-i.co.ke/ > /dev/null 2>&1; then
-                echo "✅ Frontend accessibility check passed via domain (attempt $i)"
-                frontend_healthy=true
-                break
-              elif curl -f -s -k --connect-timeout 5 https://${SERVER_IP}/ > /dev/null 2>&1; then
-                echo "✅ Frontend accessibility check passed via IP (attempt $i)"
-                echo "⚠️  Note: DNS may not be updated yet, but service is working"
+              if curl -f -s -k https://event-i.co.ke/ > /dev/null 2>&1; then
+                echo "✅ Frontend accessibility check passed (attempt $i)"
                 frontend_healthy=true
                 break
               else
@@ -465,16 +442,9 @@ jobs:
             
             if [ "$frontend_healthy" = false ]; then
               echo "❌ Frontend accessibility check failed after 5 attempts"
-              echo "📋 Testing localhost..."
-              if curl -f -s http://localhost/ > /dev/null 2>&1; then
-                echo "✅ Local frontend is working - DNS/domain issue, not service issue"
-                frontend_healthy=true
-              else
-                echo "❌ Local frontend also failing - checking logs..."
-                echo "📋 Client logs:"
-                sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs client --tail=50
-                exit 1
-              fi
+              echo "📋 Client logs:"
+              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs client --tail=50
+              exit 1
             fi
             
             # Summary
