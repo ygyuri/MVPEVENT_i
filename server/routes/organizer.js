@@ -1403,4 +1403,75 @@ router.delete(
   }
 );
 
+// Bulk resend tickets with updated QR codes for organizer's event
+router.post(
+  "/tickets/bulk-resend",
+  verifyToken,
+  requireRole("organizer"),
+  [
+    query("eventId")
+      .notEmpty()
+      .withMessage("eventId is required")
+      .isMongoId()
+      .withMessage("Invalid eventId format"),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          details: errors.array(),
+        });
+      }
+
+      const { eventId } = req.query;
+      const organizerId = req.user._id;
+
+      // Verify organizer owns this event
+      const event = await Event.findById(eventId);
+      if (!event) {
+        return res.status(404).json({
+          success: false,
+          error: "Event not found",
+        });
+      }
+
+      if (String(event.organizer) !== String(organizerId)) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to resend tickets for this event",
+        });
+      }
+
+      console.log(
+        `📧 Organizer bulk resend requested for event ${eventId} by organizer ${organizerId}`
+      );
+
+      const bulkResendService = require("../services/bulkResendService");
+
+      // Start bulk resend operation
+      const stats = await bulkResendService.resendTicketsForOrders({
+        eventId,
+        organizerId,
+        batchSize: 50,
+      });
+
+      res.json({
+        success: true,
+        message: "Bulk resend completed",
+        data: stats,
+      });
+    } catch (error) {
+      console.error("❌ Bulk resend error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to process bulk resend",
+        message: error.message,
+      });
+    }
+  }
+);
+
 module.exports = router;

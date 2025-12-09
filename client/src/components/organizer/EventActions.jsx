@@ -13,7 +13,8 @@ import {
   AlertCircle,
   Calendar,
   Users,
-  BarChart3
+  BarChart3,
+  Mail
 } from 'lucide-react';
 import EnhancedButton from '../EnhancedButton';
 import { dateUtils } from '../../utils/eventHelpers';
@@ -110,6 +111,14 @@ const EventActions = ({
         icon: BarChart3,
         variant: 'secondary',
         className: 'text-indigo-600 hover:text-indigo-700'
+      });
+      // Bulk resend tickets action (for published events)
+      actions.push({
+        key: 'bulk-resend',
+        label: 'Bulk Resend Tickets',
+        icon: Mail,
+        variant: 'secondary',
+        className: 'text-purple-600 hover:text-purple-700'
       });
     }
     

@@ -55,6 +55,10 @@ const AdminOrders = () => {
   const [payoutFilter, setPayoutFilter] = useState("unpaid"); // "all", "unpaid", "paid"
   const [completedPayouts, setCompletedPayouts] = useState(new Set());
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [showBulkResendModal, setShowBulkResendModal] = useState(false);
+  const [bulkResendEventId, setBulkResendEventId] = useState("all");
+  const [bulkResending, setBulkResending] = useState(false);
+  const [bulkResendStats, setBulkResendStats] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== "admin") {
@@ -382,6 +386,62 @@ const AdminOrders = () => {
     }
   };
 
+  const handleBulkResend = async () => {
+    if (
+      !window.confirm(
+        `Are you sure you want to bulk resend tickets with updated QR codes?\n\n` +
+        `This will:\n` +
+        `- Regenerate QR codes for all paid/completed tickets\n` +
+        `- Update QR codes in the database\n` +
+        `- Send updated ticket emails to all attendees\n\n` +
+        `${bulkResendEventId === "all" ? "This will process ALL events." : `This will process tickets for the selected event.`}\n\n` +
+        `This operation may take several minutes. Continue?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setBulkResending(true);
+      setBulkResendStats(null);
+
+      const params = new URLSearchParams();
+      if (bulkResendEventId !== "all") {
+        params.append("eventId", bulkResendEventId);
+      }
+
+      const response = await api.post(
+        `/api/admin/tickets/bulk-resend${params.toString() ? `?${params.toString()}` : ""}`
+      );
+
+      if (response.data?.success) {
+        const stats = response.data.data;
+        setBulkResendStats(stats);
+        toast.success(
+          `Bulk resend completed! Processed ${stats.totalOrdersProcessed} orders, updated ${stats.totalTicketsUpdated} tickets, sent ${stats.totalEmailsSent} emails.`
+        );
+        if (stats.totalErrors > 0) {
+          toast.error(`${stats.totalErrors} errors occurred. Check console for details.`);
+        }
+        // Refresh orders after bulk resend
+        setTimeout(() => {
+          fetchOrders();
+        }, 2000);
+      } else {
+        toast.error(response.data?.error || "Failed to process bulk resend");
+      }
+    } catch (err) {
+      console.error("Failed to bulk resend tickets:", err);
+      toast.error(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Failed to process bulk resend"
+      );
+    } finally {
+      setBulkResending(false);
+    }
+  };
+
   const calculatePayoutSummary = () => {
     const summary = {};
 
@@ -579,6 +639,15 @@ const AdminOrders = () => {
               >
                 <Download className="w-4 h-4" />
                 Export Payouts
+              </button>
+            )}
+            {viewMode === "orders" && (
+              <button
+                onClick={() => setShowBulkResendModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#4f0f69] text-white rounded-lg hover:bg-[#6b1589] transition-colors"
+              >
+                <Mail className="w-4 h-4" />
+                Bulk Resend Tickets
               </button>
             )}
             <button
@@ -1115,6 +1184,231 @@ const AdminOrders = () => {
       )}
 
       {/* Order Tickets Modal */}
+      {/* Bulk Resend Modal */}
+      {showBulkResendModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Mail className="w-6 h-6 text-[#4f0f69]" />
+                  Bulk Resend Tickets
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowBulkResendModal(false);
+                    setBulkResendStats(null);
+                    setBulkResendEventId("all");
+                  }}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {!bulkResendStats ? (
+                <>
+                  <div className="mb-6">
+                    <p className="text-gray-700 dark:text-gray-300 mb-4">
+                      This will regenerate QR codes and resend tickets to all attendees with
+                      paid/completed orders. The updated QR codes will be saved to the database.
+                    </p>
+
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Select Event
+                      </label>
+                      <select
+                        value={bulkResendEventId}
+                        onChange={(e) => setBulkResendEventId(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4f0f69] focus:border-transparent"
+                        disabled={bulkResending}
+                      >
+                        <option value="all">All Events</option>
+                        {events.map((event) => (
+                          <option key={event._id} value={event._id}>
+                            {event.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                            Important:
+                          </p>
+                          <ul className="text-sm text-yellow-700 dark:text-yellow-400 mt-1 list-disc list-inside">
+                            <li>This will regenerate QR codes for all paid/completed tickets</li>
+                            <li>Updated QR codes will be saved to the database</li>
+                            <li>Emails will be sent to all attendees</li>
+                            <li>This operation may take several minutes</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      onClick={() => {
+                        setShowBulkResendModal(false);
+                        setBulkResendEventId("all");
+                      }}
+                      disabled={bulkResending}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleBulkResend}
+                      disabled={bulkResending}
+                      className="px-6 py-2 bg-[#4f0f69] text-white rounded-lg hover:bg-[#6b1589] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {bulkResending ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4" />
+                          Start Bulk Resend
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                        Bulk Resend Completed
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                        <p className="text-sm text-blue-600 dark:text-blue-400">Orders Processed</p>
+                        <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                          {bulkResendStats.totalOrdersProcessed}
+                        </p>
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                          of {bulkResendStats.totalOrdersFound} found
+                        </p>
+                      </div>
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                        <p className="text-sm text-green-600 dark:text-green-400">Tickets Updated</p>
+                        <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+                          {bulkResendStats.totalTicketsUpdated}
+                        </p>
+                      </div>
+                      <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                        <p className="text-sm text-purple-600 dark:text-purple-400">Emails Sent</p>
+                        <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                          {bulkResendStats.totalEmailsSent}
+                        </p>
+                      </div>
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                        <p className="text-sm text-red-600 dark:text-red-400">Errors</p>
+                        <p className="text-2xl font-bold text-red-900 dark:text-red-100">
+                          {bulkResendStats.totalErrors}
+                        </p>
+                      </div>
+                    </div>
+
+                    {bulkResendStats.emailPreviewUrls && bulkResendStats.emailPreviewUrls.length > 0 && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                        <p className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2">
+                          📧 Email Preview URLs (Ethereal)
+                        </p>
+                        <div className="max-h-48 overflow-y-auto space-y-2">
+                          {bulkResendStats.emailPreviewUrls.slice(0, 10).map((email, idx) => (
+                            <div key={idx} className="text-xs">
+                              <p className="text-blue-700 dark:text-blue-400 font-medium">
+                                {idx + 1}. {email.customerEmail} ({email.orderNumber})
+                              </p>
+                              <a
+                                href={email.previewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 dark:text-blue-400 hover:underline break-all"
+                              >
+                                {email.previewUrl}
+                              </a>
+                            </div>
+                          ))}
+                          {bulkResendStats.emailPreviewUrls.length > 10 && (
+                            <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">
+                              ... and {bulkResendStats.emailPreviewUrls.length - 10} more emails
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {bulkResendStats.totalErrors > 0 && (
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
+                        <p className="text-sm font-medium text-red-800 dark:text-red-300 mb-2">
+                          Errors occurred:
+                        </p>
+                        <div className="max-h-32 overflow-y-auto">
+                          {bulkResendStats.errors.slice(0, 5).map((error, idx) => (
+                            <p key={idx} className="text-xs text-red-700 dark:text-red-400">
+                              {error.orderNumber || error.orderId}: {error.error}
+                            </p>
+                          ))}
+                          {bulkResendStats.errors.length > 5 && (
+                            <p className="text-xs text-red-600 dark:text-red-500 mt-1">
+                              ... and {bulkResendStats.errors.length - 5} more errors
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {bulkResendStats.endTime && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Completed in{" "}
+                        {(
+                          (new Date(bulkResendStats.endTime) -
+                            new Date(bulkResendStats.startTime)) /
+                          1000
+                        ).toFixed(2)}{" "}
+                        seconds
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end">
+                    <button
+                      onClick={() => {
+                        setShowBulkResendModal(false);
+                        setBulkResendStats(null);
+                        setBulkResendEventId("all");
+                      }}
+                      className="px-6 py-2 bg-[#4f0f69] text-white rounded-lg hover:bg-[#6b1589] transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       <OrderTicketsModal
         isOpen={showTicketsModal}
         onClose={() => {

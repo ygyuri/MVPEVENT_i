@@ -1313,4 +1313,40 @@ router.get("/payouts/pending-summary", verifyToken, requireRole("admin"), async 
   }
 });
 
+// Bulk resend tickets with updated QR codes
+router.post(
+  "/tickets/bulk-resend",
+  verifyToken,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const bulkResendService = require("../services/bulkResendService");
+      const { eventId } = req.query; // Optional eventId filter
+
+      console.log(
+        `📧 Admin bulk resend requested${eventId ? ` for event ${eventId}` : " (all events)"}`
+      );
+
+      // Start bulk resend operation
+      const stats = await bulkResendService.resendTicketsForOrders({
+        eventId,
+        batchSize: 50,
+      });
+
+      res.json({
+        success: true,
+        message: "Bulk resend completed",
+        data: stats,
+      });
+    } catch (error) {
+      console.error("❌ Bulk resend error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to process bulk resend",
+        message: error.message,
+      });
+    }
+  }
+);
+
 module.exports = router;
