@@ -253,8 +253,9 @@ router.post(
         // Generate temporary password (8 chars: letters + numbers)
         tempPassword = crypto.randomBytes(4).toString("hex").toUpperCase();
 
-        // Generate unique username from email (preserve dots for uniqueness)
-        const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9.]/g, "");
+        // Generate unique username from email (remove dots and special chars, only allow alphanumeric and underscore)
+        // User model validation: /^[a-zA-Z0-9_]+$/ (no dots allowed)
+        const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, ""); // Remove dots and special chars
         let username = baseUsername;
         let usernameExists = await User.findOne({ username });
         let counter = 1;
