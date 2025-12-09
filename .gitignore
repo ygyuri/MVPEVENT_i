@@ -129,3 +129,11 @@ server/dist/
 
 # Local development
 .local/ 
+
+# Secrets directory - NEVER COMMIT sensitive information
+.secrets/
+.secrets/**
+*.key
+*.pem
+*.p12
+*.pfx

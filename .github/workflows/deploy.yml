@@ -120,6 +120,22 @@ jobs:
           LOG_TO_FILE=${{ secrets.LOG_TO_FILE }}
           LOG_FILE_PATH=${{ secrets.LOG_FILE_PATH }}
           EOF
+      - name: Test SSH Connection
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          timeout: 180s
+          command_timeout: 5m
+          debug: true
+          script: |
+            echo "✅ SSH connection test successful!"
+            echo "Server: $(hostname)"
+            echo "User: $(whoami)"
+            echo "IP: $(hostname -I | awk '{print $1}')"
+            
       - name: Transfer environment file to VM
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -129,7 +145,7 @@ jobs:
           source: ".env.production"
           target: "/tmp/.env.production"
           port: ${{ secrets.VM_SSH_PORT || 22 }}
-          timeout: 120s
+          timeout: 180s
           command_timeout: 10m
           debug: true
 
