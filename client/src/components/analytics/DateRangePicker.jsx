@@ -132,12 +132,13 @@ const DateRangePicker = ({ value, onChange }) => {
               duration: 0.2,
               ease: [0.16, 1, 0.3, 1] // Apple's signature easing
             }}
-            className="absolute z-50 w-full min-w-[680px] mt-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl rounded-2xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden"
+            className="absolute left-0 right-0 z-50 mt-2 bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl rounded-2xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10 overflow-visible"
+            style={{ minWidth: 'max-content' }}
           >
-            <div className="p-6">
+            <div className="p-5">
               {/* Preset Options - Apple Style */}
-              <div className="mb-6">
-                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 px-1">
+              <div className="mb-5">
+                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                   Quick Select
                 </h4>
                 <div className="grid grid-cols-3 gap-2">
@@ -145,7 +146,7 @@ const DateRangePicker = ({ value, onChange }) => {
                     <button
                       key={preset.label}
                       onClick={() => handlePresetSelect(preset)}
-                      className="group px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-50/50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-all duration-200 text-center border border-transparent hover:border-blue-200 dark:hover:border-blue-800/50"
+                      className="px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50/50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-all duration-200 text-center border border-transparent hover:border-blue-200 dark:hover:border-blue-800/50 whitespace-nowrap"
                     >
                       {preset.label}
                     </button>
@@ -154,26 +155,26 @@ const DateRangePicker = ({ value, onChange }) => {
               </div>
 
               {/* Divider - Apple Style */}
-              <div className="h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent mb-6" />
+              <div className="h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent mb-5" />
 
               {/* Custom Date Picker - Apple Style */}
               <div>
-                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4 px-1">
+                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                   Custom Range
                 </h4>
 
-                <div className="space-y-5">
+                <div className="space-y-4">
                   {/* Individual Date Inputs - Side by Side */}
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {/* Start Date */}
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2 px-1">
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                           Start Date
                         </label>
                       </div>
-                      <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-xl p-3 border border-gray-200/50 dark:border-gray-700/50">
+                      <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-xl p-2 border border-gray-200/50 dark:border-gray-700/50">
                         <DatePicker
                           selected={startDate}
                           onChange={(date) => {
@@ -198,20 +199,20 @@ const DateRangePicker = ({ value, onChange }) => {
                           showMonthDropdown
                           showYearDropdown
                           dropdownMode="select"
-                          className="w-full apple-datepicker"
+                          calendarClassName="apple-calendar"
                         />
                       </div>
                     </div>
 
                     {/* End Date */}
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2 px-1">
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                           End Date
                         </label>
                       </div>
-                      <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-xl p-3 border border-gray-200/50 dark:border-gray-700/50">
+                      <div className="bg-gray-50/50 dark:bg-gray-800/30 rounded-xl p-2 border border-gray-200/50 dark:border-gray-700/50">
                         <DatePicker
                           selected={endDate}
                           onChange={(date) => {
@@ -237,25 +238,25 @@ const DateRangePicker = ({ value, onChange }) => {
                           showMonthDropdown
                           showYearDropdown
                           dropdownMode="select"
-                          className="w-full apple-datepicker"
+                          calendarClassName="apple-calendar"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Action Buttons - Apple Style */}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
+                  <div className="flex items-center justify-between pt-3 mt-1 border-t border-gray-200/50 dark:border-gray-700/50">
                     <button
                       onClick={handleClear}
-                      className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
+                      className="px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
                     >
                       Clear
                     </button>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => setIsOpen(false)}
-                        className="px-5 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
+                        className="px-4 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all duration-200"
                       >
                         Cancel
                       </button>
@@ -263,7 +264,7 @@ const DateRangePicker = ({ value, onChange }) => {
                       <button
                         onClick={() => setIsOpen(false)}
                         disabled={!startDate && !endDate}
-                        className="px-5 py-2 text-sm font-semibold bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-lg shadow-blue-500/30 disabled:from-gray-300 disabled:to-gray-400 disabled:shadow-none disabled:cursor-not-allowed transition-all duration-200 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0"
+                        className="px-4 py-1.5 text-sm font-semibold bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-md shadow-blue-500/25 disabled:from-gray-300 disabled:to-gray-400 disabled:shadow-none disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/30 active:scale-95"
                       >
                         Apply
                       </button>
