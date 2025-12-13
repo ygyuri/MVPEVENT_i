@@ -191,9 +191,6 @@ const DateRangePicker = ({ value, onChange }) => {
                               });
                             }
                           }}
-                          selectsStart
-                          startDate={startDate}
-                          endDate={endDate}
                           maxDate={endDate || new Date()}
                           inline
                           showMonthDropdown
@@ -229,9 +226,6 @@ const DateRangePicker = ({ value, onChange }) => {
                               });
                             }
                           }}
-                          selectsEnd
-                          startDate={startDate}
-                          endDate={endDate}
                           minDate={startDate}
                           maxDate={new Date()}
                           inline
