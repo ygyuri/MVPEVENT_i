@@ -22,10 +22,13 @@ import {
   Building2,
   Wallet,
   Users,
+  History,
 } from "lucide-react";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
 import OrderTicketsModal from "../components/admin/OrderTicketsModal";
+import DateRangePicker from "../components/analytics/DateRangePicker";
+import BulkResendHistory from "../components/admin/BulkResendHistory";
 
 const AdminOrders = () => {
   const navigate = useNavigate();
@@ -48,7 +51,7 @@ const AdminOrders = () => {
   const [resendingTickets, setResendingTickets] = useState({});
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showTicketsModal, setShowTicketsModal] = useState(false);
-  const [viewMode, setViewMode] = useState("orders"); // "orders" or "payouts"
+  const [viewMode, setViewMode] = useState("orders"); // "orders", "payouts", or "history"
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [selectedOrganizerForPayout, setSelectedOrganizerForPayout] = useState(null);
   const [processingPayout, setProcessingPayout] = useState(false);
@@ -59,6 +62,10 @@ const AdminOrders = () => {
   const [bulkResendEventId, setBulkResendEventId] = useState("all");
   const [bulkResending, setBulkResending] = useState(false);
   const [bulkResendStats, setBulkResendStats] = useState(null);
+  const [bulkResendDateRange, setBulkResendDateRange] = useState({ start: null, end: null });
+  const [bulkResendPreview, setBulkResendPreview] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [previewPage, setPreviewPage] = useState(1);
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== "admin") {
@@ -386,15 +393,62 @@ const AdminOrders = () => {
     }
   };
 
+  const handleLoadPreview = async (page = 1) => {
+    try {
+      setLoadingPreview(true);
+
+      const params = new URLSearchParams();
+      if (bulkResendEventId !== "all") {
+        params.append("eventId", bulkResendEventId);
+      }
+      if (bulkResendDateRange.start) {
+        params.append("startDate", bulkResendDateRange.start);
+      }
+      if (bulkResendDateRange.end) {
+        params.append("endDate", bulkResendDateRange.end);
+      }
+      params.append("page", page.toString());
+      params.append("limit", "20");
+
+      const response = await api.get(
+        `/api/admin/tickets/bulk-resend/preview?${params.toString()}`
+      );
+
+      if (response.data?.success) {
+        setBulkResendPreview(response.data.data);
+        setPreviewPage(page);
+        toast.success("Preview loaded successfully!");
+      } else {
+        toast.error(response.data?.error || "Failed to load preview");
+      }
+    } catch (err) {
+      console.error("Failed to load preview:", err);
+      toast.error(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Failed to load preview"
+      );
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
   const handleBulkResend = async () => {
+    // Require preview before execution
+    if (!bulkResendPreview) {
+      toast.error("Please load preview before executing bulk resend");
+      return;
+    }
+
     if (
       !window.confirm(
         `Are you sure you want to bulk resend tickets with updated QR codes?\n\n` +
         `This will:\n` +
-        `- Regenerate QR codes for all paid/completed tickets\n` +
+        `- Process ${bulkResendPreview.summary.totalOrders} orders\n` +
+        `- Regenerate QR codes for ${bulkResendPreview.summary.totalTickets} tickets\n` +
         `- Update QR codes in the database\n` +
         `- Send updated ticket emails to all attendees\n\n` +
-        `${bulkResendEventId === "all" ? "This will process ALL events." : `This will process tickets for the selected event.`}\n\n` +
+        `Estimated duration: ${bulkResendPreview.summary.estimatedDuration}\n\n` +
         `This operation may take several minutes. Continue?`
       )
     ) {
@@ -408,6 +462,12 @@ const AdminOrders = () => {
       const params = new URLSearchParams();
       if (bulkResendEventId !== "all") {
         params.append("eventId", bulkResendEventId);
+      }
+      if (bulkResendDateRange.start) {
+        params.append("startDate", bulkResendDateRange.start);
+      }
+      if (bulkResendDateRange.end) {
+        params.append("endDate", bulkResendDateRange.end);
       }
 
       const response = await api.post(
@@ -685,6 +745,17 @@ const AdminOrders = () => {
             >
               <Wallet className="w-4 h-4" />
               Payout Summary
+            </button>
+            <button
+              onClick={() => setViewMode("history")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                viewMode === "history"
+                  ? "bg-[#4f0f69] text-white"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+              }`}
+            >
+              <History className="w-4 h-4" />
+              Bulk Resend History
             </button>
           </div>
 
@@ -1226,9 +1297,12 @@ const AdminOrders = () => {
                       </label>
                       <select
                         value={bulkResendEventId}
-                        onChange={(e) => setBulkResendEventId(e.target.value)}
+                        onChange={(e) => {
+                          setBulkResendEventId(e.target.value);
+                          setBulkResendPreview(null); // Clear preview when event changes
+                        }}
                         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#4f0f69] focus:border-transparent"
-                        disabled={bulkResending}
+                        disabled={bulkResending || loadingPreview}
                       >
                         <option value="all">All Events</option>
                         {events.map((event) => (
@@ -1239,52 +1313,222 @@ const AdminOrders = () => {
                       </select>
                     </div>
 
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
-                            Important:
-                          </p>
-                          <ul className="text-sm text-yellow-700 dark:text-yellow-400 mt-1 list-disc list-inside">
-                            <li>This will regenerate QR codes for all paid/completed tickets</li>
-                            <li>Updated QR codes will be saved to the database</li>
-                            <li>Emails will be sent to all attendees</li>
-                            <li>This operation may take several minutes</li>
-                          </ul>
-                        </div>
-                      </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Date Range (Optional)
+                      </label>
+                      <DateRangePicker
+                        value={bulkResendDateRange}
+                        onChange={(range) => {
+                          setBulkResendDateRange(range);
+                          setBulkResendPreview(null); // Clear preview when date range changes
+                        }}
+                      />
                     </div>
-                  </div>
 
-                  <div className="flex items-center justify-end gap-3">
-                    <button
-                      onClick={() => {
-                        setShowBulkResendModal(false);
-                        setBulkResendEventId("all");
-                      }}
-                      disabled={bulkResending}
-                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleBulkResend}
-                      disabled={bulkResending}
-                      className="px-6 py-2 bg-[#4f0f69] text-white rounded-lg hover:bg-[#6b1589] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {bulkResending ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <Mail className="w-4 h-4" />
-                          Start Bulk Resend
-                        </>
-                      )}
-                    </button>
+                    {!bulkResendPreview ? (
+                      <>
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                                Preview Required
+                              </p>
+                              <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                                You must preview the orders before executing bulk resend. This helps prevent
+                                accidental mass emails.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => {
+                              setShowBulkResendModal(false);
+                              setBulkResendEventId("all");
+                              setBulkResendDateRange({ start: null, end: null });
+                              setBulkResendPreview(null);
+                            }}
+                            disabled={loadingPreview}
+                            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleLoadPreview(1)}
+                            disabled={loadingPreview}
+                            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {loadingPreview ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                Loading Preview...
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="w-4 h-4" />
+                                Load Preview
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* Preview Summary */}
+                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-green-800 dark:text-green-300 mb-2">
+                                Preview Loaded
+                              </p>
+                              <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                  <p className="text-xs text-green-600 dark:text-green-400">Orders</p>
+                                  <p className="text-lg font-bold text-green-900 dark:text-green-100">
+                                    {bulkResendPreview.summary.totalOrders}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-green-600 dark:text-green-400">Tickets</p>
+                                  <p className="text-lg font-bold text-green-900 dark:text-green-100">
+                                    {bulkResendPreview.summary.totalTickets}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-green-600 dark:text-green-400">Est. Time</p>
+                                  <p className="text-lg font-bold text-green-900 dark:text-green-100">
+                                    {bulkResendPreview.summary.estimatedDuration}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleLoadPreview(previewPage)}
+                              className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Preview List */}
+                        <div className="mb-4 max-h-96 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+                                  Order #
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+                                  Customer
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">
+                                  Email
+                                </th>
+                                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400">
+                                  Tickets
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                              {bulkResendPreview.orders.map((order, idx) => (
+                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                  <td className="px-3 py-2 text-gray-900 dark:text-white whitespace-nowrap">
+                                    {order.orderNumber}
+                                  </td>
+                                  <td className="px-3 py-2 text-gray-900 dark:text-white">
+                                    {order.customerName}
+                                  </td>
+                                  <td className="px-3 py-2 text-gray-600 dark:text-gray-400 text-xs">
+                                    {order.customerEmail}
+                                  </td>
+                                  <td className="px-3 py-2 text-center text-gray-900 dark:text-white">
+                                    {order.ticketCount}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Pagination */}
+                        {bulkResendPreview.pagination.pages > 1 && (
+                          <div className="flex items-center justify-between mb-4 text-sm">
+                            <p className="text-gray-600 dark:text-gray-400">
+                              Page {bulkResendPreview.pagination.page} of {bulkResendPreview.pagination.pages}
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleLoadPreview(previewPage - 1)}
+                                disabled={previewPage === 1 || loadingPreview}
+                                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                              >
+                                Previous
+                              </button>
+                              <button
+                                onClick={() => handleLoadPreview(previewPage + 1)}
+                                disabled={previewPage === bulkResendPreview.pagination.pages || loadingPreview}
+                                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                                Important:
+                              </p>
+                              <ul className="text-sm text-yellow-700 dark:text-yellow-400 mt-1 list-disc list-inside">
+                                <li>This will regenerate QR codes for all shown orders</li>
+                                <li>Updated QR codes will be saved to the database</li>
+                                <li>Emails will be sent to all attendees</li>
+                                <li>This operation cannot be undone</li>
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => {
+                              setShowBulkResendModal(false);
+                              setBulkResendEventId("all");
+                              setBulkResendDateRange({ start: null, end: null });
+                              setBulkResendPreview(null);
+                            }}
+                            disabled={bulkResending}
+                            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleBulkResend}
+                            disabled={bulkResending || !bulkResendPreview}
+                            className="px-6 py-2 bg-[#4f0f69] text-white rounded-lg hover:bg-[#6b1589] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {bulkResending ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="w-4 h-4" />
+                                Execute Bulk Resend
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </>
               ) : (
@@ -1406,6 +1650,13 @@ const AdminOrders = () => {
               )}
             </div>
           </motion.div>
+        </div>
+      )}
+
+      {/* History View */}
+      {viewMode === "history" && (
+        <div className="mt-6">
+          <BulkResendHistory />
         </div>
       )}
 
