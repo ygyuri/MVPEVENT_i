@@ -156,7 +156,7 @@ const DateRangePicker = ({ value, onChange }) => {
 
                 <div className="space-y-4">
                   {/* Individual Date Inputs */}
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     {/* Start Date */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
