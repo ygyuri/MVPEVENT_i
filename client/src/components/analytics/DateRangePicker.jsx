@@ -98,19 +98,6 @@ const DateRangePicker = ({ value, onChange }) => {
     setIsOpen(false);
   };
 
-  const handleDateChange = (dates) => {
-    const [start, end] = dates;
-    setStartDate(start);
-    setEndDate(end);
-    
-    if (start && end) {
-      onChange({ 
-        start: start.toISOString(), 
-        end: end.toISOString() 
-      });
-    }
-  };
-
   const handleClear = () => {
     setStartDate(null);
     setEndDate(null);
@@ -166,23 +153,76 @@ const DateRangePicker = ({ value, onChange }) => {
                 <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
                   Custom Range
                 </h4>
-                
-                <div className="space-y-3">
-                  {/* Date Range Picker */}
-                  <div className="relative">
-                    <DatePicker
-                      selected={startDate}
-                      onChange={handleDateChange}
-                      startDate={startDate}
-                      endDate={endDate}
-                      selectsRange
-                      inline
-                      showMonthDropdown
-                      showYearDropdown
-                      dropdownMode="select"
-                      maxDate={new Date()}
-                      className="w-full"
-                    />
+
+                <div className="space-y-4">
+                  {/* Individual Date Inputs */}
+                  <div className="grid grid-cols-1 gap-4">
+                    {/* Start Date */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Start Date
+                      </label>
+                      <DatePicker
+                        selected={startDate}
+                        onChange={(date) => {
+                          setStartDate(date);
+                          if (date && endDate) {
+                            onChange({
+                              start: date.toISOString(),
+                              end: endDate.toISOString()
+                            });
+                          } else if (date && !endDate) {
+                            onChange({
+                              start: date.toISOString(),
+                              end: null
+                            });
+                          }
+                        }}
+                        selectsStart
+                        startDate={startDate}
+                        endDate={endDate}
+                        maxDate={endDate || new Date()}
+                        inline
+                        showMonthDropdown
+                        showYearDropdown
+                        dropdownMode="select"
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* End Date */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        End Date
+                      </label>
+                      <DatePicker
+                        selected={endDate}
+                        onChange={(date) => {
+                          setEndDate(date);
+                          if (startDate && date) {
+                            onChange({
+                              start: startDate.toISOString(),
+                              end: date.toISOString()
+                            });
+                          } else if (!startDate && date) {
+                            onChange({
+                              start: null,
+                              end: date.toISOString()
+                            });
+                          }
+                        }}
+                        selectsEnd
+                        startDate={startDate}
+                        endDate={endDate}
+                        minDate={startDate}
+                        maxDate={new Date()}
+                        inline
+                        showMonthDropdown
+                        showYearDropdown
+                        dropdownMode="select"
+                        className="w-full"
+                      />
+                    </div>
                   </div>
 
                   {/* Action Buttons */}
@@ -193,7 +233,7 @@ const DateRangePicker = ({ value, onChange }) => {
                     >
                       Clear
                     </button>
-                    
+
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => setIsOpen(false)}
@@ -201,10 +241,10 @@ const DateRangePicker = ({ value, onChange }) => {
                       >
                         Cancel
                       </button>
-                      
+
                       <button
                         onClick={() => setIsOpen(false)}
-                        disabled={!startDate || !endDate}
+                        disabled={!startDate && !endDate}
                         className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         Apply
