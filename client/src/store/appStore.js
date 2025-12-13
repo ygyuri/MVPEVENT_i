@@ -10,7 +10,7 @@ const getApiBaseUrl = () => {
   
   // Check if we're in development
   if (import.meta.env.DEV) {
-    return 'http://localhost:5000';
+    return 'http://localhost:5001';
   }
   
   // Production: use same origin (relative URL)

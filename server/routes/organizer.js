@@ -1403,4 +1403,363 @@ router.delete(
   }
 );
 
+// Preview bulk resend - show orders that will be affected (organizer's event only)
+router.get(
+  "/tickets/bulk-resend/preview",
+  verifyToken,
+  requireRole("organizer"),
+  [
+    query("eventId")
+      .notEmpty()
+      .withMessage("eventId is required")
+      .isMongoId()
+      .withMessage("Invalid eventId format"),
+    query("startDate").optional().isISO8601().withMessage("Invalid start date format (use ISO8601)"),
+    query("endDate").optional().isISO8601().withMessage("Invalid end date format (use ISO8601)"),
+    query("page").optional().isInt({ min: 1 }).withMessage("Page must be a positive integer"),
+    query("limit").optional().isInt({ min: 1, max: 100 }).withMessage("Limit must be between 1 and 100"),
+  ],
+  async (req, res) => {
+    try {
+      // Validate request
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          details: errors.array(),
+        });
+      }
+
+      const { eventId, startDate, endDate, page = 1, limit = 20 } = req.query;
+      const organizerId = req.user._id;
+
+      // Verify organizer owns this event
+      const event = await Event.findById(eventId);
+      if (!event) {
+        return res.status(404).json({
+          success: false,
+          error: "Event not found",
+        });
+      }
+
+      if (String(event.organizer) !== String(organizerId)) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to preview bulk resend for this event",
+        });
+      }
+
+      // Build query for paid/completed orders (same logic as bulk resend)
+      // Accept orders where payment.status is completed (most reliable indicator)
+      // and status is either completed or paid
+      const orderQuery = {
+        status: { $in: ["completed", "paid"] },
+        "payment.status": "completed",
+        "items.eventId": eventId, // Filter by organizer's event
+      };
+
+      // Skip orders that were recently resent (duplicate prevention)
+      const recentWindowMinutes = 30;
+      const recentCutoff = new Date(Date.now() - recentWindowMinutes * 60 * 1000);
+      orderQuery.$or = [
+        { "metadata.lastBulkResendAt": { $exists: false } },
+        { "metadata.lastBulkResendAt": { $lt: recentCutoff } },
+      ];
+
+      // Add date range filter if provided
+      if (startDate || endDate) {
+        orderQuery.createdAt = {};
+        if (startDate) {
+          orderQuery.createdAt.$gte = new Date(startDate);
+        }
+        if (endDate) {
+          orderQuery.createdAt.$lte = new Date(endDate);
+        }
+      }
+
+      // Count total orders matching criteria
+      const totalOrders = await Order.countDocuments(orderQuery);
+
+      // Fetch paginated orders with customer info
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const orders = await Order.find(orderQuery)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean();
+
+      // Get ticket counts for each order
+      const Ticket = require("../models/Ticket");
+      const ordersWithDetails = await Promise.all(
+        orders.map(async (order) => {
+          // Count tickets for this order
+          const ticketCount = await Ticket.countDocuments({ orderId: order._id });
+
+          // Extract customer info
+          const customerEmail =
+            order.customer?.email || order.customer?.userId?.email || order.customerEmail || "N/A";
+          const customerName =
+            order.customer?.firstName && order.customer?.lastName
+              ? `${order.customer.firstName} ${order.customer.lastName}`
+              : order.customer?.userId?.name || order.customerName || "N/A";
+
+          return {
+            orderNumber: order.orderNumber,
+            customerEmail,
+            customerName,
+            ticketCount,
+            createdAt: order.createdAt,
+            eventTitle: event.title,
+            lastBulkResendAt: order.metadata?.lastBulkResendAt || null,
+          };
+        })
+      );
+
+      // Calculate total tickets across all matching orders
+      const totalTickets = await Ticket.countDocuments({
+        orderId: { $in: (await Order.find(orderQuery).select("_id").lean()).map((o) => o._id) },
+      });
+
+      // Estimate duration (2 seconds per order + email delay)
+      const EMAIL_DELAY_MS = parseInt(process.env.BULK_EMAIL_DELAY_MS || "150", 10);
+      const estimatedDurationSeconds = Math.ceil((totalOrders * 2000 + (totalOrders - 1) * EMAIL_DELAY_MS) / 1000);
+      const estimatedDurationFormatted =
+        estimatedDurationSeconds >= 60
+          ? `${Math.floor(estimatedDurationSeconds / 60)}m ${estimatedDurationSeconds % 60}s`
+          : `${estimatedDurationSeconds}s`;
+
+      res.json({
+        success: true,
+        data: {
+          orders: ordersWithDetails,
+          pagination: {
+            total: totalOrders,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            pages: Math.ceil(totalOrders / parseInt(limit)),
+          },
+          summary: {
+            totalOrders,
+            totalTickets,
+            estimatedDuration: estimatedDurationFormatted,
+            filters: {
+              eventId,
+              eventTitle: event.title,
+              startDate: startDate || null,
+              endDate: endDate || null,
+              recentWindowMinutes,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Bulk resend preview error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to generate preview",
+        details: error.message,
+      });
+    }
+  }
+);
+
+// Bulk resend tickets with updated QR codes for organizer's event
+router.post(
+  "/tickets/bulk-resend",
+  verifyToken,
+  requireRole("organizer"),
+  [
+    query("eventId")
+      .notEmpty()
+      .withMessage("eventId is required")
+      .isMongoId()
+      .withMessage("Invalid eventId format"),
+    query("startDate").optional().isISO8601().withMessage("Invalid start date format (use ISO8601)"),
+    query("endDate").optional().isISO8601().withMessage("Invalid end date format (use ISO8601)"),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          details: errors.array(),
+        });
+      }
+
+      const { eventId, startDate, endDate } = req.query;
+      const organizerId = req.user._id;
+
+      // Verify organizer owns this event
+      const event = await Event.findById(eventId);
+      if (!event) {
+        return res.status(404).json({
+          success: false,
+          error: "Event not found",
+        });
+      }
+
+      if (String(event.organizer) !== String(organizerId)) {
+        return res.status(403).json({
+          success: false,
+          error: "You do not have permission to resend tickets for this event",
+        });
+      }
+
+      console.log(
+        `📧 Organizer bulk resend requested for event ${eventId} by organizer ${organizerId}${
+          startDate || endDate ? ` with date range: ${startDate || "start"} to ${endDate || "end"}` : ""
+        }`
+      );
+
+      const bulkResendService = require("../services/bulkResendService");
+      const BulkResendLog = require("../models/BulkResendLog");
+      const Order = require("../models/Order");
+      const { enqueueBulkResend, isQueueReady } = require("../services/queue/bulkResendQueue");
+
+      // Build query to count orders (same logic as service)
+      const orderQuery = {
+        status: { $in: ["completed", "paid"] },
+        paymentStatus: "completed",
+        "payment.status": "completed",
+        "items.eventId": eventId,
+      };
+
+      // Add filters
+      if (startDate || endDate) {
+        orderQuery.createdAt = {};
+        if (startDate) orderQuery.createdAt.$gte = new Date(startDate);
+        if (endDate) orderQuery.createdAt.$lte = new Date(endDate);
+      }
+
+      // Skip recently resent orders
+      const recentCutoff = new Date(Date.now() - 30 * 60 * 1000);
+      orderQuery.$or = [
+        { "metadata.lastBulkResendAt": { $exists: false } },
+        { "metadata.lastBulkResendAt": { $lt: recentCutoff } },
+      ];
+
+      // Count orders
+      const orderCount = await Order.countDocuments(orderQuery);
+      const queueThreshold = parseInt(process.env.BULK_RESEND_QUEUE_THRESHOLD || "100", 10);
+
+      console.log(`📊 Order count: ${orderCount}, Threshold: ${queueThreshold}, Queue ready: ${isQueueReady()}`);
+
+      // Determine execution mode: queue if >= threshold AND queue is ready
+      const shouldQueue = orderCount >= queueThreshold && isQueueReady();
+
+      // Create audit log entry
+      const auditLog = await BulkResendLog.create({
+        triggeredBy: {
+          userId: req.user._id,
+          userEmail: req.user.email,
+          userName: req.user.name || `${req.user.firstName} ${req.user.lastName}`,
+          role: req.user.role,
+        },
+        filters: {
+          eventId,
+          eventTitle: event.title,
+          organizerId,
+          startDate: startDate ? new Date(startDate) : null,
+          endDate: endDate ? new Date(endDate) : null,
+          skipRecentlyResent: true,
+          recentWindowMinutes: 30,
+        },
+        executionMode: shouldQueue ? "queued" : "synchronous",
+        status: shouldQueue ? "pending" : "in_progress",
+      });
+
+      if (shouldQueue) {
+        // Enqueue job for background processing
+        try {
+          const jobId = await enqueueBulkResend(auditLog._id.toString(), {
+            eventId,
+            organizerId,
+            startDate,
+            endDate,
+            batchSize: 50,
+            skipRecentlyResent: true,
+            recentWindowMinutes: 30,
+          });
+
+          console.log(`✅ Bulk resend job enqueued: ${jobId}`);
+
+          res.json({
+            success: true,
+            message: "Bulk resend job enqueued for background processing",
+            data: {
+              jobId,
+              auditLogId: auditLog._id,
+              status: "queued",
+              estimatedOrders: orderCount,
+            },
+          });
+        } catch (err) {
+          // Queue failed - update audit log and re-throw
+          auditLog.status = "failed";
+          auditLog.endTime = new Date();
+          auditLog.error = `Failed to enqueue job: ${err.message}`;
+          await auditLog.save();
+          throw err;
+        }
+      } else {
+        // Process synchronously
+        try {
+          console.log(`⚡ Processing synchronously (${orderCount} orders)`);
+
+          const stats = await bulkResendService.resendTicketsForOrders({
+            eventId,
+            organizerId,
+            startDate,
+            endDate,
+            batchSize: 50,
+            skipRecentlyResent: true,
+            recentWindowMinutes: 30,
+          });
+
+          // Update audit log with results
+          auditLog.status = "completed";
+          auditLog.endTime = new Date();
+          auditLog.stats = {
+            totalOrdersFound: stats.totalOrdersFound,
+            totalOrdersProcessed: stats.totalOrdersProcessed,
+            totalOrdersSkipped: stats.totalOrdersSkipped,
+            totalTicketsUpdated: stats.totalTicketsUpdated,
+            totalEmailsSent: stats.totalEmailsSent,
+            totalEmailRetries: stats.totalEmailRetries,
+            totalErrors: stats.totalErrors,
+          };
+          auditLog.errors = stats.errors || [];
+          await auditLog.save();
+
+          res.json({
+            success: true,
+            message: "Bulk resend completed",
+            data: {
+              ...stats,
+              auditLogId: auditLog._id,
+            },
+          });
+        } catch (err) {
+          // Update audit log with failure
+          auditLog.status = "failed";
+          auditLog.endTime = new Date();
+          auditLog.error = err.message;
+          await auditLog.save();
+          throw err; // Re-throw to be caught by outer catch
+        }
+      }
+    } catch (error) {
+      console.error("❌ Bulk resend error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to process bulk resend",
+        message: error.message,
+      });
+    }
+  }
+);
+
 module.exports = router;

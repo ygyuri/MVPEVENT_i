@@ -469,7 +469,7 @@ class PollSocketManager {
     
     // Check if we're in development
     if (import.meta.env.DEV) {
-      const devUrl = 'http://localhost:5000';
+      const devUrl = 'http://localhost:5001';
       console.log('🔌 WebSocket API URL (Development):', devUrl);
       return devUrl;
     }

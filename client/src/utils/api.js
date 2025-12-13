@@ -24,7 +24,8 @@ const getApiBaseUrl = () => {
     // Get the current hostname (works for both localhost and IP addresses)
     // Safe access for test environments
     const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    const port = '5000';
+    // Default to port 5001 to match server configuration
+    const port = '5001';
     return `http://${hostname}:${port}`;
   }
   // Production: use same origin (relative URL)
@@ -34,12 +35,12 @@ const getApiBaseUrl = () => {
 const API_BASE_URL = getApiBaseUrl();
 
 // Console log for debugging API configuration
-// console.log('🔧 API Configuration:', {
-//   environment: import.meta.env.DEV ? 'development' : 'production',
-//   viteApiUrl: import.meta.env.VITE_API_URL,
-//   resolvedApiBaseUrl: API_BASE_URL,
-//   currentHostname: typeof window !== 'undefined' ? window.location.hostname : 'server-side'
-// });
+console.log('🔧 API Configuration:', {
+  environment: import.meta.env.DEV ? 'development' : 'production',
+  viteApiUrl: import.meta.env.VITE_API_URL,
+  resolvedApiBaseUrl: API_BASE_URL,
+  currentHostname: typeof window !== 'undefined' ? window.location.hostname : 'server-side'
+});
 
 // Create axios instance
 const api = axios.create({

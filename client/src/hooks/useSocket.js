@@ -28,7 +28,7 @@ const useSocket = (eventId, callbacks = {}) => {
 
     console.log('Connecting to socket for event:', eventId);
 
-    const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
+    const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:5001', {
       auth: {
         token: token
       },
