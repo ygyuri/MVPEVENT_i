@@ -453,12 +453,12 @@ router.post(
                 rotate: false, // Don't rotate, just generate initial QR
               });
 
-              // Generate HIGH QUALITY QR code image for emails - optimized size for mobile
+              // Generate QR code image for emails - optimized for easy scanning
               const qrCodeDataURL = await QRCode.toDataURL(qrResult.qr, {
-                errorCorrectionLevel: "H", // Highest error correction for reliability
+                errorCorrectionLevel: "M", // Medium error correction - easier to scan than "H"
                 type: "image/png",
-                width: 350, // Optimized size for mobile viewing (was 500)
-                margin: 3, // Good margin for better scanning
+                width: 400, // Larger size for better scanning
+                margin: 4, // Larger margin for better scanning
                 color: {
                   dark: "#000000", // Pure black for maximum contrast
                   light: "#FFFFFF", // Pure white for maximum contrast

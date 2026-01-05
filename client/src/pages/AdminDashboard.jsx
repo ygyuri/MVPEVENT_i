@@ -30,6 +30,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sendingReminders, setSendingReminders] = useState({});
+  const [generatingTickets, setGeneratingTickets] = useState(false);
 
   useEffect(() => {
     // Check if user is admin
@@ -82,6 +83,39 @@ const AdminDashboard = () => {
       toast.error(err.response?.data?.error || "Failed to send reminders");
     } finally {
       setSendingReminders({ ...sendingReminders, [orderId]: false });
+    }
+  };
+
+  const handleGenerateDummyTickets = async () => {
+    if (
+      !window.confirm(
+        "Generate 3 dummy tickets for 'test-emails-again-1' event?\n\nLogin: test@example.com\nPassword: test123"
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setGeneratingTickets(true);
+      const response = await api.post("/api/admin/generate-dummy-tickets", {
+        eventSlug: "test-emails-again-1",
+        count: 3,
+      });
+
+      if (response.data?.success) {
+        toast.success(
+          `✅ ${response.data.message}\n\nLogin as: ${response.data.data.user.email}\nPassword: ${response.data.data.user.password}`,
+          { duration: 8000 }
+        );
+        fetchOverview(); // Refresh stats
+      } else {
+        toast.error(response.data?.error || "Failed to generate tickets");
+      }
+    } catch (err) {
+      console.error("Failed to generate dummy tickets:", err);
+      toast.error(err.response?.data?.error || "Failed to generate tickets");
+    } finally {
+      setGeneratingTickets(false);
     }
   };
 
@@ -263,9 +297,19 @@ const AdminDashboard = () => {
               Welcome back, {user?.name || user?.email}. Manage your platform.
             </p>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] rounded-lg">
-            <CheckCircle className="w-5 h-5 text-white" />
-            <span className="text-white font-semibold">Admin</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleGenerateDummyTickets}
+              disabled={generatingTickets}
+              className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+            >
+              <Ticket className="w-4 h-4" />
+              {generatingTickets ? "Generating..." : "Generate Test Tickets"}
+            </button>
+            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] rounded-lg">
+              <CheckCircle className="w-5 h-5 text-white" />
+              <span className="text-white font-semibold">Admin</span>
+            </div>
           </div>
         </div>
       </motion.div>

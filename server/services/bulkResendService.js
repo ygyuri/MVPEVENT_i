@@ -398,12 +398,12 @@ class BulkResendService {
             rotate: true, // Force regeneration of QR code
           });
 
-          // Generate QR code image (base64) for email
+          // Generate QR code image (base64) for email - optimized for easy scanning
           const qrCodeDataURL = await QRCode.toDataURL(qrResult.qr, {
-            errorCorrectionLevel: "H", // Highest error correction for reliability
+            errorCorrectionLevel: "M", // Medium error correction - easier to scan than "H"
             type: "image/png",
-            width: 350, // Optimized size for mobile viewing
-            margin: 3, // Good margin for better scanning
+            width: 400, // Larger size for better scanning
+            margin: 4, // Larger margin for better scanning
             color: {
               dark: "#000000", // Pure black for maximum contrast
               light: "#FFFFFF", // Pure white for maximum contrast

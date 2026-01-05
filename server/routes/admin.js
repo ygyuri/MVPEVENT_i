@@ -700,6 +700,148 @@ router.post(
   }
 );
 
+// Generate dummy tickets for testing (admin only)
+router.post(
+  "/generate-dummy-tickets",
+  verifyToken,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const Event = require("../models/Event");
+      const Ticket = require("../models/Ticket");
+      const Order = require("../models/Order");
+      const ticketService = require("../services/ticketService");
+      const QRCode = require("qrcode");
+
+      const { eventSlug = "test-emails-again-1", count = 3 } = req.body;
+
+      // Find event
+      const event = await Event.findOne({ slug: eventSlug });
+      if (!event) {
+        return res.status(404).json({
+          success: false,
+          error: `Event with slug "${eventSlug}" not found`,
+        });
+      }
+
+      // Find or create test user
+      let testUser = await User.findOne({ email: "test@example.com" });
+      if (!testUser) {
+        testUser = new User({
+          email: "test@example.com",
+          firstName: "Test",
+          lastName: "User",
+          username: "testuser",
+          password: "test123",
+          role: "user",
+        });
+        await testUser.save();
+      }
+
+      // Create dummy order
+      const order = new Order({
+        orderNumber: `TEST-${Date.now()}`,
+        eventId: event._id,
+        customer: {
+          firstName: testUser.firstName,
+          lastName: testUser.lastName,
+          email: testUser.email,
+          phone: "+1234567890",
+        },
+        customerEmail: testUser.email,
+        customerName: `${testUser.firstName} ${testUser.lastName}`,
+        status: "completed",
+        paymentStatus: "completed",
+        paymentMethod: "test",
+        totalAmount: 0,
+        items: [
+          {
+            ticketType: "General Admission",
+            quantity: count,
+            price: 0,
+          },
+        ],
+      });
+      await order.save();
+
+      // Generate tickets with QR codes
+      const tickets = [];
+      for (let i = 0; i < count; i++) {
+        const ticket = new Ticket({
+          orderId: order._id,
+          eventId: event._id,
+          ownerUserId: testUser._id,
+          ticketNumber: `TEST-${Date.now()}-${i + 1}`,
+          ticketType: "General Admission",
+          price: 0,
+          status: "active",
+          holder: {
+            firstName: testUser.firstName,
+            lastName: testUser.lastName,
+            name: `${testUser.firstName} ${testUser.lastName}`,
+            email: testUser.email,
+            phone: "+1234567890",
+          },
+          orderPaid: true,
+        });
+
+        // Generate QR code
+        const qrResult = await ticketService.issueQr(ticket._id.toString(), {
+          rotate: false,
+        });
+
+        // Generate QR code image
+        const qrCodeDataURL = await QRCode.toDataURL(qrResult.qr, {
+          errorCorrectionLevel: "M",
+          type: "image/png",
+          width: 400,
+          margin: 4,
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+        });
+
+        ticket.qrCode = qrResult.qr;
+        ticket.qrCodeUrl = qrCodeDataURL;
+        await ticket.save();
+        tickets.push({
+          id: ticket._id,
+          ticketNumber: ticket.ticketNumber,
+          qrCode: ticket.qrCode.substring(0, 50) + "...",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: `Generated ${tickets.length} dummy tickets`,
+        data: {
+          event: {
+            title: event.title,
+            slug: event.slug,
+          },
+          order: {
+            orderNumber: order.orderNumber,
+            id: order._id,
+          },
+          user: {
+            email: testUser.email,
+            password: "test123",
+          },
+          tickets,
+        },
+      });
+    } catch (error) {
+      console.error("Error generating dummy tickets:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to generate dummy tickets",
+        details: error.message,
+      });
+    }
+  }
+);
+
 // Get all tickets for an order with QR codes (admin only)
 router.get(
   "/orders/:orderId/tickets",
