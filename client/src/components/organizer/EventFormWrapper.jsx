@@ -247,7 +247,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
         // Clear localStorage recovery data
         localStorage.removeItem('eventForm_recovery');
         localStorage.removeItem('eventForm_draft');
-        console.log('🧹 [FORM CLEAR] Cleared previous event data for new event creation');
+        // console.log('🧹 [FORM CLEAR] Cleared previous event data for new event creation');
       }
     }
   }, [eventId]); // Only depend on eventId to avoid clearing while user is typing
@@ -274,11 +274,11 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     }
     
     try {
-      console.log('🔄 [SAVE DRAFT] Starting save process...', {
-        eventId: formEventId,
-        data,
-        timestamp: new Date().toISOString()
-      });
+      // console.log('🔄 [SAVE DRAFT] Starting save process...', {
+      //   eventId: formEventId,
+      //   data,
+      //   timestamp: new Date().toISOString()
+      // });
 
       dispatch(setSaving(true));
       dispatch(setSaveError(null));
@@ -485,7 +485,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       if (!hasBasicData) return;
       
       try {
-        console.log('🚪 [BEFORE UNLOAD] Saving draft before page unload');
+        // console.log('🚪 [BEFORE UNLOAD] Saving draft before page unload');
         
         // Transform form data to API format
         const apiData = formUtils.transformFormDataToAPI(formData);
@@ -533,7 +533,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
             keepalive: true // Critical for beforeunload - ensures request completes even after page closes
           }).catch(err => console.warn('⚠️ [BEFORE UNLOAD] Failed to update draft:', err));
           
-          console.log('✅ [BEFORE UNLOAD] Updated existing draft');
+          // console.log('✅ [BEFORE UNLOAD] Updated existing draft');
         } else {
           // Create new draft if we don't have one yet
           // Use fetch with keepalive for draft creation
@@ -547,7 +547,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
             keepalive: true // Critical for beforeunload
           }).catch(err => console.warn('⚠️ [BEFORE UNLOAD] Failed to create draft:', err));
           
-          console.log('✅ [BEFORE UNLOAD] Created new draft');
+          // console.log('✅ [BEFORE UNLOAD] Created new draft');
         }
         
       } catch (error) {
@@ -591,7 +591,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     
     // Prevent duplicate saves - critical guard to prevent multiple draft creations
     if (autoSave.isSaving || isCreatingDraft) {
-      console.log('⏸️ [SAVE DRAFT] Skipping - already saving or creating draft');
+      // console.log('⏸️ [SAVE DRAFT] Skipping - already saving or creating draft');
       return;
     }
     
@@ -616,14 +616,14 @@ const EventFormWrapper = ({ children, onSubmit }) => {
         }
       } else {
         // Create new draft for substantial data - ONLY if we don't already have one
-        console.log('🆕 [SAVE DRAFT] Creating new draft...');
+        // console.log('🆕 [SAVE DRAFT] Creating new draft...');
         setIsCreatingDraft(true);
         const result = await dispatch(createEventDraft(apiData)).unwrap();
         if (result.data?.id) {
           dispatch(setEventId(result.data.id));
           // Update localStorage with the new event ID
           formPersistence.saveFormData(data, result.data.id);
-          console.log('✅ [SAVE DRAFT] Draft created with ID:', result.data.id);
+          // console.log('✅ [SAVE DRAFT] Draft created with ID:', result.data.id);
         }
         if (result?.data?.version !== undefined) {
           dispatch(setVersion(result.data.version));
@@ -714,7 +714,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       const finalValidation = validateForm(formData);
       
       if (!finalValidation.isValid) {
-        console.log('❌ [FINAL STEP] Validation failed:', finalValidation.errors);
+        // console.log('❌ [FINAL STEP] Validation failed:', finalValidation.errors);
         
         // Determine the first step that has blocking errors and navigate there
         const errors = finalValidation.errors || {};

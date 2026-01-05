@@ -59,7 +59,7 @@ const ScheduleStep = () => {
     }));
     
     // Log for debugging
-    console.log('📅 [SCHEDULE STEP] Field updated:', { fieldPath, value, fieldName });
+    // console.log('📅 [SCHEDULE STEP] Field updated:', { fieldPath, value, fieldName });
   };
 
   // Apply preset duration
@@ -88,7 +88,7 @@ const ScheduleStep = () => {
         ? '1 hour'
         : `${Math.floor(preset.duration / 60)} hours`;
     
-    console.log(`✅ [PRESET] Applied ${preset.label}: Start ${startDate.toLocaleString()}, End ${endDate.toLocaleString()}`);
+    // console.log(`✅ [PRESET] Applied ${preset.label}: Start ${startDate.toLocaleString()}, End ${endDate.toLocaleString()}`);
   };
 
   // Calculate duration

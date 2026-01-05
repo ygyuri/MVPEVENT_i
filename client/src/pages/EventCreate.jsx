@@ -59,14 +59,14 @@ const EventCreate = () => {
       
       // If no eventId exists, create a draft first (for new events)
       if (!effectiveEventId) {
-        console.log('📝 [PUBLISH] No eventId found, creating draft first...');
+        // console.log('📝 [PUBLISH] No eventId found, creating draft first...');
         try {
           const draftResult = await dispatch(createEventDraft(apiData)).unwrap();
           if (draftResult.data?.id) {
             effectiveEventId = draftResult.data.id;
             // Update Redux state with the new eventId
             dispatch(setEventId(effectiveEventId));
-            console.log('✅ [PUBLISH] Draft created with ID:', effectiveEventId);
+            // console.log('✅ [PUBLISH] Draft created with ID:', effectiveEventId);
           } else {
             throw new Error('Failed to create draft: No event ID returned');
           }
