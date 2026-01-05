@@ -32,6 +32,7 @@ jobs:
           ls -la server/uploads/ || echo "No uploads directory"
           echo "✅ Image asset verification completed"
       - name: Build images (no push)
+        timeout-minutes: 20
         run: docker compose -f docker-compose.prod.yml build
 
   # ====================
@@ -293,10 +294,36 @@ jobs:
                 sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem
               else
                 echo "⚠️ Certificate expiring soon ($DAYS_UNTIL_EXPIRY days), attempting renewal..."
-                # Try to renew (this is safer and avoids rate limits)
-                sudo certbot renew --cert-name event-i.co.ke --non-interactive 2>&1 || {
-                  echo "⚠️ Renewal failed or not needed, using existing certificate"
-                }
+                # Stop nginx containers and any services using port 80 for certbot renewal
+                echo "🛑 Stopping services using port 80..."
+                cd /root/MVPEVENT_i || true
+                
+                # Stop Docker nginx containers if they exist
+                if sudo docker ps -a --format '{{.Names}}' | grep -q nginx; then
+                  sudo docker compose -f docker-compose.prod.yml stop nginx 2>/dev/null || true
+                  sudo docker compose -f docker-compose.prod.yml rm -f nginx 2>/dev/null || true
+                fi
+                
+                # Stop system nginx or other services using port 80
+                sudo systemctl stop nginx 2>/dev/null || true
+                sudo pkill -f nginx 2>/dev/null || true
+                
+                # Kill any process using port 80
+                sudo lsof -ti:80 | xargs sudo kill -9 2>/dev/null || true
+                sleep 3
+                
+                # Verify port 80 is free
+                if sudo lsof -i:80 > /dev/null 2>&1; then
+                  echo "⚠️ Port 80 still in use after cleanup attempts, skipping renewal"
+                  echo "   Using existing certificate (will need manual renewal)"
+                else
+                  echo "✅ Port 80 is free, attempting certificate renewal..."
+                  # Try to renew using standalone mode (requires port 80)
+                  sudo certbot renew --cert-name event-i.co.ke --non-interactive --standalone 2>&1 || {
+                    echo "⚠️ Renewal failed or not needed, using existing certificate"
+                  }
+                fi
+                
                 # Copy the certificate (renewed or existing)
                 sudo cp "$CERT_PATH" /root/MVPEVENT_i/nginx/ssl/cert.pem
                 sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem
@@ -347,7 +374,14 @@ jobs:
             # Deploy with Docker Compose
             cd /root/MVPEVENT_i
             sudo docker compose -f docker-compose.prod.yml down --remove-orphans || true
-            sudo docker compose -f docker-compose.prod.yml build --no-cache --pull
+            echo "🔨 Building Docker images (this may take several minutes)..."
+            timeout 1800 sudo docker compose -f docker-compose.prod.yml build --no-cache --pull || {
+              echo "⚠️ Build timed out or failed, trying without --pull..."
+              timeout 1800 sudo docker compose -f docker-compose.prod.yml build --no-cache || {
+                echo "⚠️ Build failed, trying with cache..."
+                sudo docker compose -f docker-compose.prod.yml build
+              }
+            }
             sudo docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
             
             # Wait and verify
