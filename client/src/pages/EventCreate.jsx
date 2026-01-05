@@ -10,7 +10,8 @@ import PricingAndTicketsStep from '../components/organizer/steps/PricingAndTicke
 import RecurrenceStep from '../components/organizer/steps/RecurrenceStep';
 import MediaStep from '../components/organizer/steps/MediaStep';
 import PreviewStep from '../components/organizer/steps/PreviewStep';
-import { publishEvent, updateEventDraft } from '../store/slices/organizerSlice';
+import { publishEvent, updateEventDraft, createEventDraft } from '../store/slices/organizerSlice';
+import { setEventId, clearForm } from '../store/slices/eventFormSlice';
 import { validateForm } from '../utils/eventValidation';
 import organizerAPI, { formUtils } from '../utils/organizerAPI';
 
@@ -26,13 +27,7 @@ const EventCreate = () => {
   const handleSubmit = async (formData) => {
     try {
       // Determine effective eventId (route param takes priority when editing)
-      const effectiveEventId = (eventId && eventId !== 'create') ? eventId : storedEventId;
-
-      // Additional checks
-      if (!effectiveEventId) {
-        toast.error('Event ID is required');
-        return;
-      }
+      let effectiveEventId = (eventId && eventId !== 'create') ? eventId : storedEventId;
 
       // Check if event is already published
       const eventStatus = currentEvent?.status || 'draft';
@@ -61,6 +56,27 @@ const EventCreate = () => {
         id: 'publish-loading',
         duration: 0
       });
+      
+      // If no eventId exists, create a draft first (for new events)
+      if (!effectiveEventId) {
+        // console.log('📝 [PUBLISH] No eventId found, creating draft first...');
+        try {
+          const draftResult = await dispatch(createEventDraft(apiData)).unwrap();
+          if (draftResult.data?.id) {
+            effectiveEventId = draftResult.data.id;
+            // Update Redux state with the new eventId
+            dispatch(setEventId(effectiveEventId));
+            // console.log('✅ [PUBLISH] Draft created with ID:', effectiveEventId);
+          } else {
+            throw new Error('Failed to create draft: No event ID returned');
+          }
+        } catch (error) {
+          toast.dismiss('publish-loading');
+          const errorMessage = error.response?.data?.error || error.message || 'Failed to create draft';
+          toast.error(errorMessage);
+          return;
+        }
+      }
       
       // Update the event (works for both drafts and published events now)
       // Handle version conflict by retrying without version if needed
@@ -152,6 +168,12 @@ const EventCreate = () => {
           }
         }
       );
+      
+      // Clear the form before navigating away
+      dispatch(clearForm());
+      // Clear localStorage recovery data
+      localStorage.removeItem('eventForm_recovery');
+      localStorage.removeItem('eventForm_draft');
       
       // Navigate to organizer dashboard to see the published event
       navigate('/organizer', { 

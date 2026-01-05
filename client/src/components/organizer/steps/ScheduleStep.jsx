@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { toast } from 'react-hot-toast';
 import { Calendar, Clock, Timer, AlertCircle, CheckCircle, Zap, CalendarDays, Clock3 } from 'lucide-react';
 import { updateNestedFormData, setStepValidation, setBlurField } from '../../../store/slices/eventFormSlice';
 import { validateField, stepValidators } from '../../../utils/eventValidation';
@@ -14,14 +15,14 @@ const ScheduleStep = () => {
   const [fieldErrors, setFieldErrors] = useState({});
   const [selectedPreset, setSelectedPreset] = useState(null);
 
-  // Quick presets for common event durations
+  // Quick presets for common event durations (in minutes)
   const eventPresets = [
     { label: '30 min', duration: 30, icon: '⚡' },
     { label: '1 hour', duration: 60, icon: '⏰' },
     { label: '2 hours', duration: 120, icon: '🕐' },
-    { label: 'Half day', duration: 240, icon: '🌅' },
-    { label: 'Full day', duration: 480, icon: '🌞' },
-    { label: 'Weekend', duration: 2880, icon: '🏖️' }
+    { label: 'Half day', duration: 720, icon: '🌅' }, // 12 hours
+    { label: 'Full day', duration: 1440, icon: '🌞' }, // 24 hours
+    { label: 'Weekend', duration: 2880, icon: '🏖️' } // 48 hours (2 days)
   ];
 
   // Real-time validation
@@ -58,20 +59,36 @@ const ScheduleStep = () => {
     }));
     
     // Log for debugging
-    console.log('📅 [SCHEDULE STEP] Field updated:', { fieldPath, value, fieldName });
+    // console.log('📅 [SCHEDULE STEP] Field updated:', { fieldPath, value, fieldName });
   };
 
   // Apply preset duration
   const applyPreset = (preset) => {
     if (!formData.dates?.startDate) {
+      toast.error('Please set a start date first');
       return;
     }
     
     setSelectedPreset(preset.label);
-    const startDate = new Date(formData.dates.startDate);
-    const endDate = new Date(startDate.getTime() + preset.duration * 60 * 1000);
     
+    // Get the start date
+    const startDate = new Date(formData.dates.startDate);
+    
+    // Calculate end date by adding the duration in minutes
+    const endDate = new Date(startDate);
+    endDate.setMinutes(endDate.getMinutes() + preset.duration);
+    
+    // Update the end date
     validateAndUpdateField('dates.endDate', endDate.toISOString());
+    
+    // Show feedback
+    const durationText = preset.duration < 60 
+      ? `${preset.duration} minutes` 
+      : preset.duration === 60 
+        ? '1 hour'
+        : `${Math.floor(preset.duration / 60)} hours`;
+    
+    // console.log(`✅ [PRESET] Applied ${preset.label}: Start ${startDate.toLocaleString()}, End ${endDate.toLocaleString()}`);
   };
 
   // Calculate duration
@@ -223,14 +240,14 @@ const ScheduleStep = () => {
                     dispatch(setBlurField('dates.startDate'));
                   }}
                   className={`
-                    input-modern w-full
+                    input-modern w-full pr-10
                     ${fieldErrors.startDate && touched.startDate 
                       ? 'border-red-300 dark:border-red-600 focus:border-red-500 focus:ring-red-500' 
                       : 'border-gray-300 dark:border-gray-600 focus:border-green-500 focus:ring-green-500'
                     }
                   `}
                 />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
                   <Clock3 className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 </div>
               </div>
@@ -298,9 +315,21 @@ const ScheduleStep = () => {
               ))}
             </div>
 
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
               Click any duration to automatically set your end time
             </div>
+            
+            {/* Show calculated end time when preset is selected */}
+            {selectedPreset && formData.dates?.startDate && formData.dates?.endDate && (
+              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    End time set to: {formatDisplayTime(formData.dates.endDate)} on {formatDisplayDate(formData.dates.endDate)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -333,6 +362,11 @@ const ScheduleStep = () => {
                     type="date"
                     value={formData.dates?.endDate ? new Date(formData.dates.endDate).toISOString().slice(0, 10) : ''}
                     onChange={(e) => {
+                      // Clear preset selection when user manually changes end date
+                      if (selectedPreset) {
+                        setSelectedPreset(null);
+                      }
+                      
                       if (e.target.value && formData.dates?.endDate) {
                         // Preserve the time, update only the date
                         const existingTime = new Date(formData.dates.endDate);
@@ -377,6 +411,11 @@ const ScheduleStep = () => {
                     type="time"
                     value={formData.dates?.endDate ? new Date(formData.dates.endDate).toTimeString().slice(0, 5) : ''}
                     onChange={(e) => {
+                      // Clear preset selection when user manually changes end time
+                      if (selectedPreset) {
+                        setSelectedPreset(null);
+                      }
+                      
                       if (e.target.value && formData.dates?.endDate) {
                         // Preserve the date, update only the time
                         const existingDate = new Date(formData.dates.endDate);
@@ -397,14 +436,14 @@ const ScheduleStep = () => {
                       dispatch(setBlurField('dates.endDate'));
                     }}
                     className={`
-                      input-modern w-full
+                      input-modern w-full pr-10
                       ${fieldErrors.endDate && touched.endDate 
                         ? 'border-red-300 dark:border-red-600 focus:border-red-500 focus:ring-red-500' 
                         : 'border-gray-300 dark:border-gray-600 focus:border-orange-500 focus:ring-orange-500'
                       }
                     `}
                   />
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none z-10">
                     <Clock3 className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                   </div>
                 </div>

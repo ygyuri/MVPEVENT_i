@@ -345,7 +345,7 @@ export default function Scanner() {
                     setTimeout(() => {
                       setLocked(false);
                       lockedRef.current = false;
-                    }, 3000); // Longer delay to prevent rapid re-scans
+                    }, 1500); // Reduced delay for faster re-scanning (was 3000ms)
                   });
               }
             }

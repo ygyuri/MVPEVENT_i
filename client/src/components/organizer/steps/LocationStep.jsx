@@ -50,7 +50,7 @@ const LocationStep = () => {
     }));
     
     // Log for debugging
-    console.log('📍 [LOCATION STEP] Field updated:', { fieldPath, value, fieldName });
+    // console.log('📍 [LOCATION STEP] Field updated:', { fieldPath, value, fieldName });
   };
 
   const handleTimezoneChange = (timezone) => {

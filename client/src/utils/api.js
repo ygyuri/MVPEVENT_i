@@ -35,12 +35,12 @@ const getApiBaseUrl = () => {
 const API_BASE_URL = getApiBaseUrl();
 
 // Console log for debugging API configuration
-console.log('🔧 API Configuration:', {
-  environment: import.meta.env.DEV ? 'development' : 'production',
-  viteApiUrl: import.meta.env.VITE_API_URL,
-  resolvedApiBaseUrl: API_BASE_URL,
-  currentHostname: typeof window !== 'undefined' ? window.location.hostname : 'server-side'
-});
+// console.log('🔧 API Configuration:', {
+//   environment: import.meta.env.DEV ? 'development' : 'production',
+//   viteApiUrl: import.meta.env.VITE_API_URL,
+//   resolvedApiBaseUrl: API_BASE_URL,
+//   currentHostname: typeof window !== 'undefined' ? window.location.hostname : 'server-side'
+// });
 
 // Create axios instance
 const api = axios.create({
@@ -94,13 +94,13 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    console.error('❌ API Response Error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      url: error.config?.url,
-      message: error.message,
-      timestamp: new Date().toISOString()
-    });
+    // console.error('❌ API Response Error:', {
+    //   status: error.response?.status,
+    //   statusText: error.response?.statusText,
+    //   url: error.config?.url,
+    //   message: error.message,
+    //   timestamp: new Date().toISOString()
+    // });
     const originalRequest = error.config || {};
 
     // Don't attempt refresh for auth endpoints or if no response

@@ -42,10 +42,12 @@ const BasicInfoStep = () => {
     // Mark field as touched
     setTouched(prev => ({ ...prev, [fieldName]: true }));
     
-    // Optimized field update (instant Redux + smart persistence)
+    // Optimized field update (instant Redux + localStorage only, NO API saves)
     await updateField(fieldName, value, 1, {
       debounceMs: 200, // Faster debounce for better UX
-      skipPersistence: false
+      skipPersistence: false, // Allow localStorage saves
+      immediateApiSave: false, // DISABLED: No API saves while typing
+      force: false // DISABLED: No forced API saves
     });
     
     // Update step validation

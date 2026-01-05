@@ -69,15 +69,15 @@ class EnhancedEmailService {
           .substring(0, 8),
       };
 
-      // Generate QR code image
+      // Generate QR code image - optimized for easy scanning
       const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrPayload), {
-        errorCorrectionLevel: "H",
+        errorCorrectionLevel: "M", // Medium error correction - easier to scan than "H"
         type: "image/png",
-        width: 300,
-        margin: 2,
+        width: 400, // Larger size for better scanning
+        margin: 4, // Larger margin for better scanning
         color: {
-          dark: "#1a202c",
-          light: "#ffffff",
+          dark: "#000000", // Pure black for maximum contrast
+          light: "#FFFFFF", // Pure white for maximum contrast
         },
       });
 

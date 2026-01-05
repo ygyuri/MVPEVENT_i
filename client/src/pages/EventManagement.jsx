@@ -998,9 +998,9 @@ const EventManagement = () => {
                                 Execute Bulk Resend
                               </>
                             )}
-                          </button>
-                        </div>
-                      </>
+                    </button>
+                  </div>
+                </>
                     )}
                   </div>
                 </>

@@ -48,6 +48,12 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     onDiscard: null
   });
   
+  // Track if we've already checked for recovery to prevent showing modal while typing
+  const [hasCheckedRecovery, setHasCheckedRecovery] = useState(false);
+  
+  // Track if we're navigating between steps (to prevent beforeunload from firing)
+  const [isNavigatingSteps, setIsNavigatingSteps] = useState(false);
+  
   // Swipe navigation for mobile
   const swipeHandlers = useSwipeNavigation(
     () => handleNextStep(), // Swipe left to go to next step
@@ -58,6 +64,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
   const navigate = useNavigate();
   const { eventId } = useParams();
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isCreatingDraft, setIsCreatingDraft] = useState(false); // Prevent multiple draft creations
   
   const { user } = useSelector(state => state.auth);
   const { 
@@ -124,8 +131,16 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     }
   }, [formData, formEventId, currentStep, version]);
 
-  // Check for recovery data on component mount (only for drafts/new events or when switching events)
+  // Check for recovery data on component mount (only once, not on every formData change)
   useEffect(() => {
+    // Only check once per mount/eventId change, not on every formData change
+    if (hasCheckedRecovery) {
+      return;
+    }
+    
+    // Get current formData at the time of check (not from dependency)
+    const currentFormData = formData;
+    
     // Skip recovery check if we're editing an existing event - let it load normally from server
     if (eventId && eventId !== 'create') {
       // When editing an existing event, clear any stale recovery data for different events
@@ -141,6 +156,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       } catch (error) {
         console.warn('⚠️ [RECOVERY] Failed to check recovery data:', error);
       }
+      setHasCheckedRecovery(true);
       return;
     }
 
@@ -166,7 +182,10 @@ const EventFormWrapper = ({ children, onSubmit }) => {
           // Only show recovery if we have either:
           // 1. A real draft (with eventId) that was saved
           // 2. Significant unsaved data that's worth recovering
-          if (hasRealDraft || hasSignificantData) {
+          // AND the recovery data is different from current form data
+          const isDifferentFromCurrent = JSON.stringify(parsed.formData) !== JSON.stringify(currentFormData);
+          
+          if ((hasRealDraft || hasSignificantData) && isDifferentFromCurrent) {
             
             // Show recovery modal
             setRecoveryModal({
@@ -186,6 +205,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
                 }
                 toast.success('Form data recovered successfully');
                 setRecoveryModal(prev => ({ ...prev, isOpen: false }));
+                setHasCheckedRecovery(true);
               },
               onDiscard: () => {
                 // Clear recovery data and start fresh
@@ -193,15 +213,44 @@ const EventFormWrapper = ({ children, onSubmit }) => {
                 dispatch(clearForm());
                 dispatch(setCurrentStep(1));
                 setRecoveryModal(prev => ({ ...prev, isOpen: false }));
+                setHasCheckedRecovery(true);
               }
             });
           }
         }
       }
+      setHasCheckedRecovery(true);
     } catch (error) {
       console.warn('⚠️ [RECOVERY] Failed to check recovery data:', error);
+      setHasCheckedRecovery(true);
     }
-  }, [eventId, formEventId, formData, dispatch, navigate]);
+  }, [eventId, formEventId, dispatch, navigate, hasCheckedRecovery]);
+  
+  // Reset recovery check when eventId changes
+  useEffect(() => {
+    setHasCheckedRecovery(false);
+  }, [eventId]);
+  
+  // Clear form when creating a new event (eventId === 'create' or no eventId)
+  // This ensures previous event data doesn't persist when creating a new event
+  useEffect(() => {
+    // If we're creating a new event (not editing an existing one)
+    const isCreatingNew = eventId === 'create' || (!eventId && !formEventId);
+    
+    if (isCreatingNew) {
+      // Check if form has data from a previous event
+      const hasPreviousData = formData.title || formData.description || formData.location?.venueName || formData.dates?.startDate || formEventId;
+      
+      if (hasPreviousData) {
+        // Clear the form state
+        dispatch(clearForm());
+        // Clear localStorage recovery data
+        localStorage.removeItem('eventForm_recovery');
+        localStorage.removeItem('eventForm_draft');
+        // console.log('🧹 [FORM CLEAR] Cleared previous event data for new event creation');
+      }
+    }
+  }, [eventId]); // Only depend on eventId to avoid clearing while user is typing
   
   const { loading: organizerLoading } = useSelector(state => state.organizer);
 
@@ -225,11 +274,11 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     }
     
     try {
-      console.log('🔄 [SAVE DRAFT] Starting save process...', {
-        eventId: formEventId,
-        data,
-        timestamp: new Date().toISOString()
-      });
+      // console.log('🔄 [SAVE DRAFT] Starting save process...', {
+      //   eventId: formEventId,
+      //   data,
+      //   timestamp: new Date().toISOString()
+      // });
 
       dispatch(setSaving(true));
       dispatch(setSaveError(null));
@@ -416,74 +465,90 @@ const EventFormWrapper = ({ children, onSubmit }) => {
   // Prevent concurrent saves
   const [isAutoSaving, setIsAutoSaving] = useState(false);
 
-  // Periodic auto-save (every 30 seconds)
-  useEffect(() => {
-    // Use route eventId if we're editing an existing event (prevents creating new draft)
-    const effectiveEventId = (eventId && eventId !== 'create') ? eventId : formEventId;
-    
-    if (!effectiveEventId || !formData || isPublishing) return;
-    
-    const hasBasicData = formData.title || formData.description || formData.dates?.startDate;
-    if (!hasBasicData) return;
-    
-    const interval = setInterval(async () => {
-      try {
-        if (isAutoSaving) {
-          return;
-        }
-        setIsAutoSaving(true);
-        
-        // Transform form data to API format
-        const apiData = formUtils.transformFormDataToAPI(formData);
-        
-        // Update the event with current data
-        const res = await dispatch(updateEventDraft({ 
-          eventId: effectiveEventId, 
-          eventData: apiData, 
-          version 
-        })).unwrap().catch(async (err) => {
-          // If 409, try once without version to let server resolve latest
-          if (typeof err === 'string' && err.toLowerCase().includes('conflict')) {
-            return await dispatch(updateEventDraft({ eventId: effectiveEventId, eventData: apiData })).unwrap();
-          }
-          throw err;
-        });
-        if (res?.data?.version !== undefined) {
-          dispatch(setVersion(res.data.version));
-        }
-        
-        // Update last saved timestamp
-        dispatch(setLastSaved(new Date().toISOString()));
-        
-      } catch (error) {
-        // Silent fail for periodic auto-save
-      } finally {
-        setIsAutoSaving(false);
-      }
-    }, 30000); // 30 seconds
-    
-    return () => clearInterval(interval);
-  }, [eventId, formEventId, formData, version, dispatch, isPublishing, isAutoSaving]);
+  // Periodic auto-save - DISABLED (only save on manual save or page unload)
+  // Removed periodic auto-save to prevent unwanted draft creation
+  // Drafts are now only created on:
+  // 1. Manual "Save Draft" button click
+  // 2. Page unload (beforeunload event)
 
-  // Auto-save on page unload/refresh
+  // Auto-save on page unload/refresh - ONLY save point (along with manual save)
   useEffect(() => {
     const handleBeforeUnload = async (event) => {
-      if (!formEventId || !formData) return;
+      // Don't save if we're just navigating between steps
+      if (isNavigatingSteps) {
+        return;
+      }
+      
+      if (!formData) return;
       
       const hasBasicData = formData.title || formData.description || formData.dates?.startDate;
       if (!hasBasicData) return;
       
       try {
-        console.log('🚪 [BEFORE UNLOAD] Saving before page unload');
+        // console.log('🚪 [BEFORE UNLOAD] Saving draft before page unload');
         
         // Transform form data to API format
         const apiData = formUtils.transformFormDataToAPI(formData);
         
-        // Use sendBeacon for reliable saving on page unload
-        const blob = new Blob([JSON.stringify(apiData)], { type: 'application/json' });
-        navigator.sendBeacon(`/api/organizer/events/${formEventId}`, blob);
+        // Get API base URL (same logic as api.js)
+        const getApiBaseUrl = () => {
+          if (import.meta.env.VITE_API_URL) {
+            const viteUrl = import.meta.env.VITE_API_URL;
+            if (viteUrl.includes('localhost') && typeof window !== 'undefined') {
+              const currentHostname = window.location.hostname;
+              if (currentHostname !== 'localhost' && currentHostname !== '127.0.0.1') {
+                const urlMatch = viteUrl.match(/:(\d+)/);
+                const port = urlMatch ? urlMatch[1] : '5001';
+                return `http://${currentHostname}:${port}`;
+              }
+            }
+            return viteUrl;
+          }
+          if (import.meta.env.DEV) {
+            const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+            return `http://${hostname}:5001`;
+          }
+          return '';
+        };
         
-        console.log('✅ [BEFORE UNLOAD] Successfully saved');
+        const apiBaseUrl = getApiBaseUrl();
+        
+        // Get auth token from localStorage (matches api.js interceptor)
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          console.warn('⚠️ [BEFORE UNLOAD] No auth token found, skipping save');
+          return;
+        }
+        
+        // If we have an eventId, update existing draft
+        if (formEventId && formEventId !== 'create') {
+          // Use fetch with keepalive for reliable saving on page unload (PATCH request)
+          fetch(`${apiBaseUrl}/api/organizer/events/${formEventId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(apiData),
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            keepalive: true // Critical for beforeunload - ensures request completes even after page closes
+          }).catch(err => console.warn('⚠️ [BEFORE UNLOAD] Failed to update draft:', err));
+          
+          // console.log('✅ [BEFORE UNLOAD] Updated existing draft');
+        } else {
+          // Create new draft if we don't have one yet
+          // Use fetch with keepalive for draft creation
+          fetch(`${apiBaseUrl}/api/organizer/events`, {
+            method: 'POST',
+            body: JSON.stringify(apiData),
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            keepalive: true // Critical for beforeunload
+          }).catch(err => console.warn('⚠️ [BEFORE UNLOAD] Failed to create draft:', err));
+          
+          // console.log('✅ [BEFORE UNLOAD] Created new draft');
+        }
         
       } catch (error) {
         console.warn('⚠️ [BEFORE UNLOAD] Failed to save:', error);
@@ -495,7 +560,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [formEventId, formData]);
+  }, [formEventId, formData, isNavigatingSteps]);
   useEffect(() => {
     return () => {
       // Clear any pending auto-saves
@@ -506,36 +571,11 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     };
   }, []);
 
-  // Auto-save on field blur (enhanced with server-side draft creation)
-  const { blurField } = useSelector(state => state.eventForm);
-  
-  useEffect(() => {
-    if (blurField) {
-      // Check if we need to create a server-side draft for better persistence
-      const hasSignificantData = formData.title?.trim() || 
-                                formData.description?.trim() || 
-                                formData.location?.venueName?.trim() || 
-                                formData.dates?.startDate;
-      
-      if (hasSignificantData && !formEventId) {
-        // Create a session-based draft identifier
-        const sessionDraftKey = `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        // Save to localStorage with session identifier
-        autoSaveForm.save(formData, sessionDraftKey);
-        
-        // Also attempt to create server-side draft for significant data
-        saveDraftToServer(formData, false); // false = auto-save (not manual)
-      } else {
-        // Regular auto-save for existing drafts or complete forms
-        autoSaveForm.save(formData, formEventId);
-      }
-      
-      // Clear the blur field flag
-      dispatch(setBlurField(null));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blurField, formData, formEventId, dispatch]);
+  // Auto-save on field blur - DISABLED (only save on manual save or page unload)
+  // Removed auto-save on blur to prevent unwanted draft creation
+  // Drafts are now only created on:
+  // 1. Manual "Save Draft" button click
+  // 2. Page unload (beforeunload event)
 
   // Enhanced auto-save function that handles server-side draft creation
   const saveDraftToServer = useCallback(async (data, isManual = false) => {
@@ -549,8 +589,9 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       return; // Not enough data to warrant a server-side draft
     }
     
-    // Prevent duplicate saves
-    if (autoSave.isSaving) {
+    // Prevent duplicate saves - critical guard to prevent multiple draft creations
+    if (autoSave.isSaving || isCreatingDraft) {
+      // console.log('⏸️ [SAVE DRAFT] Skipping - already saving or creating draft');
       return;
     }
     
@@ -560,10 +601,13 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       // Transform form data to API format
       const apiData = formUtils.transformFormDataToAPI(data);
       
-      if (formEventId && formEventId !== 'create') {
+      // Get current formEventId from state (not from closure)
+      const currentFormEventId = formEventId;
+      
+      if (currentFormEventId && currentFormEventId !== 'create') {
         // Update existing draft
         const res = await dispatch(updateEventDraft({ 
-          eventId: formEventId, 
+          eventId: currentFormEventId, 
           eventData: apiData, 
           version 
         })).unwrap();
@@ -571,16 +615,20 @@ const EventFormWrapper = ({ children, onSubmit }) => {
           dispatch(setVersion(res.data.version));
         }
       } else {
-        // Create new draft for substantial data
+        // Create new draft for substantial data - ONLY if we don't already have one
+        // console.log('🆕 [SAVE DRAFT] Creating new draft...');
+        setIsCreatingDraft(true);
         const result = await dispatch(createEventDraft(apiData)).unwrap();
         if (result.data?.id) {
           dispatch(setEventId(result.data.id));
           // Update localStorage with the new event ID
           formPersistence.saveFormData(data, result.data.id);
+          // console.log('✅ [SAVE DRAFT] Draft created with ID:', result.data.id);
         }
         if (result?.data?.version !== undefined) {
           dispatch(setVersion(result.data.version));
         }
+        setIsCreatingDraft(false);
       }
       
       dispatch(setLastSaved(new Date().toISOString()));
@@ -593,54 +641,48 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       
     } catch (error) {
       dispatch(setSaving(false));
+      setIsCreatingDraft(false);
+      console.error('❌ [SAVE DRAFT] Error:', error);
       
       // Don't show error toast for auto-saves to avoid spamming user
       if (isManual) {
         toast.error('Failed to save draft');
       }
     }
-  }, [eventId, formEventId, version, formData, dispatch, autoSave.isSaving]);
+  }, [eventId, formEventId, version, dispatch, autoSave.isSaving, isCreatingDraft]);
 
-  // Auto-save function that triggers on step navigation
+  // Auto-save on step change - DISABLED (only save on manual save or page unload)
+  // Removed auto-save on step change to prevent unwanted draft creation
+  // Drafts are now only created on:
+  // 1. Manual "Save Draft" button click
+  // 2. Page unload (beforeunload event)
   const autoSaveOnStepChange = useCallback(async (newStep, previousStep) => {
-    // Use route eventId if we're editing an existing event (prevents creating new draft)
-    const effectiveEventId = (eventId && eventId !== 'create') ? eventId : formEventId;
-    
-    // Only auto-save if we have meaningful data and an event ID
-    if (!effectiveEventId || !formData) return;
-    
-    const hasBasicData = formData.title || formData.description || formData.dates?.startDate;
-    if (!hasBasicData) return;
-    
-    try {
-      // Transform form data to API format
-      const apiData = formUtils.transformFormDataToAPI(formData);
-      
-      // Update the event with current data, handle 409 with a retry (no version)
-      let res = await dispatch(updateEventDraft({ 
-        eventId: effectiveEventId, 
-        eventData: apiData, 
-        version 
-      })).unwrap().catch(async (err) => {
-        if (typeof err === 'string' && err.toLowerCase().includes('conflict')) {
-          // Retry without version to get latest version from server
-          return await dispatch(updateEventDraft({ eventId: effectiveEventId, eventData: apiData })).unwrap();
-        }
-        throw err;
-      });
-      if (res?.data?.version !== undefined) {
-        dispatch(setVersion(res.data.version));
+    // No-op: Auto-save on step change is disabled
+    // Only save to localStorage for recovery, not to server
+    if (formData && Object.keys(formData).length > 0) {
+      // Save to localStorage only for recovery purposes
+      try {
+        const recoveryData = {
+          formData,
+          eventId: formEventId,
+          currentStep: newStep,
+          timestamp: Date.now(),
+          version: version || 0
+        };
+        localStorage.setItem('eventForm_recovery', JSON.stringify(recoveryData));
+      } catch (error) {
+        console.warn('⚠️ [RECOVERY] Failed to save to localStorage:', error);
       }
-      
-      // Update last saved timestamp
-      dispatch(setLastSaved(new Date().toISOString()));
-      
-    } catch (error) {
-      // Don't show error to user for auto-save failures
     }
-  }, [eventId, formEventId, formData, version, dispatch, currentEvent]);
+  }, [formData, formEventId, version]);
 
-  // Enhanced step navigation with auto-save
+  // REMOVED: Automatic draft creation on title entry
+  // Drafts are now ONLY created on:
+  // 1. Manual "Save Draft" button click
+  // 2. Page unload (beforeunload event)
+  // 3. User tries to leave with unsaved changes (handleCancel)
+
+  // Enhanced step navigation (auto-save removed)
   const handleNextStep = async () => {
     // Basic validation for step 1
     if (currentStep === 1) {
@@ -652,10 +694,16 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     }
     
     if (currentStep < totalSteps) {
-      // Auto-save before moving to next step
+      // Mark that we're navigating between steps to prevent beforeunload from firing
+      setIsNavigatingSteps(true);
+      
+      // Save to localStorage only for recovery (not to server)
       autoSaveOnStepChange(currentStep + 1, currentStep);
       
       dispatch(nextStep());
+      
+      // Reset navigation flag after a short delay
+      setTimeout(() => setIsNavigatingSteps(false), 100);
     } else {
       // We're at the last step (Preview), validate and call the parent submit handler
       if (isPublishing) {
@@ -666,7 +714,7 @@ const EventFormWrapper = ({ children, onSubmit }) => {
       const finalValidation = validateForm(formData);
       
       if (!finalValidation.isValid) {
-        console.log('❌ [FINAL STEP] Validation failed:', finalValidation.errors);
+        // console.log('❌ [FINAL STEP] Validation failed:', finalValidation.errors);
         
         // Determine the first step that has blocking errors and navigate there
         const errors = finalValidation.errors || {};
@@ -726,20 +774,32 @@ const EventFormWrapper = ({ children, onSubmit }) => {
 
   const handlePreviousStep = () => {
     if (currentStep > 1) {
+      // Mark that we're navigating between steps to prevent beforeunload from firing
+      setIsNavigatingSteps(true);
+      
       // Auto-save before moving to previous step
       autoSaveOnStepChange(currentStep - 1, currentStep);
       
       dispatch(previousStep());
+      
+      // Reset navigation flag after a short delay
+      setTimeout(() => setIsNavigatingSteps(false), 100);
     }
   };
 
   const handleStepClick = (step) => {
     // Only allow navigation to completed steps or current step
     if (step <= currentStep) {
+      // Mark that we're navigating between steps to prevent beforeunload from firing
+      setIsNavigatingSteps(true);
+      
       // Auto-save before changing steps
       autoSaveOnStepChange(step, currentStep);
       
       dispatch(setCurrentStep(step));
+      
+      // Reset navigation flag after a short delay
+      setTimeout(() => setIsNavigatingSteps(false), 100);
     }
   };
 
@@ -765,26 +825,40 @@ const EventFormWrapper = ({ children, onSubmit }) => {
     }
   };
 
-  const handleCancel = () => {
-    if (isDirty) {
-      // Show recovery modal for unsaved changes
-      setRecoveryModal({
-        isOpen: true,
-        type: 'recovery',
-        lastSavedTime: autoSave.lastSaved,
-        onRecover: () => {
-          // Stay on the form
-          setRecoveryModal(prev => ({ ...prev, isOpen: false }));
-        },
-        onDiscard: () => {
-          // Navigate away
-          navigate('/organizer');
-          setRecoveryModal(prev => ({ ...prev, isOpen: false }));
+  const handleCancel = async () => {
+    // Check if there are unsaved changes
+    const hasBasicData = formData.title || formData.description || formData.dates?.startDate;
+    
+    if (hasBasicData && !formEventId) {
+      // User has unsaved changes and no draft exists - offer to save
+      const shouldSave = window.confirm(
+        'You have unsaved changes. Would you like to save them as a draft before leaving?'
+      );
+      
+      if (shouldSave) {
+        try {
+          setIsCreatingDraft(true);
+          // Create a draft before leaving
+          const apiData = formUtils.transformFormDataToAPI(formData);
+          const result = await dispatch(createEventDraft(apiData)).unwrap();
+          
+          if (result.data?.id) {
+            dispatch(setEventId(result.data.id));
+            toast.success('Draft saved successfully');
+          }
+        } catch (error) {
+          console.warn('⚠️ [CANCEL] Failed to save draft:', error);
+          toast.error('Failed to save draft. Your changes may be lost.');
+        } finally {
+          setIsCreatingDraft(false);
         }
-      });
-      return;
+      }
+    } else if (hasBasicData && formEventId) {
+      // User has unsaved changes but draft exists - just navigate (beforeunload will save)
+      // No need to do anything here
     }
     
+    // Navigate away
     navigate('/organizer');
   };
 

@@ -30,9 +30,15 @@ export default function QRModal({ isOpen, onClose, ticketId, onIssue, qrData, is
           <div className="font-semibold text-lg">Your Ticket QR</div>
           <button onClick={onClose} className="text-white/60 hover:text-white transition-colors">✕</button>
         </div>
-        <div className="mt-4 flex items-center justify-center bg-white rounded-xl p-4">
+        <div className="mt-4 flex items-center justify-center bg-white rounded-xl p-6">
           {qrData?.qr ? (
-            <QRCode value={qrData.qr} size={220} />
+            <QRCode 
+              value={qrData.qr} 
+              size={280}
+              level="M"
+              fgColor="#000000"
+              bgColor="#FFFFFF"
+            />
           ) : (
             <div className="text-gray-600 text-sm">{issuing ? 'Generating QR…' : (error?.error || 'No QR yet')}</div>
           )}

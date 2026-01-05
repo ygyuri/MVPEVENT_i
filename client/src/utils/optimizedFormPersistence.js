@@ -33,11 +33,18 @@ class OptimizedFormPersistence {
   }
 
   // Smart API save (only when meaningful changes)
+  // DISABLED: API saves are now only allowed for manual saves or beforeunload
   async saveToAPI(formData, eventId, dispatch, apiActions, options = {}) {
+    // Only allow API saves if explicitly forced (manual save or beforeunload)
+    if (!options.force && !options.isManual) {
+      console.log('⏸️ [OPTIMIZED PERSISTENCE] Skipping API save - only allowed for manual saves or beforeunload');
+      return { skipped: true, reason: 'auto_save_disabled' };
+    }
+    
     const now = Date.now();
     
-    // Check cooldown
-    if (now - this.lastApiSave < this.apiSaveCooldown && !options.force) {
+    // Check cooldown (only for non-forced saves)
+    if (!options.force && now - this.lastApiSave < this.apiSaveCooldown) {
       return { skipped: true, reason: 'cooldown' };
     }
 
@@ -79,15 +86,17 @@ class OptimizedFormPersistence {
   }
 
   // Optimized field update - Redux first, then smart persistence
+  // DISABLED: API saves are now only allowed for manual saves or beforeunload
   async updateField(dispatch, updateFormData, field, value, step, formData, eventId, apiActions, options = {}) {
     // 1. Immediate Redux update (fastest)
     this.updateReduxField(dispatch, updateFormData, field, value, step);
 
-    // 2. Fast localStorage save (debounced)
+    // 2. Fast localStorage save (debounced) - this is safe and doesn't create drafts
     this.saveToLocalStorage(formData, eventId);
 
-    // 3. Smart API save (only when appropriate)
-    if (options.immediateApiSave || this.shouldTriggerApiSave(field, value, formData)) {
+    // 3. API save - ONLY if explicitly forced (manual save or beforeunload)
+    // NEVER create drafts while typing
+    if (options.force || options.isManual) {
       try {
         return await this.saveToAPI(formData, eventId, dispatch, apiActions, options);
       } catch (error) {
@@ -95,52 +104,19 @@ class OptimizedFormPersistence {
         console.warn('API save failed, but localStorage saved:', error);
       }
     }
-    return { skipped: true };
+    
+    // Always skip API save for regular field updates
+    return { skipped: true, reason: 'auto_save_disabled' };
   }
 
   // Determine if API save should be triggered
+  // DISABLED: API saves are now only allowed for manual saves or beforeunload
+  // This prevents creating drafts while typing
   shouldTriggerApiSave(field, value, formData) {
-    // Always save for these critical fields
-    const criticalFields = ['title', 'description', 'dates.startDate', 'dates.endDate'];
-    if (criticalFields.includes(field)) {
-      return true;
-    }
-
-    // Save if we have a complete basic info set
-    if (formData.title && formData.description && formData.dates?.startDate) {
-      return true;
-    }
-
-    // Save for location completion
-    if (field.startsWith('location.') && formData.location?.venueName && formData.location?.city) {
-      return true;
-    }
-
-    // Save for pricing completion
-    if (field.startsWith('pricing.') || field === 'capacity') {
-      return true;
-    }
-
-    // Save for ticket types
-    if (field.startsWith('ticketTypes.')) {
-      return true;
-    }
-
-    // Save for media
-    if (field.startsWith('media.')) {
-      return true;
-    }
-
-    // Save for recurrence
-    if (field.startsWith('recurrence.')) {
-      return true;
-    }
-
-    // Save for tags
-    if (field === 'tags') {
-      return true;
-    }
-
+    // NEVER trigger API save automatically - only for manual saves or beforeunload
+    // Drafts should only be created when:
+    // 1. User clicks "Save Draft" button
+    // 2. User leaves the page (beforeunload event)
     return false;
   }
 

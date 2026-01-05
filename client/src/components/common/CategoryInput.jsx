@@ -100,8 +100,45 @@ const CategoryInput = ({
         setInputValue(category.name);
         setSelectedCategory(category);
       }
+    } else if (!value) {
+      // Clear selection when value is cleared
+      setInputValue("");
+      setSelectedCategory(null);
     }
   }, [value, categories]);
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [isOpen]);
+
+  // Filter categories based on input
+  const filteredCategories = React.useMemo(() => {
+    if (!inputValue.trim()) {
+      return categories; // Show all categories when input is empty
+    }
+    
+    const searchTerm = inputValue.toLowerCase().trim();
+    return categories.filter(cat => 
+      cat.name.toLowerCase().includes(searchTerm)
+    );
+  }, [inputValue, categories]);
 
   // Handle input change
   const handleInputChange = (e) => {
@@ -112,8 +149,8 @@ const CategoryInput = ({
     // Clear previous warnings
     setDuplicateWarning("");
 
-    // Show dropdown if there's input
-    setIsOpen(newValue.length > 0);
+    // Always show dropdown when typing
+    setIsOpen(true);
   };
 
   // Handle category selection
@@ -198,9 +235,12 @@ const CategoryInput = ({
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (suggestions.length > 0) {
+      // First check filtered categories
+      if (filteredCategories.length > 0 && !duplicateWarning) {
+        handleCategorySelect(filteredCategories[0]);
+      } else if (suggestions.length > 0) {
         handleCategorySelect(suggestions[0]);
-      } else if (showCreateOption && !duplicateWarning) {
+      } else if (showCreateOption && !duplicateWarning && inputValue.trim().length >= 2) {
         handleCreateCategory();
       }
     } else if (e.key === "Escape") {
@@ -219,7 +259,7 @@ const CategoryInput = ({
           onChange={handleInputChange}
           onBlur={handleInputBlur}
           onKeyDown={handleKeyDown}
-          onFocus={() => setIsOpen(inputValue.length > 0)}
+          onFocus={() => setIsOpen(true)}
           placeholder="Type to search or create a category..."
           className={`
             input-modern w-full pr-20
@@ -253,17 +293,56 @@ const CategoryInput = ({
         >
           {/* Duplicate warning */}
           {duplicateWarning && (
-            <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+            <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-red-900/20">
               <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
                 <AlertCircle className="w-4 h-4" />
-                <span className="text-sm">{duplicateWarning}</span>
+                <span className="text-sm font-medium">{duplicateWarning}</span>
               </div>
+              <p className="text-xs text-red-500 dark:text-red-400 mt-1">
+                Please select an existing category or choose a different name.
+              </p>
             </div>
           )}
 
-          {/* Suggestions */}
-          {suggestions.length > 0 && (
+          {/* Existing Categories */}
+          {filteredCategories.length > 0 && !duplicateWarning && (
             <div className="p-1">
+              <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-200 dark:border-gray-700">
+                {inputValue.trim() ? 'Matching Categories' : 'All Categories'}
+              </div>
+              {filteredCategories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => handleCategorySelect(category)}
+                  className={`w-full px-3 py-2.5 text-left hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md flex items-center gap-3 transition-colors ${
+                    selectedCategory?.id === category.id 
+                      ? 'bg-blue-50 dark:bg-blue-900/20' 
+                      : ''
+                  }`}
+                >
+                  <div 
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: category.color || '#3B82F6' }}
+                  />
+                  <span className="text-sm text-gray-900 dark:text-gray-100 flex-1">
+                    {category.name}
+                  </span>
+                  {category.eventCount > 0 && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {category.eventCount} events
+                    </span>
+                  )}
+                  {selectedCategory?.id === category.id && (
+                    <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Similar matches from duplicate check */}
+          {suggestions.length > 0 && (
+            <div className="p-1 border-t border-gray-200 dark:border-gray-700">
               <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Similar Categories
               </div>
@@ -271,44 +350,86 @@ const CategoryInput = ({
                 <button
                   key={category.id}
                   onClick={() => handleCategorySelect(category)}
-                  className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-2"
+                  className="w-full px-3 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-3 transition-colors"
                 >
-                  <Tag className="w-4 h-4 text-gray-400" />
-                  <span className="text-sm">{category.name}</span>
+                  <div 
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: category.color || '#3B82F6' }}
+                  />
+                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                    {category.name}
+                  </span>
                 </button>
               ))}
             </div>
           )}
 
           {/* Create new option */}
-          {showCreateOption && !duplicateWarning && (
-            <div className="p-1 border-t border-gray-200 dark:border-gray-700">
+          {showCreateOption && !duplicateWarning && inputValue.trim().length >= 2 && (
+            <div className="p-1 border-t border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/10">
               <button
                 onClick={handleCreateCategory}
-                disabled={isCreating}
-                className="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md flex items-center gap-2 disabled:opacity-50"
+                disabled={isCreating || !inputValue.trim()}
+                className="w-full px-3 py-2.5 text-left hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-md flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isCreating ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                    <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                      Creating "{inputValue.trim()}"...
+                    </span>
+                  </>
                 ) : (
-                  <Plus className="w-4 h-4 text-blue-500" />
+                  <>
+                    <Plus className="w-4 h-4 text-blue-500" />
+                    <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                      Create new category: "{inputValue.trim()}"
+                    </span>
+                  </>
                 )}
-                <span className="text-sm text-blue-600 dark:text-blue-400">
-                  {isCreating ? "Creating..." : `Create "${inputValue}"`}
-                </span>
               </button>
             </div>
           )}
 
-          {/* No results */}
-          {!showCreateOption &&
-            suggestions.length === 0 &&
-            inputValue.length >= 2 &&
-            !isChecking && (
-              <div className="p-3 text-center text-gray-500 dark:text-gray-400 text-sm">
-                No categories found
-              </div>
-            )}
+          {/* No results message */}
+          {filteredCategories.length === 0 && 
+           suggestions.length === 0 && 
+           inputValue.trim().length >= 2 && 
+           !isChecking && 
+           !duplicateWarning && (
+            <div className="p-4 text-center">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                No categories found matching "{inputValue}"
+              </p>
+              {inputValue.trim().length >= 2 && (
+                <button
+                  onClick={handleCreateCategory}
+                  disabled={isCreating}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-50"
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Create "{inputValue.trim()}"
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Empty state - show when input is empty */}
+          {!inputValue.trim() && filteredCategories.length === 0 && categories.length === 0 && (
+            <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+              <Tag className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p>No categories available. Start typing to create one.</p>
+            </div>
+          )}
         </div>
       )}
 

@@ -14,7 +14,6 @@ import {
   CheckCircle,
   Clock,
   ShoppingBag,
-  Ticket,
   DollarSign,
   ArrowUp,
   ArrowDown,
@@ -84,6 +83,7 @@ const AdminDashboard = () => {
       setSendingReminders({ ...sendingReminders, [orderId]: false });
     }
   };
+
 
   if (loading) {
     return (
@@ -263,9 +263,11 @@ const AdminDashboard = () => {
               Welcome back, {user?.name || user?.email}. Manage your platform.
             </p>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] rounded-lg">
-            <CheckCircle className="w-5 h-5 text-white" />
-            <span className="text-white font-semibold">Admin</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] rounded-lg">
+              <CheckCircle className="w-5 h-5 text-white" />
+              <span className="text-white font-semibold">Admin</span>
+            </div>
           </div>
         </div>
       </motion.div>
