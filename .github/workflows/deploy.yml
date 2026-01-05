@@ -325,8 +325,19 @@ jobs:
                 fi
                 
                 # Copy the certificate (renewed or existing)
-                sudo cp "$CERT_PATH" /root/MVPEVENT_i/nginx/ssl/cert.pem
-                sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem
+                if [ -f "$CERT_PATH" ] && [ -f "/etc/letsencrypt/live/event-i.co.ke/privkey.pem" ]; then
+                  sudo cp "$CERT_PATH" /root/MVPEVENT_i/nginx/ssl/cert.pem
+                  sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem
+                else
+                  echo "⚠️ Certificate files not found, will create self-signed certificate"
+                  sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+                    -keyout /root/MVPEVENT_i/nginx/ssl/key.pem \
+                    -out /root/MVPEVENT_i/nginx/ssl/cert.pem \
+                    -subj "/C=KE/ST=Kenya/L=Nairobi/O=Event-i/CN=event-i.co.ke" || {
+                    echo "❌ Failed to create self-signed certificate"
+                    exit 1
+                  }
+                fi
               fi
             else
               echo "📝 No existing certificates, generating new ones..."
@@ -375,14 +386,32 @@ jobs:
             cd /root/MVPEVENT_i
             sudo docker compose -f docker-compose.prod.yml down --remove-orphans || true
             echo "🔨 Building Docker images (this may take several minutes)..."
-            timeout 1800 sudo docker compose -f docker-compose.prod.yml build --no-cache --pull || {
+            BUILD_SUCCESS=false
+            timeout 1800 sudo docker compose -f docker-compose.prod.yml build --no-cache --pull && BUILD_SUCCESS=true || {
               echo "⚠️ Build timed out or failed, trying without --pull..."
-              timeout 1800 sudo docker compose -f docker-compose.prod.yml build --no-cache || {
+              timeout 1800 sudo docker compose -f docker-compose.prod.yml build --no-cache && BUILD_SUCCESS=true || {
                 echo "⚠️ Build failed, trying with cache..."
-                sudo docker compose -f docker-compose.prod.yml build
+                sudo docker compose -f docker-compose.prod.yml build && BUILD_SUCCESS=true || {
+                  echo "❌ All build attempts failed"
+                  BUILD_SUCCESS=false
+                }
               }
             }
-            sudo docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
+            
+            if [ "$BUILD_SUCCESS" = false ]; then
+              echo "❌ Docker build failed after all attempts"
+              exit 1
+            fi
+            
+            echo "🚀 Starting containers..."
+            sudo docker compose -f docker-compose.prod.yml up -d --force-recreate --remove-orphans || {
+              echo "❌ Failed to start containers"
+              echo "📋 Checking container status..."
+              sudo docker compose -f docker-compose.prod.yml ps
+              echo "📋 Recent logs:"
+              sudo docker compose -f docker-compose.prod.yml logs --tail=50
+              exit 1
+            }
             
             # Wait and verify
             echo "⏳ Waiting for services to start..."
@@ -391,7 +420,26 @@ jobs:
             echo "📋 Container Status:"
             sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps
             
-            echo "✅ Deployment completed successfully!"
+            # Verify all containers are running
+            if sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps | grep -q "Up"; then
+              echo "✅ Containers are running"
+              # Check for any exited containers
+              EXITED_COUNT=$(sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps | grep -c "Exited" || echo "0")
+              if [ "$EXITED_COUNT" -gt 0 ]; then
+                echo "⚠️ Some containers have exited ($EXITED_COUNT)"
+                echo "📋 Container logs:"
+                sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs --tail=50
+                echo "⚠️ Deployment completed with warnings - some containers may not be running"
+              else
+                echo "✅ All containers are running successfully"
+                echo "✅ Deployment completed successfully!"
+              fi
+            else
+              echo "❌ No containers are running"
+              echo "📋 Container logs:"
+              sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs --tail=50
+              exit 1
+            fi
             DEPLOYMENT_SCRIPT
             
             chmod +x /tmp/deploy.sh
