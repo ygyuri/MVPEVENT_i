@@ -308,9 +308,13 @@ jobs:
                 sudo systemctl stop nginx 2>/dev/null || true
                 sudo pkill -f nginx 2>/dev/null || true
                 
-                # Kill any process using port 80
-                sudo lsof -ti:80 | xargs sudo kill -9 2>/dev/null || true
-                sleep 3
+                # Kill any process using port 80 (only if something is using it)
+                PORT80_PIDS=$(sudo lsof -ti:80 2>/dev/null || echo "")
+                if [ ! -z "$PORT80_PIDS" ]; then
+                  echo "$PORT80_PIDS" | xargs sudo kill -9 2>/dev/null || true
+                  sleep 2
+                fi
+                sleep 1
                 
                 # Verify port 80 is free
                 if sudo lsof -i:80 > /dev/null 2>&1; then
@@ -325,18 +329,21 @@ jobs:
                 fi
                 
                 # Copy the certificate (renewed or existing)
+                sudo mkdir -p /root/MVPEVENT_i/nginx/ssl
                 if [ -f "$CERT_PATH" ] && [ -f "/etc/letsencrypt/live/event-i.co.ke/privkey.pem" ]; then
                   sudo cp "$CERT_PATH" /root/MVPEVENT_i/nginx/ssl/cert.pem
                   sudo cp /etc/letsencrypt/live/event-i.co.ke/privkey.pem /root/MVPEVENT_i/nginx/ssl/key.pem
+                  echo "✅ Certificate files copied successfully"
                 else
                   echo "⚠️ Certificate files not found, will create self-signed certificate"
                   sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
                     -keyout /root/MVPEVENT_i/nginx/ssl/key.pem \
                     -out /root/MVPEVENT_i/nginx/ssl/cert.pem \
-                    -subj "/C=KE/ST=Kenya/L=Nairobi/O=Event-i/CN=event-i.co.ke" || {
+                    -subj "/C=KE/ST=Kenya/L=Nairobi/O=Event-i/CN=event-i.co.ke" 2>&1 || {
                     echo "❌ Failed to create self-signed certificate"
                     exit 1
                   }
+                  echo "✅ Self-signed certificate created"
                 fi
               fi
             else
