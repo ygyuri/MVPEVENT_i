@@ -363,8 +363,8 @@ router.post(
         customer: {
           userId: user._id,
           email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
+          firstName: firstName, // Use form data, not database value
+          lastName: lastName,   // Use form data, not database value
           name: fullName, // Add full name field
           phone,
         },
