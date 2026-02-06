@@ -28,9 +28,11 @@ MVPEVENT_i/
 │   ├── nginx.staging.conf     # Staging Nginx config
 │   ├── nginx.uat.conf         # UAT Nginx config
 │   └── generate-ssl.sh        # SSL certificate generator
-├── deploy-staging.sh          # Staging deployment script
-├── deploy-uat.sh             # UAT deployment script
-├── deploy-production.sh      # Production deployment script
+├── scripts/
+│   ├── deploy-staging.sh      # Staging deployment script
+│   ├── deploy-uat.sh          # UAT deployment script
+│   ├── deploy-production.sh   # Production deployment script
+│   └── start-docker.sh        # Development Docker startup
 └── Makefile                  # Environment management commands
 ```
 
@@ -43,7 +45,7 @@ make dev
 
 # Or manually
 make setup-env-dev
-./start-docker.sh
+./scripts/start-docker.sh
 ```
 
 ### 2. Staging Environment
@@ -53,7 +55,7 @@ make staging
 
 # Or manually
 make setup-env-staging
-./deploy-staging.sh
+./scripts/deploy-staging.sh
 ```
 
 ### 3. UAT Environment
@@ -63,7 +65,7 @@ make uat
 
 # Or manually
 make setup-env-uat
-./deploy-uat.sh
+./scripts/deploy-uat.sh
 ```
 
 ### 4. Production Environment
@@ -73,7 +75,7 @@ make prod
 
 # Or manually
 make setup-env-prod
-./deploy-production.sh
+./scripts/deploy-production.sh
 ```
 
 ## ⚙️ Environment Configuration
@@ -234,7 +236,7 @@ make dev
 
 # Manual
 make setup-env-dev
-./start-docker.sh
+./scripts/start-docker.sh
 ```
 
 ### 2. Staging Deployment
@@ -245,7 +247,7 @@ make staging
 # Manual
 make setup-env-staging
 # Edit .env.staging with staging configuration
-./deploy-staging.sh
+./scripts/deploy-staging.sh
 ```
 
 ### 3. UAT Deployment
@@ -256,7 +258,7 @@ make uat
 # Manual
 make setup-env-uat
 # Edit .env.uat with UAT configuration
-./deploy-uat.sh
+./scripts/deploy-uat.sh
 ```
 
 ### 4. Production Deployment
@@ -267,7 +269,7 @@ make prod
 # Manual
 make setup-env-prod
 # Edit .env.production with production configuration
-./deploy-production.sh
+./scripts/deploy-production.sh
 ```
 
 ## 🔒 Security Considerations

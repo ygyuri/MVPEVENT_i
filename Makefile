@@ -74,7 +74,7 @@ setup-env-prod: ## Create .env.production from example
 # Development environment
 dev: setup-env-dev ## Start development environment
 	@echo "🐳 Starting Event-i Development Environment..."
-	@./start-docker.sh
+	@./scripts/start-docker.sh
 
 # Staging environment
 staging: setup-env-staging ## Start staging environment
@@ -89,7 +89,7 @@ uat: setup-env-uat ## Start UAT environment
 # Production environment
 prod: setup-env-prod ## Start production environment
 	@echo "🐳 Starting Event-i Production Environment..."
-	@./start-event-i-local.sh start
+	@./scripts/start-event-i-local.sh start
 
 # Start containers
 up: setup-env ## Start all containers
@@ -186,7 +186,7 @@ clean-prod: ## Clean up production containers and volumes
 # Testing
 test: ## Test Event-i connections
 	@echo "🔍 Testing Event-i connections..."
-	@./start-event-i-local.sh test
+	@./scripts/start-event-i-local.sh test
 
 # Quick commands
 start: dev ## Alias for dev

@@ -40,13 +40,13 @@ npm run domain:setup
 
 ```bash
 # Start development environment
-./start-docker.sh
+./scripts/start-docker.sh
 
 # Start production environment
-./start-event-i-local.sh start
+./scripts/start-event-i-local.sh start
 
 # Setup domain
-./setup-local-domain.sh add
+./scripts/setup-local-domain.sh add
 ```
 
 ## 🔧 How It Works
@@ -102,11 +102,11 @@ npm run domain:test     # Test domain
 ### Direct Scripts
 
 ```bash
-./start-docker.sh              # Start development
-./start-event-i-local.sh start # Start production
-./setup-local-domain.sh add    # Add domain
-./setup-local-domain.sh remove # Remove domain
-./setup-local-domain.sh status # Check domain
+./scripts/start-docker.sh              # Start development
+./scripts/start-event-i-local.sh start # Start production
+./scripts/setup-local-domain.sh add    # Add domain
+./scripts/setup-local-domain.sh remove # Remove domain
+./scripts/setup-local-domain.sh status # Check domain
 ```
 
 ## 🌐 Access URLs
@@ -177,14 +177,15 @@ ls -la *.sh
 Event-i/
 ├── Makefile                    # Main command interface
 ├── package.json               # NPM scripts
-├── start-docker.sh            # Development startup
-├── start-event-i-local.sh     # Production startup
-├── setup-local-domain.sh      # Domain management
-├── docker-entrypoint.sh       # Container entrypoint
 ├── docker-compose.yml         # Development compose
 ├── docker-compose.prod.yml    # Production compose
-├── docker-compose.override.yml # Override for local domain
-└── AUTOMATED_DOCKER_SETUP.md  # This documentation
+├── scripts/
+│   ├── start-docker.sh        # Development startup
+│   ├── start-event-i-local.sh # Production startup
+│   └── setup-local-domain.sh  # Domain management
+└── docs/
+    └── guides/
+        └── AUTOMATED_DOCKER_SETUP.md  # This documentation
 ```
 
 ## 🔒 Security Features
@@ -293,7 +294,7 @@ NGINX_HTTPS_PORT=443
 
 - [LOCAL_DOMAIN_SETUP.md](./LOCAL_DOMAIN_SETUP.md) - Detailed domain setup guide
 - [NGINX_DEPLOYMENT_GUIDE.md](./NGINX_DEPLOYMENT_GUIDE.md) - Nginx configuration
-- [README.md](./README.md) - Main project documentation
+- [README.md](../../README.md) - Main project documentation
 
 ## 🆘 Support
 

@@ -18,6 +18,7 @@ import {
   ArrowUp,
   ArrowDown,
   Mail,
+  Ticket,
 } from "lucide-react";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";

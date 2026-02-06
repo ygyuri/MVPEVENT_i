@@ -37,16 +37,16 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
       Order.countDocuments({}),
       Ticket.countDocuments({}),
       Order.countDocuments({
-        status: "completed",
+        status: { $in: ["completed", "paid"] },
         paymentStatus: { $in: ["paid", "completed"] }
       }),
       Order.countDocuments({ status: "pending" }),
-      // Calculate total revenue from completed orders
+      // Calculate total revenue from completed/paid orders
       Order.aggregate([
         {
           $match: {
-            status: "completed",
-            paymentStatus: "paid",
+            status: { $in: ["completed", "paid"] },
+            paymentStatus: { $in: ["paid", "completed"] },
           },
         },
         {
@@ -109,8 +109,8 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
     const recentRevenue = await Order.aggregate([
       {
         $match: {
-          status: "completed",
-          paymentStatus: "paid",
+          status: { $in: ["completed", "paid"] },
+          paymentStatus: { $in: ["paid", "completed"] },
           createdAt: { $gte: thirtyDaysAgo },
         },
       },
@@ -383,8 +383,8 @@ router.get("/orders", verifyToken, requireRole("admin"), async (req, res) => {
 
     // If no status filter or "all", only count completed/paid orders for revenue
     if (!status || status === "all") {
-      revenueQuery.status = "completed";
-      revenueQuery.paymentStatus = "paid";
+      revenueQuery.status = { $in: ["completed", "paid"] };
+      revenueQuery.paymentStatus = { $in: ["paid", "completed"] };
     } else {
       // If status filter is provided, use that status for revenue calculation
       revenueQuery.status = status;
@@ -487,16 +487,16 @@ router.get("/events", verifyToken, requireRole("admin"), async (req, res) => {
         const [ordersCount, ticketsCount, revenueData] = await Promise.all([
           Order.countDocuments({
             "items.eventId": event._id,
-            status: "completed",
-            paymentStatus: "paid",
+            status: { $in: ["completed", "paid"] },
+            paymentStatus: { $in: ["paid", "completed"] },
           }),
           Ticket.countDocuments({ eventId: event._id }),
           Order.aggregate([
             {
               $match: {
                 "items.eventId": event._id,
-                status: "completed",
-                paymentStatus: "paid",
+                status: { $in: ["completed", "paid"] },
+                paymentStatus: { $in: ["paid", "completed"] },
               },
             },
             {

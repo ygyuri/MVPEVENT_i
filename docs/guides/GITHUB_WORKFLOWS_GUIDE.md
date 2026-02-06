@@ -286,7 +286,7 @@ npm run docker:status
 
 ```bash
 # Deploy to production
-./deploy-production.sh
+./scripts/deploy-production.sh
 
 # Check production status
 docker compose -f docker-compose.prod.yml ps

@@ -8,7 +8,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: password123
       MONGO_INITDB_DATABASE: event_i
     ports:
-      - "${MONGODB_PORT:-27017}:27017"
+      - "${MONGODB_PORT:-27018}:27017"
     volumes:
       - mongodb_data:/data/db
       - ./server/scripts/seed.js:/docker-entrypoint-initdb.d/seed.js:ro

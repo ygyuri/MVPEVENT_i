@@ -356,7 +356,7 @@ router.get(
               {
                 $match: {
                   "items.eventId": { $in: eventIds },
-                  status: "completed",
+                  status: { $in: ["completed", "paid"] },
                   paymentStatus: { $in: ["paid", "completed"] },
                 },
               },
@@ -394,7 +394,7 @@ router.get(
                 {
                   $match: {
                     "items.eventId": { $in: eventIds },
-                    status: "completed",
+                    status: { $in: ["completed", "paid"] },
                     paymentStatus: { $in: ["paid", "completed"] },
                     createdAt: { $gte: startOfMonth },
                   },
