@@ -81,16 +81,12 @@ const OrganizerDashboard = () => {
       return;
     }
 
-    // Check if overview is already loaded
-    if (!overview || Object.keys(overview).length === 0) {
-      dispatch(getOrganizerOverview());
-    }
+    // Always fetch fresh overview stats on mount
+    dispatch(getOrganizerOverview());
 
-    // Check if events are already loaded
-    if (!events || events.length === 0) {
-      dispatch(fetchMyEvents({ page: 1, pageSize: 6 }));
-    }
-  }, [dispatch, isAuthenticated, user, authLoading, overview, events]);
+    // Always fetch events on mount
+    dispatch(fetchMyEvents({ page: 1, pageSize: 6 }));
+  }, [dispatch, isAuthenticated, user, authLoading, isImpersonating]);
 
   // Show loading state while authentication is in progress
   if (authLoading || !isAuthenticated) {
