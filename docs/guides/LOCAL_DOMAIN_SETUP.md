@@ -8,26 +8,26 @@ This guide explains how to use the custom domain `event-i.co.ke` for local devel
 
 ```bash
 # Add event-i.co.ke to hosts file
-./setup-local-domain.sh add
+./scripts/setup-local-domain.sh add
 
 # Check status
-./setup-local-domain.sh status
+./scripts/setup-local-domain.sh status
 
 # Test domain resolution
-./setup-local-domain.sh test
+./scripts/setup-local-domain.sh test
 ```
 
 ### 2. Start Event-i
 
 ```bash
 # Start Event-i with local domain support
-./start-event-i-local.sh start
+./scripts/start-event-i-local.sh start
 
 # Check status
-./start-event-i-local.sh status
+./scripts/start-event-i-local.sh status
 
 # Test connections
-./start-event-i-local.sh test
+./scripts/start-event-i-local.sh test
 ```
 
 ## Scripts Overview
@@ -47,10 +47,10 @@ Manages the `event-i.co.ke` domain entry in `/etc/hosts`.
 **Examples:**
 
 ```bash
-./setup-local-domain.sh add      # Add domain
-./setup-local-domain.sh status   # Check status
-./setup-local-domain.sh test     # Test connection
-./setup-local-domain.sh remove   # Remove domain
+./scripts/setup-local-domain.sh add      # Add domain
+./scripts/setup-local-domain.sh status   # Check status
+./scripts/setup-local-domain.sh test     # Test connection
+./scripts/setup-local-domain.sh remove   # Remove domain
 ```
 
 ### `start-event-i-local.sh`
@@ -70,10 +70,10 @@ Manages Event-i Docker containers with local domain support.
 **Examples:**
 
 ```bash
-./start-event-i-local.sh start    # Start Event-i
-./start-event-i-local.sh status   # Check status
-./start-event-i-local.sh test    # Test connections
-./start-event-i-local.sh stop    # Stop containers
+./scripts/start-event-i-local.sh start    # Start Event-i
+./scripts/start-event-i-local.sh status   # Check status
+./scripts/start-event-i-local.sh test    # Test connections
+./scripts/start-event-i-local.sh stop    # Stop containers
 ```
 
 ## Access URLs
@@ -161,7 +161,7 @@ The `SUDO_PASSWORD` environment variable controls the sudo password used by the 
 export SUDO_PASSWORD="your-password"
 
 # Or use inline
-SUDO_PASSWORD="your-password" ./setup-local-domain.sh add
+SUDO_PASSWORD="your-password" ./scripts/setup-local-domain.sh add
 ```
 
 ## Troubleshooting
@@ -193,13 +193,13 @@ cd nginx && ./generate-ssl.sh
 
 ```bash
 # Check container status
-./start-event-i-local.sh status
+./scripts/start-event-i-local.sh status
 
 # View container logs
-./start-event-i-local.sh logs
+./scripts/start-event-i-local.sh logs
 
 # Restart containers
-./start-event-i-local.sh restart
+./scripts/start-event-i-local.sh restart
 ```
 
 ## Security Notes
@@ -269,14 +269,16 @@ For mobile devices, you can add the domain to their hosts file:
 
 ```
 Event-i/
-├── setup-local-domain.sh      # Domain management script
-├── start-event-i-local.sh      # Container management script
-├── LOCAL_DOMAIN_SETUP.md      # This documentation
+├── scripts/
+│   ├── setup-local-domain.sh  # Domain management script
+│   └── start-event-i-local.sh # Container management script
+├── docs/guides/
+│   └── LOCAL_DOMAIN_SETUP.md  # This documentation
 ├── nginx/
 │   ├── nginx.conf             # Nginx configuration
 │   ├── generate-ssl.sh        # SSL certificate generation
 │   └── ssl/                   # SSL certificates
-│       ├── cert.pem          # Certificate
+│       ├── cert.pem           # Certificate
 │       └── key.pem            # Private key
 └── docker-compose.prod.yml    # Production Docker configuration
 ```
@@ -288,27 +290,27 @@ If you encounter issues:
 1. **Check Script Help:**
 
    ```bash
-   ./setup-local-domain.sh help
-   ./start-event-i-local.sh help
+   ./scripts/setup-local-domain.sh help
+   ./scripts/start-event-i-local.sh help
    ```
 
 2. **Verify Configuration:**
 
    ```bash
-   ./setup-local-domain.sh status
-   ./start-event-i-local.sh status
+   ./scripts/setup-local-domain.sh status
+   ./scripts/start-event-i-local.sh status
    ```
 
 3. **Test Connections:**
 
    ```bash
-   ./setup-local-domain.sh test
-   ./start-event-i-local.sh test
+   ./scripts/setup-local-domain.sh test
+   ./scripts/start-event-i-local.sh test
    ```
 
 4. **View Logs:**
    ```bash
-   ./start-event-i-local.sh logs
+   ./scripts/start-event-i-local.sh logs
    ```
 
 The scripts are designed to be safe and create backups of your hosts file before making changes.

@@ -82,7 +82,7 @@ cp env.production.example .env.production
 # Edit .env.production with your production values
 
 # 3. Deploy to production
-./deploy-production.sh
+./scripts/deploy-production.sh
 
 # 4. When prompted:
 # - Create backup? (Y/n): Y
@@ -211,7 +211,7 @@ docker-compose down
 
 ```bash
 # Deploy to production
-./deploy-production.sh
+./scripts/deploy-production.sh
 
 # View production logs
 docker compose -f docker-compose.prod.yml logs -f
@@ -227,7 +227,7 @@ docker compose -f docker-compose.prod.yml down
 docker-compose exec server npm run seed
 
 # Clean up test data (production only)
-./cleanup-production-data.sh
+./scripts/cleanup-production-data.sh
 ```
 
 ## 📁 Project Structure
@@ -246,10 +246,22 @@ MVPEVENT_i/
 │   ├── models/             # Database models
 │   ├── services/           # Business logic
 │   └── package.json
+├── scripts/                # Shell scripts & utilities
+│   ├── deploy-production.sh
+│   ├── deploy-staging.sh
+│   ├── start-docker.sh
+│   └── ...
+├── docs/                   # Documentation
+│   ├── ARCHITECTURE.md
+│   ├── API_DOCUMENTATION.md
+│   ├── SETUP_GUIDE.md
+│   ├── guides/             # How-to guides
+│   ├── deployment/         # Deployment docs
+│   ├── troubleshooting/    # Fix & debug notes
+│   └── features/           # Feature docs
 ├── docker-compose.yml      # Development
 ├── docker-compose.prod.yml # Production
-├── deploy-production.sh    # Production deployment
-└── env.example            # Environment template
+└── env.example             # Environment template
 ```
 
 ## 🐛 Troubleshooting
@@ -292,9 +304,10 @@ docker compose -f docker-compose.prod.yml exec server env | grep SMTP
 
 ## 📚 Documentation
 
-- [API Documentation](./API_DOCUMENTATION.md) - Complete API reference
-- [Architecture](./ARCHITECTURE.md) - System design
-- [Deployment Guide](./DEPLOYMENT_READY.md) - Detailed deployment instructions
+- [API Documentation](./docs/API_DOCUMENTATION.md) - Complete API reference
+- [Architecture](./docs/ARCHITECTURE.md) - System design
+- [Setup Guide](./docs/SETUP_GUIDE.md) - Initial setup instructions
+- [Multi-Environment Guide](./docs/guides/MULTI_ENVIRONMENT_GUIDE.md) - Environment configuration
 
 ## 🤝 Contributing
 
