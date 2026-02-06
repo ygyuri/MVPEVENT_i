@@ -73,7 +73,11 @@ class RedisConnectionManager extends EventEmitter {
 
       // Attempt to connect
       await this.redis.connect();
-      
+      // Verify Redis responds (ping) so BullMQ worker can use it
+      await this.redis.ping();
+      this.isConnected = true;
+      this.isAvailable = true;
+
       return this.redis;
 
     } catch (error) {
@@ -151,7 +155,10 @@ class RedisConnectionManager extends EventEmitter {
     return {
       name,
       add: (jobName, data, options = {}) => {
-        console.log(`📝 [FALLBACK QUEUE] ${name}:${jobName}`, data);
+        console.warn(
+          `📧 [BULK-EMAIL] FALLBACK queue: job "${jobName}" added - will NOT be processed (no Redis worker). data:`,
+          JSON.stringify(data)
+        );
         return Promise.resolve({ id: Date.now().toString() });
       },
       getJobCounts: () => Promise.resolve({ waiting: 0, active: 0, completed: 0, failed: 0 }),

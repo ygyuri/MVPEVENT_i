@@ -511,6 +511,8 @@ if (process.env.NODE_ENV !== "test") {
     // Store io for earlier middleware to pick up per-request
     app.locals.io = io;
     setBroadcast(broadcastUpdate);
+    const { setSocketIO: setBulkResendSocket } = require("./services/queue/bulkResendQueue");
+    setBulkResendSocket(() => io);
     console.log("🔌 Socket.io server initialized");
   } catch (e) {
     console.warn("⚠️ Failed to initialize Socket.io:", e?.message);
@@ -577,20 +579,52 @@ if (process.env.NODE_ENV !== "test") {
 
     console.log("=".repeat(60) + "\n");
 
-    // Initialize Redis connection
-    // Add error handler to prevent unhandled error crashes
+    // Initialize Redis connection (retry for Docker: Redis may not be ready immediately)
     redisManager.on("error", (error) => {
       console.warn("⚠️ [REDIS] Redis error (handled):", error.message);
     });
 
-    try {
-      await redisManager.connect();
-      console.log("✅ [REDIS] Redis connection initialized successfully");
-    } catch (error) {
-      console.warn(
-        "⚠️ [REDIS] Redis initialization failed, continuing without Redis:",
-        error.message
-      );
+    const redisMaxAttempts = process.env.REDIS_URL ? 5 : 1;
+    const redisDelayMs = 2000;
+    let redisConnected = false;
+    for (let attempt = 1; attempt <= redisMaxAttempts; attempt++) {
+      try {
+        await redisManager.connect();
+        if (redisManager.isRedisAvailable()) {
+          redisConnected = true;
+          console.log("✅ [REDIS] Redis connection initialized successfully");
+          break;
+        }
+      } catch (error) {
+        // connect() can throw if connection fails
+      }
+      if (!redisManager.isRedisAvailable()) {
+        console.warn(
+          `⚠️ [REDIS] Attempt ${attempt}/${redisMaxAttempts} - Redis not available`
+        );
+        if (attempt < redisMaxAttempts) {
+          console.log(`🔄 [REDIS] Retrying in ${redisDelayMs / 1000}s...`);
+          await new Promise((r) => setTimeout(r, redisDelayMs));
+        } else {
+          console.warn(
+            "⚠️ [REDIS] Redis initialization failed after retries (bulk email will not process). Set REDIS_URL and ensure Redis is running."
+          );
+        }
+      }
+    }
+
+    // Load bulk email queue module so worker is created with Redis connected.
+    // (If the module was already loaded earlier, queue/worker may be FALLBACK; first send will use sync fallback.)
+    if (process.env.NODE_ENV !== "test") {
+      try {
+        console.log(
+          "📧 [STARTUP] Loading bulk email queue | redisAvailable:",
+          redisManager.isRedisAvailable()
+        );
+        require("./services/queue/bulkEmailQueue");
+      } catch (e) {
+        console.warn("⚠️ Bulk email queue not loaded:", e?.message);
+      }
     }
 
     console.log("\n✅ [SERVER] All systems ready - accepting requests\n");
