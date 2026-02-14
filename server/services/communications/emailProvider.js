@@ -7,6 +7,7 @@
 const nodemailer = require("nodemailer");
 const path = require("path");
 const fs = require("fs");
+const templateService = require("./templateService");
 
 let transporter = null;
 
@@ -30,37 +31,16 @@ function getTransporter() {
 }
 
 /**
- * Wrap body in a minimal HTML document for consistent rendering (charset, viewport, basic styles).
+ * Wrap body in premium shell (table-based layout) and get plain text. Uses templateService.
  */
-function wrapHtmlBody(bodyHtml) {
-  let body = (bodyHtml || "").trim();
-  if (!body) return "<p></p>";
-  // If already a full document, return as-is
-  if (/^\s*<!DOCTYPE/i.test(body) || /^\s*<html/i.test(body)) return body;
-  // Plain text: escape HTML and convert newlines to <br>
-  if (!/<[a-z]/i.test(body)) {
-    body = body
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\n/g, "<br>\n");
-  }
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Event-i</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 600px; margin: 0 auto; padding: 1rem; }
-    p { margin: 0 0 1rem; }
-    a { color: #2563eb; }
-  </style>
-</head>
-<body>
-${body}
-</body>
-</html>`;
+function wrapWithTemplate(bodyHtml) {
+  const { html, text } = templateService.wrapInPremiumShell({
+    bodyHtml,
+    logoUrl: process.env.EMAIL_LOGO_URL,
+    unsubscribeUrl: process.env.EMAIL_UNSUBSCRIBE_URL || process.env.APP_URL,
+    viewInBrowserUrl: process.env.APP_URL,
+  });
+  return { html, text };
 }
 
 /**
@@ -104,12 +84,13 @@ async function sendEmail(opts) {
     console.log("📎 [EMAIL] Attachments:", attachmentRefs.length, "refs | Inline images:", inlineRefs.length, "refs,", attachments.length, "total attached");
   }
 
-  const html = wrapHtmlBody(bodyHtml);
+  const { html, text } = wrapWithTemplate(bodyHtml);
   const mailOptions = {
     from,
     to,
     subject: subject || "(No subject)",
     html,
+    text,
     attachments: attachments.length ? attachments : undefined,
     headers: {
       "X-Mailer": "Event-i Bulk Communications",

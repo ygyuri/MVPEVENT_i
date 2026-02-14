@@ -4,6 +4,17 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: [
+      '@tiptap/react',
+      '@tiptap/starter-kit',
+      '@tiptap/extension-link',
+      '@tiptap/extension-blockquote',
+      '@tiptap/extension-image',
+      '@tiptap/core',
+    ],
+    exclude: ['@tiptap/pm'],
+  },
   server: {
     port: 3000,
     host: '0.0.0.0',

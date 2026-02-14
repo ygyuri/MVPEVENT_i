@@ -44,7 +44,7 @@ services:
       ME_CONFIG_BASICAUTH_USERNAME: admin
       ME_CONFIG_BASICAUTH_PASSWORD: password123
     ports:
-      - "${MONGO_EXPRESS_PORT:-8082}:8081"
+      - "${MONGO_EXPRESS_PORT:-18082}:8081"
     depends_on:
       - mongodb
     networks:

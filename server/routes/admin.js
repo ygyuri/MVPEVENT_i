@@ -2000,6 +2000,35 @@ router.post(
 );
 
 /**
+ * GET /api/admin/communications/serve-inline
+ * Serves an uploaded inline image for preview in the composer (browsers cannot load cid: URLs).
+ * Must be defined before /:id so "serve-inline" is not matched as an id.
+ * Query: path (required) - path returned from upload-attachment (relative to cwd or absolute).
+ */
+router.get(
+  "/communications/serve-inline",
+  verifyToken,
+  requireRole("admin"),
+  [query("path").notEmpty().withMessage("path is required")],
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    const storedPath = req.query.path;
+    const resolved = path.resolve(path.isAbsolute(storedPath) ? storedPath : path.join(process.cwd(), storedPath));
+    const uploadDirResolved = path.resolve(communicationsUploadDir);
+    if (!resolved.startsWith(uploadDirResolved) || !fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
+      return res.status(404).send("Not found");
+    }
+    const contentType = (req.query.contentType || "image/jpeg").split(";")[0].trim();
+    res.setHeader("Cache-Control", "private, max-age=60");
+    res.type(contentType);
+    res.sendFile(resolved);
+  }
+);
+
+/**
  * GET /api/admin/communications/:id
  * Get one Communication (draft or sent).
  */

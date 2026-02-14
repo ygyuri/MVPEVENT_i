@@ -11,6 +11,13 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@tiptap/extension-blockquote": "^2.10.4",
+    "@tiptap/pm": "^2.10.4",
+    "@tiptap/extension-image": "^2.10.4",
+    "@tiptap/extension-link": "^2.10.4",
+    "@tiptap/react": "^2.10.4",
+    "@tiptap/starter-kit": "^2.10.4",
+    "browser-image-compression": "^2.0.2",
     "@reduxjs/toolkit": "^2.8.2",
     "@testing-library/jest-dom": "6.8.0",
     "@testing-library/react": "16.3.0",
