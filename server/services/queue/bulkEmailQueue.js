@@ -31,6 +31,12 @@ if (!redisAvailableAtLoad) {
 const MAX_RETRIES = 3;
 const BACKOFF_MS = [1000, 2000, 4000];
 
+/** Delay between each recipient to avoid SMTP provider 429 rate limit (e.g. Gmail, Ethereal). */
+const DELAY_BETWEEN_RECIPIENTS_MS = Math.max(
+  0,
+  parseInt(process.env.BULK_EMAIL_DELAY_MS || "500", 10)
+);
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -137,6 +143,10 @@ const worker = redisManager.createWorker(
 
       const pct = total ? Math.round(((i + 1) / total) * 100) : 0;
       job.updateProgress(pct);
+
+      if (DELAY_BETWEEN_RECIPIENTS_MS > 0 && i < pending.length - 1) {
+        await sleep(DELAY_BETWEEN_RECIPIENTS_MS);
+      }
     }
 
     comm.status = "completed";

@@ -51,7 +51,8 @@ const ImageDropZone = ({ onInsert, disabled = false }) => {
         if (res.data?.success && res.data.data) {
           const { filename, path: filePath, contentType } = res.data.data;
           const cid = generateCid();
-          const alt = (filename || "").replace(/"/g, "&quot;");
+          const rawName = (filename || "").trim().toLowerCase();
+          const alt = rawName === "blob" || !rawName ? "Image" : (filename || "").replace(/"/g, "&quot;");
           const imgHtml = `\n<img src="cid:${cid}" alt="${alt}" style="max-width:100%; height:auto; display:block;" />\n`;
           onInsert(imgHtml, { cid, filename, path: filePath, contentType });
         }

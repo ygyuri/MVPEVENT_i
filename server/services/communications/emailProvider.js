@@ -8,6 +8,7 @@ const nodemailer = require("nodemailer");
 const path = require("path");
 const fs = require("fs");
 const templateService = require("./templateService");
+const eventCardService = require("./eventCardService");
 
 let transporter = null;
 
@@ -28,6 +29,30 @@ function getTransporter() {
     socketTimeout: 10000,
   });
   return transporter;
+}
+
+/**
+ * Ensure bodyHtml uses cid: for inline images so Nodemailer can resolve them.
+ * If client sent placeholder/blob/serve-inline URLs, replace with cid from inlineRefs (by order).
+ */
+function normalizeBodyHtmlForSend(bodyHtml, inlineRefs) {
+  if (!bodyHtml || typeof bodyHtml !== "string" || !inlineRefs?.length) return bodyHtml;
+  let out = bodyHtml;
+  let index = 0;
+  out = out.replace(/<img(\s[^>]*?)>/gi, (match, attrs) => {
+    const srcMatch = attrs.match(/\ssrc=["']([^"']+)["']/i);
+    const src = (srcMatch && srcMatch[1]) || "";
+    if (src.startsWith("cid:")) return match;
+    if (index < inlineRefs.length) {
+      const ref = inlineRefs[index++];
+      const newAttrs = srcMatch
+        ? attrs.replace(/\ssrc=["'][^"']*["']/i, ` src="cid:${ref.cid}"`)
+        : attrs + ` src="cid:${ref.cid}"`;
+      return `<img${newAttrs}>`;
+    }
+    return match;
+  });
+  return out;
 }
 
 /**
@@ -70,8 +95,9 @@ async function sendEmail(opts) {
   for (const ref of inlineRefs) {
     const filePath = ref.path && path.isAbsolute(ref.path) ? ref.path : path.join(process.cwd(), ref.path);
     if (fs.existsSync(filePath)) {
+      const name = (ref.filename || "").toLowerCase().trim() === "blob" ? "image.png" : (ref.filename || "image.png");
       attachments.push({
-        filename: ref.filename,
+        filename: name,
         content: fs.readFileSync(filePath),
         contentType: ref.contentType || "image/jpeg",
         cid: ref.cid,
@@ -84,7 +110,9 @@ async function sendEmail(opts) {
     console.log("📎 [EMAIL] Attachments:", attachmentRefs.length, "refs | Inline images:", inlineRefs.length, "refs,", attachments.length, "total attached");
   }
 
-  const { html, text } = wrapWithTemplate(bodyHtml);
+  const bodyWithCards = await eventCardService.replaceEventLinksWithCards(bodyHtml, process.env.APP_URL);
+  const normalizedBody = normalizeBodyHtmlForSend(bodyWithCards, inlineRefs);
+  const { html, text } = wrapWithTemplate(normalizedBody);
   const mailOptions = {
     from,
     to,

@@ -36,6 +36,22 @@ function ensureImageStyles(html) {
   );
 }
 
+/** Add inline styles to body content for consistent, polished appearance in email clients. */
+function beautifyBodyContent(html) {
+  if (!html || typeof html !== "string") return html;
+  let out = html;
+  const pStyle = "margin:0 0 1rem 0; font-family:inherit; font-size:16px; line-height:1.6; color:#1a1a1a;";
+  out = out.replace(/<p>/gi, `<p style="${pStyle}">`);
+  out = out.replace(/<p(\s)((?![^>]*style=)[^>]*)>/gi, `<p $2 style="${pStyle}">`);
+  out = out.replace(/<a(\s)((?![^>]*style=)[^>]*)>/gi, `<a $2 style="color:#2563eb; text-decoration:underline;">`);
+  out = out.replace(/<h2(\s)((?![^>]*style=)[^>]*)>/gi, `<h2 $2 style="margin:1.25rem 0 0.5rem; font-size:1.25rem; font-weight:600; color:#1a1a1a;">`);
+  out = out.replace(/<h3(\s)((?![^>]*style=)[^>]*)>/gi, `<h3 $2 style="margin:1rem 0 0.5rem; font-size:1.1rem; font-weight:600; color:#1a1a1a;">`);
+  out = out.replace(/<ul(\s)((?![^>]*style=)[^>]*)>/gi, `<ul $2 style="margin:0 0 1rem; padding-left:1.5rem;">`);
+  out = out.replace(/<ol(\s)((?![^>]*style=)[^>]*)>/gi, `<ol $2 style="margin:0 0 1rem; padding-left:1.5rem;">`);
+  out = out.replace(/<blockquote(\s)((?![^>]*style=)[^>]*)>/gi, `<blockquote $2 style="margin:0 0 1rem; padding-left:1rem; border-left:4px solid #e5e7eb; color:#6b7280;">`);
+  return out;
+}
+
 /**
  * Wrap body HTML in premium table-based shell. Optionally generate plain text.
  * @param {Object} opts
@@ -53,7 +69,9 @@ function wrapInPremiumShell(opts) {
     viewInBrowserUrl = process.env.APP_URL || "#",
   } = opts;
 
-  const body = ensureImageStyles((bodyHtml || "").trim() || "<p></p>");
+  let body = (bodyHtml || "").trim() || "<p></p>";
+  body = ensureImageStyles(body);
+  body = beautifyBodyContent(body);
   const fontStack =
     "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Inter, Arial, sans-serif";
 

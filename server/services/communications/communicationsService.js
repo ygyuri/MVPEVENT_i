@@ -14,6 +14,12 @@ const sendingService = require("./sendingService");
 const SYNC_RETRIES = 3;
 const SYNC_BACKOFF_MS = [1000, 2000, 4000];
 
+/** Delay between each recipient to avoid SMTP provider 429 rate limit. Same as queue worker. */
+const DELAY_BETWEEN_RECIPIENTS_MS = Math.max(
+  0,
+  parseInt(process.env.BULK_EMAIL_DELAY_MS || "500", 10)
+);
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -290,6 +296,10 @@ async function runBulkSendSync(communicationId, userId) {
         { $set: { status: "failed", errorMessage: lastError.message } }
       );
       failed++;
+    }
+
+    if (DELAY_BETWEEN_RECIPIENTS_MS > 0 && i < pending.length - 1) {
+      await sleep(DELAY_BETWEEN_RECIPIENTS_MS);
     }
   }
 

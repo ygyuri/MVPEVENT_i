@@ -4,14 +4,36 @@ import { Monitor, Smartphone } from "lucide-react";
 const FONT_STACK =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Inter, Arial, sans-serif";
 
+/** Strip scripts and event handlers so iframe srcdoc doesn't trigger "Blocked script execution" warnings. */
+function sanitizeForPreview(html) {
+  if (!html || typeof html !== "string") return "";
+  let out = html
+    // Remove script tags (any type, including multiline)
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    // Remove style tags that could contain @import or expression (rare but safe)
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+    // Remove on* event handlers (any quote style)
+    .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, " ")
+    .replace(/\s+on\w+\s*=\s*[^\s>]+/gi, " ");
+  // Remove javascript: and vbscript: from href/src
+  out = out.replace(/(\s(?:href|src)\s*=\s*["'])\s*javascript:[^"']*(["'])/gi, "$1#$2");
+  out = out.replace(/(\s(?:href|src)\s*=\s*["'])\s*vbscript:[^"']*(["'])/gi, "$1#$2");
+  // Strip any remaining on* attributes (e.g. onclick, onerror)
+  out = out.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, "");
+  out = out.replace(/\s+on\w+\s*=\s*[^\s>]+/gi, "");
+  return out;
+}
+
 /**
  * Renders bodyHtml inside a frame with Desktop (600px) / Mobile (320px) toggle.
  * Uses a simplified shell so preview is close to sent result (no backend call).
+ * Content is sanitized so the sandboxed iframe doesn't attempt script execution.
  */
 const EmailPreview = ({ bodyHtml = "", subject = "" }) => {
   const [mode, setMode] = useState("desktop"); // 'desktop' | 'mobile'
   const width = mode === "mobile" ? 320 : 600;
-  const body = (bodyHtml || "").trim() || "<p><em>No content yet.</em></p>";
+  const raw = (bodyHtml || "").trim() || "<p><em>No content yet.</em></p>";
+  const body = sanitizeForPreview(raw);
 
   const wrappedHtml = `<!DOCTYPE html>
 <html lang="en">

@@ -14,10 +14,33 @@ export default defineConfig({
       '@tiptap/core',
     ],
     exclude: ['@tiptap/pm'],
+    // Pre-bundle deps so dev server starts and HMR stay fast
+    force: false,
+  },
+  build: {
+    target: 'esnext',
+    minify: 'esbuild',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
+  esbuild: {
+    legalComments: 'none',
   },
   server: {
     port: 3000,
     host: '0.0.0.0',
+    watch: {
+      ignored: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/coverage/**'],
+      usePolling: false,
+    },
+    warmup: {
+      clientFiles: ['./src/main.jsx', './src/App.jsx'],
+    },
     proxy: {
       '/api': {
         // Use server container name in Docker (works from within Docker network)

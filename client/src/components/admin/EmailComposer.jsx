@@ -14,19 +14,35 @@ function buildServeInlineUrl(img) {
   return `${api.defaults.baseURL || ""}${SERVE_INLINE_PREFIX}?path=${encodeURIComponent(img.path)}&cid=${encodeURIComponent(img.cid)}&contentType=${encodeURIComponent(img.contentType || "image/jpeg")}`;
 }
 
-/** Replace cid: URLs with blob URLs (when available) or serve-inline URLs so images load. Blob URLs work because img doesn't send Authorization. */
+/** Placeholder data URL so img never loads cid: or serve-inline (which would 401). Encodes cid so we can restore when saving. */
+function placeholderDataUrlForCid(cid) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"><title>cid:${cid}</title></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+/** Replace cid: and serve-inline with blob or placeholder so img never loads cid: (ERR_UNKNOWN_URL_SCHEME) or serve-inline (401). */
 function bodyHtmlForDisplay(bodyHtml, inlineImages, blobUrlsByCid = {}) {
-  if (!bodyHtml || !inlineImages?.length) return bodyHtml || "";
+  if (!bodyHtml) return "";
   let out = bodyHtml;
-  for (const img of inlineImages) {
-    const cidEscaped = img.cid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const src = blobUrlsByCid[img.cid] || buildServeInlineUrl(img);
-    out = out.replace(new RegExp(`src="cid:${cidEscaped}"`, "gi"), `src="${src}"`);
-  }
+  // Replace serve-inline URLs in img src (browser doesn't send Authorization -> 401)
+  const serveInlineRe = new RegExp(
+    `src=["']([^"']*${SERVE_INLINE_PREFIX.replace(/\//g, "\\/")}[^"']*cid=([^"&']+)[^"']*)["']`,
+    "gi"
+  );
+  out = out.replace(serveInlineRe, (_, _url, cid) => {
+    const decoded = decodeURIComponent(cid);
+    const src = blobUrlsByCid[decoded] || placeholderDataUrlForCid(decoded);
+    return `src="${src}"`;
+  });
+  // Replace cid: in img src (double or single quotes; browser can't load cid:)
+  out = out.replace(/src=["']cid:([^"']+)["']/gi, (_, cid) => {
+    const src = blobUrlsByCid[cid] || placeholderDataUrlForCid(cid);
+    return `src="${src}"`;
+  });
   return out;
 }
 
-/** Replace blob: and serve-inline URLs in editor HTML back with cid: for storing/sending. */
+/** Replace blob:, placeholder data URLs, and serve-inline URLs back with cid: for storing/sending. */
 function bodyHtmlForStore(html, blobUrlsByCid = {}) {
   if (!html) return html || "";
   let out = html;
@@ -35,7 +51,18 @@ function bodyHtmlForStore(html, blobUrlsByCid = {}) {
       out = out.replace(new RegExp(blobUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), `cid:${cid}`);
     }
   }
-  // Match full serve-inline URL (with or without origin) and replace with cid:
+  // Placeholder data URL (svg with <title>cid:XXX</title>) -> cid:XXX
+  out = out.replace(/src="data:image\/svg\+xml,[^"]*"/gi, (match) => {
+    try {
+      const dataPart = match.slice(6, -1); // strip src=" and "
+      const decoded = decodeURIComponent(dataPart.replace(/^data:image\/svg\+xml,/, ""));
+      const m = decoded.match(/<title>cid:([^<]+)<\/title>/i);
+      return m ? `src="cid:${m[1]}"` : match;
+    } catch {
+      return match;
+    }
+  });
+  // Serve-inline URL -> cid:XXX
   out = out.replace(
     new RegExp(`(?:https?:\\/\\/[^"']+)?${SERVE_INLINE_PREFIX.replace(/\//g, "\\/")}\\?[^"']*cid=([^"&]+)`, "gi"),
     (_, cid) => `cid:${decodeURIComponent(cid)}`
@@ -203,7 +230,7 @@ const EmailComposer = ({ onSaveDraft, onSend, saving, sending }) => {
         <RichTextEditor
           value={displayBodyHtml}
           onChange={handleBodyChange}
-          placeholder="Write your message. Use the drop zone below to add images in the email."
+          placeholder="Write your message. Paste event links (e.g. .../events/my-event/checkout) and they’ll become rich cards when sent. Use the drop zone below to add images."
           minHeight="200px"
         />
         <div className="mt-2">
