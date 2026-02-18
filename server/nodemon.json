@@ -1,7 +1,0 @@
-{
-  "watch": ["index.js", "routes", "services", "models", "middleware", "config", "utils", "realtime", "jobs", "src"],
-  "ext": "js,json",
-  "ignore": ["node_modules", "uploads", "**/__tests__", "**/*.test.js", "**/*.spec.js", "scripts"],
-  "delay": "300",
-  "verbose": false
-}
