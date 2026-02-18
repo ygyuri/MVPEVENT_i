@@ -18,8 +18,13 @@ const router = express.Router();
 
 // Multer for communications attachments
 const communicationsUploadDir = path.join(__dirname, "../uploads/communications");
-if (!fs.existsSync(communicationsUploadDir)) {
+try {
   fs.mkdirSync(communicationsUploadDir, { recursive: true });
+} catch (err) {
+  // EEXIST is fine; EACCES on a mounted volume is handled by docker-entrypoint.sh
+  if (err.code !== "EEXIST") {
+    console.warn("[admin] Could not create communications upload dir:", err.message);
+  }
 }
 const communicationsStorage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, communicationsUploadDir),
