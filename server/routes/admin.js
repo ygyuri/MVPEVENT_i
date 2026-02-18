@@ -1,4 +1,8 @@
 const express = require("express");
+const mongoose = require("mongoose");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 const { verifyToken, requireRole } = require("../middleware/auth");
 const { param, body, query, validationResult } = require("express-validator");
 const User = require("../models/User");
@@ -6,9 +10,36 @@ const Event = require("../models/Event");
 const Session = require("../models/Session");
 const ScanLog = require("../models/ScanLog");
 const BulkResendLog = require("../models/BulkResendLog");
+const Ticket = require("../models/Ticket");
 const emailService = require("../services/emailService");
+const communicationsService = require("../services/communications/communicationsService");
 
 const router = express.Router();
+
+// Multer for communications attachments
+const communicationsUploadDir = path.join(__dirname, "../uploads/communications");
+if (!fs.existsSync(communicationsUploadDir)) {
+  fs.mkdirSync(communicationsUploadDir, { recursive: true });
+}
+const communicationsStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, communicationsUploadDir),
+  filename: (req, file, cb) => {
+    const safe = (file.originalname || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
+    cb(null, `${Date.now()}-${safe}`);
+  },
+});
+const uploadAttachment = multer({
+  storage: communicationsStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = /pdf|jpeg|jpg|png|gif|msword|wordprocessingml/;
+    const mime = (file.mimetype || "").toLowerCase();
+    if (allowed.test(mime) || allowed.test(path.extname(file.originalname || ""))) {
+      return cb(null, true);
+    }
+    cb(new Error("Allowed: PDF, images, Word"));
+  },
+});
 
 // Admin health/overview
 router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
@@ -1814,6 +1845,358 @@ router.get(
         error: "Failed to fetch bulk resend log",
         message: error.message,
       });
+    }
+  }
+);
+
+// ========== Bulk Email / Communications (admin only) ==========
+
+/**
+ * GET /api/admin/communications/attendees
+ * List attendees (tickets) by eventId for bulk email selection. Paginated.
+ */
+router.get(
+  "/communications/attendees",
+  verifyToken,
+  requireRole("admin"),
+  [
+    query("eventId").isMongoId().withMessage("Valid eventId required"),
+    query("page").optional().isInt({ min: 1 }).toInt(),
+    query("limit").optional().isInt({ min: 1, max: 500 }).toInt(),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
+      }
+      const { eventId } = req.query;
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 50));
+      const skip = (page - 1) * limit;
+
+      const [attendees, total] = await Promise.all([
+        Ticket.aggregate([
+          { $match: { eventId: new mongoose.Types.ObjectId(eventId), status: "active" } },
+          { $sort: { "holder.email": 1, createdAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 1,
+              ticketNumber: 1,
+              ticketType: 1,
+              "holder.email": 1,
+              "holder.firstName": 1,
+              "holder.lastName": 1,
+              "holder.phone": 1,
+            },
+          },
+        ]),
+        Ticket.countDocuments({ eventId, status: "active" }),
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          attendees,
+          pagination: {
+            page,
+            limit,
+            total,
+            pages: Math.ceil(total / limit) || 1,
+          },
+        },
+      });
+    } catch (err) {
+      console.error("Communications attendees error:", err);
+      res.status(500).json({
+        success: false,
+        error: "Failed to load attendees",
+        message: err.message,
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/admin/communications/drafts
+ * List drafts for current admin.
+ */
+router.get(
+  "/communications/drafts",
+  verifyToken,
+  requireRole("admin"),
+  [
+    query("page").optional().isInt({ min: 1 }).toInt(),
+    query("limit").optional().isInt({ min: 1, max: 50 }).toInt(),
+  ],
+  async (req, res) => {
+    try {
+      const page = parseInt(req.query.page, 10) || 1;
+      const limit = parseInt(req.query.limit, 10) || 20;
+      const result = await communicationsService.listDrafts(req.user._id, { page, limit });
+      res.json({ success: true, data: result });
+    } catch (err) {
+      console.error("Communications drafts list error:", err);
+      res.status(500).json({ success: false, error: "Failed to list drafts", message: err.message });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/communications/drafts
+ * Create or update draft (subject, bodyHtml, eventId, recipientIds, attachments).
+ */
+router.post(
+  "/communications/drafts",
+  verifyToken,
+  requireRole("admin"),
+  [
+    body("id").optional().isMongoId(),
+    body("subject").optional().trim().isLength({ max: 500 }),
+    body("bodyHtml").optional(),
+    body("eventId").optional().isMongoId(),
+    body("recipientType").optional().isIn(["attendees", "custom"]),
+    body("recipientIds").optional().isArray(),
+    body("recipientIds.*").optional().isMongoId(),
+    body("attachments").optional().isArray(),
+    body("attachments.*.filename").optional().isString(),
+    body("attachments.*.path").optional().isString(),
+    body("attachments.*.contentType").optional().isString(),
+    body("inlineImages").optional().isArray(),
+    body("inlineImages.*.cid").optional().isString(),
+    body("inlineImages.*.filename").optional().isString(),
+    body("inlineImages.*.path").optional().isString(),
+    body("inlineImages.*.contentType").optional().isString(),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
+      }
+      const { id, subject, bodyHtml, eventId, recipientType, recipientIds, attachments, inlineImages } = req.body;
+      const comm = await communicationsService.saveDraft({
+        createdBy: req.user._id,
+        subject: subject ?? "",
+        bodyHtml: bodyHtml ?? "",
+        eventId: eventId || null,
+        recipientType: recipientType || "attendees",
+        recipientIds: Array.isArray(recipientIds) ? recipientIds : [],
+        attachments: Array.isArray(attachments) ? attachments : [],
+        inlineImages: Array.isArray(inlineImages) ? inlineImages : [],
+        id: id || undefined,
+      });
+      if (!comm) {
+        return res.status(404).json({ success: false, error: "Draft not found" });
+      }
+      res.json({ success: true, data: comm });
+    } catch (err) {
+      console.error("Communications save draft error:", err);
+      res.status(500).json({ success: false, error: "Failed to save draft", message: err.message });
+    }
+  }
+);
+
+/**
+ * GET /api/admin/communications/serve-inline
+ * Serves an uploaded inline image for preview in the composer (browsers cannot load cid: URLs).
+ * Must be defined before /:id so "serve-inline" is not matched as an id.
+ * Query: path (required) - path returned from upload-attachment (relative to cwd or absolute).
+ */
+router.get(
+  "/communications/serve-inline",
+  verifyToken,
+  requireRole("admin"),
+  [query("path").notEmpty().withMessage("path is required")],
+  (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    const storedPath = req.query.path;
+    const resolved = path.resolve(path.isAbsolute(storedPath) ? storedPath : path.join(process.cwd(), storedPath));
+    const uploadDirResolved = path.resolve(communicationsUploadDir);
+    if (!resolved.startsWith(uploadDirResolved) || !fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
+      return res.status(404).send("Not found");
+    }
+    const contentType = (req.query.contentType || "image/jpeg").split(";")[0].trim();
+    res.setHeader("Cache-Control", "private, max-age=60");
+    res.type(contentType);
+    res.sendFile(resolved);
+  }
+);
+
+/**
+ * GET /api/admin/communications/:id
+ * Get one Communication (draft or sent).
+ */
+router.get(
+  "/communications/:id",
+  verifyToken,
+  requireRole("admin"),
+  [param("id").isMongoId()],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
+      }
+      const comm = await communicationsService.getCommunication(req.params.id, req.user._id);
+      if (!comm) {
+        return res.status(404).json({ success: false, error: "Communication not found" });
+      }
+      res.json({ success: true, data: comm });
+    } catch (err) {
+      console.error("Communications get error:", err);
+      res.status(500).json({ success: false, error: "Failed to load communication", message: err.message });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/communications/upload-attachment
+ * Multer upload; returns { filename, path, contentType } for draft attachments.
+ */
+router.post(
+  "/communications/upload-attachment",
+  verifyToken,
+  requireRole("admin"),
+  uploadAttachment.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: "No file uploaded" });
+      }
+      // Store path relative to process.cwd() so worker (same process) can resolve with path.join(process.cwd(), path)
+      const pathForStorage = path.relative(process.cwd(), req.file.path);
+      if (pathForStorage.startsWith("..")) {
+        console.warn("📎 [COMMS] Upload outside cwd, using absolute path:", req.file.path);
+      }
+      res.json({
+        success: true,
+        data: {
+          filename: req.file.originalname || req.file.filename,
+          path: pathForStorage.startsWith("..") ? req.file.path : pathForStorage,
+          contentType: req.file.mimetype || "application/octet-stream",
+        },
+      });
+    } catch (err) {
+      console.error("Communications upload error:", err);
+      res.status(500).json({ success: false, error: "Upload failed", message: err.message });
+    }
+  }
+);
+
+/**
+ * POST /api/admin/communications/preview-body
+ * Runs bodyHtml through eventCardService so the email composer preview can show
+ * event link cards exactly as they will appear in the sent email.
+ * Body: { bodyHtml: string }
+ * Returns: { processedHtml: string }
+ */
+const eventCardService = require("../services/communications/eventCardService");
+router.post(
+  "/communications/preview-body",
+  verifyToken,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const { bodyHtml } = req.body;
+      if (!bodyHtml || typeof bodyHtml !== "string") {
+        return res.status(400).json({ success: false, error: "bodyHtml is required" });
+      }
+      const processedHtml = await eventCardService.replaceEventLinksWithCards(
+        bodyHtml,
+        process.env.APP_URL
+      );
+      res.json({ success: true, processedHtml });
+    } catch (err) {
+      console.error("preview-body error:", err);
+      res.status(500).json({ success: false, error: "Preview processing failed" });
+    }
+  }
+);
+
+/**
+ * GET /api/admin/communications/queue-status
+ * Returns Redis availability for bulk email queue (for diagnostics).
+ */
+router.get(
+  "/communications/queue-status",
+  verifyToken,
+  requireRole("admin"),
+  (req, res) => {
+    const redisManager = require("../config/redis");
+    res.json({
+      success: true,
+      redisAvailable: redisManager.isRedisAvailable(),
+      message: redisManager.isRedisAvailable()
+        ? "Bulk email jobs will be processed by the queue worker."
+        : "Redis unavailable; bulk sends run synchronously in the request.",
+    });
+  }
+);
+
+/**
+ * POST /api/admin/communications/:id/send
+ * Create MessageLog (pending), enqueue job; no send in request.
+ * When Redis is unavailable, sends run synchronously in-process.
+ */
+router.post(
+  "/communications/:id/send",
+  verifyToken,
+  requireRole("admin"),
+  [param("id").isMongoId()],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
+      }
+      const result = await communicationsService.prepareAndEnqueueSend(req.params.id, req.user._id);
+      if (!result) {
+        return res.status(404).json({ success: false, error: "Communication not found" });
+      }
+      res.json({
+        success: true,
+        data: {
+          communicationId: result.communication._id,
+          jobId: result.jobId,
+          sync: result.sync === true,
+        },
+      });
+    } catch (err) {
+      console.error("Communications send error:", err);
+      res.status(400).json({ success: false, error: err.message || "Failed to enqueue send" });
+    }
+  }
+);
+
+/**
+ * GET /api/admin/communications/:id/status
+ * Aggregate MessageLog: total, sent, failed, pending, errors.
+ */
+router.get(
+  "/communications/:id/status",
+  verifyToken,
+  requireRole("admin"),
+  [param("id").isMongoId()],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, errors: errors.array() });
+      }
+      const status = await communicationsService.getStatus(req.params.id, req.user._id);
+      if (!status) {
+        return res.status(404).json({ success: false, error: "Communication not found" });
+      }
+      res.json({ success: true, data: status });
+    } catch (err) {
+      console.error("Communications status error:", err);
+      res.status(500).json({ success: false, error: "Failed to load status", message: err.message });
     }
   }
 );

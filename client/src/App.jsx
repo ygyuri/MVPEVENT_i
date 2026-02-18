@@ -19,6 +19,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import AdminEvents from "./pages/AdminEvents";
 import AdminOrders from "./pages/AdminOrders";
+import AdminBulkEmail from "./pages/AdminBulkEmail";
 import EventQRSettings from "./pages/EventQRSettings";
 import OrganizerDashboard from "./pages/OrganizerDashboard";
 import EventCreate from "./pages/EventCreate";
@@ -81,6 +82,7 @@ function App() {
                   <Route path="/admin/users" element={<AdminUsers />} />
                   <Route path="/admin/events" element={<AdminEvents />} />
                   <Route path="/admin/orders" element={<AdminOrders />} />
+                  <Route path="/admin/bulk-email" element={<AdminBulkEmail />} />
                   <Route path="/admin/scans" element={<AdminScans />} />
                   <Route path="/organizer" element={<OrganizerDashboard />} />
                   <Route

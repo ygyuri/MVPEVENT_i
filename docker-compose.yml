@@ -16,7 +16,7 @@ services:
       - event_i_network
     command: mongod --auth
 
-  # Redis for caching (optional but recommended)
+  # Redis for caching and bulk email queue (required for bulk email to send)
   redis:
     image: redis:7-alpine
     container_name: event_i_redis
@@ -26,6 +26,12 @@ services:
       - redis_data:/data
     networks:
       - event_i_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   # MongoDB Compass (optional - for database management)
   mongo-express:
@@ -38,7 +44,7 @@ services:
       ME_CONFIG_BASICAUTH_USERNAME: admin
       ME_CONFIG_BASICAUTH_PASSWORD: password123
     ports:
-      - "${MONGO_EXPRESS_PORT:-8082}:8081"
+      - "${MONGO_EXPRESS_PORT:-18082}:8081"
     depends_on:
       - mongodb
     networks:
@@ -75,15 +81,17 @@ services:
     ports:
       - "${SERVER_PORT:-5001}:${SERVER_PORT:-5001}"
     depends_on:
-      - mongodb
-      - redis
+      mongodb:
+        condition: service_started
+      redis:
+        condition: service_healthy
     volumes:
       - ./server:/app
       - /app/node_modules
       - event_uploads:/app/uploads
     networks:
       - event_i_network
-    command: sh -c "sleep 10 && npm run seed && npm run dev"
+    command: sh -c "sleep 5 && npm run seed && npm run dev"
 
   # Frontend Client
   client:
