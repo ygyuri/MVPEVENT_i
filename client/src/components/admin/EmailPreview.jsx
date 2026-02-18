@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { Monitor, Smartphone } from "lucide-react";
+import React, { useState, useCallback } from "react";
+import { Monitor, Smartphone, Layers } from "lucide-react";
+import api from "../../utils/api";
 
 const FONT_STACK =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Inter, Arial, sans-serif";
@@ -8,34 +9,19 @@ const FONT_STACK =
 function sanitizeForPreview(html) {
   if (!html || typeof html !== "string") return "";
   let out = html
-    // Remove script tags (any type, including multiline)
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-    // Remove style tags that could contain @import or expression (rare but safe)
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
-    // Remove on* event handlers (any quote style)
     .replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, " ")
     .replace(/\s+on\w+\s*=\s*[^\s>]+/gi, " ");
-  // Remove javascript: and vbscript: from href/src
   out = out.replace(/(\s(?:href|src)\s*=\s*["'])\s*javascript:[^"']*(["'])/gi, "$1#$2");
   out = out.replace(/(\s(?:href|src)\s*=\s*["'])\s*vbscript:[^"']*(["'])/gi, "$1#$2");
-  // Strip any remaining on* attributes (e.g. onclick, onerror)
   out = out.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, "");
   out = out.replace(/\s+on\w+\s*=\s*[^\s>]+/gi, "");
   return out;
 }
 
-/**
- * Renders bodyHtml inside a frame with Desktop (600px) / Mobile (320px) toggle.
- * Uses a simplified shell so preview is close to sent result (no backend call).
- * Content is sanitized so the sandboxed iframe doesn't attempt script execution.
- */
-const EmailPreview = ({ bodyHtml = "", subject = "" }) => {
-  const [mode, setMode] = useState("desktop"); // 'desktop' | 'mobile'
-  const width = mode === "mobile" ? 320 : 600;
-  const raw = (bodyHtml || "").trim() || "<p><em>No content yet.</em></p>";
-  const body = sanitizeForPreview(raw);
-
-  const wrappedHtml = `<!DOCTYPE html>
+function buildIframeHtml(body) {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -51,6 +37,8 @@ const EmailPreview = ({ bodyHtml = "", subject = "" }) => {
     .body-cell h3 { font-size: 1.1rem; margin: 0 0 0.5rem; }
     .body-cell ul, .body-cell ol { margin: 0 0 1rem; padding-left: 1.5rem; }
     .body-cell blockquote { margin: 0 0 1rem; padding-left: 1rem; border-left: 4px solid #e5e7eb; color: #6b7280; }
+    /* Event card styles (from server-side card template) */
+    table { border-collapse: collapse; }
   </style>
 </head>
 <body>
@@ -59,11 +47,68 @@ const EmailPreview = ({ bodyHtml = "", subject = "" }) => {
   </div>
 </body>
 </html>`;
+}
+
+/**
+ * Renders bodyHtml inside a frame with Desktop (600px) / Mobile (320px) toggle.
+ * The "With cards" mode calls the backend to process event links into rich cards,
+ * matching exactly what recipients will see in the sent email.
+ */
+const EmailPreview = ({ bodyHtml = "", subject = "" }) => {
+  const [mode, setMode] = useState("desktop");
+  const [cardMode, setCardMode] = useState(false);
+  const [processedHtml, setProcessedHtml] = useState(null);
+  const [cardLoading, setCardLoading] = useState(false);
+  const [cardError, setCardError] = useState(null);
+
+  const width = mode === "mobile" ? 320 : 600;
+  const raw = (bodyHtml || "").trim() || "<p><em>No content yet.</em></p>";
+
+  const toggleCardMode = useCallback(async () => {
+    if (cardMode) {
+      setCardMode(false);
+      setProcessedHtml(null);
+      setCardError(null);
+      return;
+    }
+    setCardLoading(true);
+    setCardError(null);
+    try {
+      const res = await api.post("/api/admin/communications/preview-body", { bodyHtml: raw });
+      setProcessedHtml(res.data?.processedHtml || raw);
+      setCardMode(true);
+    } catch {
+      setCardError("Could not load card preview — check that events are published.");
+    } finally {
+      setCardLoading(false);
+    }
+  }, [cardMode, raw]);
+
+  const displayHtml = cardMode && processedHtml ? sanitizeForPreview(processedHtml) : sanitizeForPreview(raw);
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Preview</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Preview</span>
+          <button
+            type="button"
+            onClick={toggleCardMode}
+            disabled={cardLoading}
+            title={cardMode ? "Switch back to raw preview" : "Preview with event link cards (as sent)"}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border transition-colors ${
+              cardMode
+                ? "bg-blue-100 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300"
+                : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+            } ${cardLoading ? "opacity-60 cursor-not-allowed" : ""}`}
+          >
+            <Layers className="h-3 w-3" />
+            {cardLoading ? "Loading…" : cardMode ? "Cards on" : "With cards"}
+          </button>
+          {cardError && (
+            <span className="text-xs text-red-500 dark:text-red-400">{cardError}</span>
+          )}
+        </div>
         <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
           <button
             type="button"
@@ -93,7 +138,7 @@ const EmailPreview = ({ bodyHtml = "", subject = "" }) => {
           </button>
         </div>
       </div>
-      <div className="p-4 bg-gray-100 dark:bg-gray-900/50 flex justify-center overflow-auto">
+      <div className="p-4 bg-gray-100 dark:bg-gray-900/50 flex flex-col items-center overflow-auto">
         {subject && (
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 w-full text-center">
             Subject: {subject}
@@ -111,7 +156,7 @@ const EmailPreview = ({ bodyHtml = "", subject = "" }) => {
         >
           <iframe
             title="Email preview"
-            srcDoc={wrappedHtml}
+            srcDoc={buildIframeHtml(displayHtml)}
             style={{
               width: width,
               height: 400,
@@ -121,6 +166,18 @@ const EmailPreview = ({ bodyHtml = "", subject = "" }) => {
             sandbox="allow-same-origin"
           />
         </div>
+        {!cardMode && (
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">
+            Event links are replaced with rich cards in the actual sent email.{" "}
+            <button
+              type="button"
+              onClick={toggleCardMode}
+              className="underline hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              Preview with cards
+            </button>
+          </p>
+        )}
       </div>
     </div>
   );

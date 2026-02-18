@@ -547,6 +547,12 @@ app.use((error, req, res, next) => {
   }
 });
 
+// Social bot OG meta tag middleware — serves event-specific Open Graph HTML to crawlers
+// (WhatsApp, iMessage, Slack, Telegram, Discord, Facebook, Twitter, etc.) so link
+// previews show the correct event title, image, and description.
+const ogBotMiddleware = require("./middleware/ogBotMiddleware");
+app.use(ogBotMiddleware);
+
 // 404 handler (after error handler)
 app.use("*", (req, res) => {
   console.warn(`🚫 404 - Route not found: ${req.method} ${req.url}`);

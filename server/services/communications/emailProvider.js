@@ -12,6 +12,23 @@ const eventCardService = require("./eventCardService");
 
 let transporter = null;
 
+/**
+ * Replace {{firstName}}, {{lastName}}, {{fullName}}, {{email}} with per-recipient values.
+ * Safe to call on both subject and bodyHtml.
+ */
+function substituteTemplateVars(text, recipientName, recipientEmail) {
+  if (!text || typeof text !== "string") return text;
+  const fullName = (recipientName || "").trim();
+  const parts = fullName.split(/\s+/);
+  const firstName = parts[0] || "";
+  const lastName = parts.length > 1 ? parts.slice(1).join(" ") : "";
+  return text
+    .replace(/\{\{firstName\}\}/gi, firstName)
+    .replace(/\{\{lastName\}\}/gi, lastName)
+    .replace(/\{\{fullName\}\}/gi, fullName)
+    .replace(/\{\{email\}\}/gi, recipientEmail || "");
+}
+
 function getTransporter() {
   if (transporter) return transporter;
   const smtpPort = Number(process.env.SMTP_PORT) || 587;
@@ -75,9 +92,22 @@ function wrapWithTemplate(bodyHtml) {
  * @throws on send failure
  */
 async function sendEmail(opts) {
-  const { to, subject, bodyHtml, attachments: attachmentRefs = [], inlineImages: inlineRefs = [] } = opts;
+  const {
+    to,
+    subject,
+    bodyHtml,
+    attachments: attachmentRefs = [],
+    inlineImages: inlineRefs = [],
+    recipientName,
+    recipientEmail,
+  } = opts;
   const transport = getTransporter();
   const from = `"Event-i" <${process.env.SMTP_USER}>`;
+
+  // Substitute per-recipient template variables ({{firstName}}, {{lastName}}, {{fullName}}, {{email}})
+  const resolvedEmail = recipientEmail || to;
+  const personalizedSubject = substituteTemplateVars(subject, recipientName, resolvedEmail);
+  const personalizedBodyHtml = substituteTemplateVars(bodyHtml, recipientName, resolvedEmail);
 
   const attachments = [];
   for (const ref of attachmentRefs) {
@@ -110,13 +140,13 @@ async function sendEmail(opts) {
     console.log("📎 [EMAIL] Attachments:", attachmentRefs.length, "refs | Inline images:", inlineRefs.length, "refs,", attachments.length, "total attached");
   }
 
-  const bodyWithCards = await eventCardService.replaceEventLinksWithCards(bodyHtml, process.env.APP_URL);
+  const bodyWithCards = await eventCardService.replaceEventLinksWithCards(personalizedBodyHtml, process.env.APP_URL);
   const normalizedBody = normalizeBodyHtmlForSend(bodyWithCards, inlineRefs);
   const { html, text } = wrapWithTemplate(normalizedBody);
   const mailOptions = {
     from,
     to,
-    subject: subject || "(No subject)",
+    subject: personalizedSubject || "(No subject)",
     html,
     text,
     attachments: attachments.length ? attachments : undefined,

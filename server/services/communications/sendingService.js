@@ -33,6 +33,8 @@ async function send(opts) {
       bodyHtml: opts.bodyHtml,
       attachments: opts.attachments,
       inlineImages: opts.inlineImages,
+      recipientName: opts.recipientName,
+      recipientEmail: opts.recipientEmail,
     });
   }
   if (provider === PROVIDERS.sms) {

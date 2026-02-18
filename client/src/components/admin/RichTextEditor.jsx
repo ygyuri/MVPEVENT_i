@@ -12,6 +12,7 @@ import {
   Link as LinkIcon,
   Heading2,
   Heading3,
+  User,
 } from "lucide-react";
 
 const ToolbarButton = ({ onClick, active, disabled, children, title }) => (
@@ -164,6 +165,17 @@ const RichTextEditor = ({ value = "", onChange, placeholder = "Write your messag
         </ToolbarButton>
         <ToolbarButton onClick={setLink} active={editor.isActive("link")} title="Link">
           <LinkIcon className="h-4 w-4" />
+        </ToolbarButton>
+        <span className="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-0.5" />
+        <ToolbarButton
+          onClick={() => {
+            editor.chain().focus().insertContent("{{firstName}}").run();
+            onChange(editor.getHTML());
+          }}
+          active={false}
+          title="Insert attendee first name"
+        >
+          <User className="h-4 w-4" />
         </ToolbarButton>
       </div>
       <EditorContent editor={editor} />

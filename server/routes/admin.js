@@ -2090,6 +2090,36 @@ router.post(
 );
 
 /**
+ * POST /api/admin/communications/preview-body
+ * Runs bodyHtml through eventCardService so the email composer preview can show
+ * event link cards exactly as they will appear in the sent email.
+ * Body: { bodyHtml: string }
+ * Returns: { processedHtml: string }
+ */
+const eventCardService = require("../services/communications/eventCardService");
+router.post(
+  "/communications/preview-body",
+  verifyToken,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const { bodyHtml } = req.body;
+      if (!bodyHtml || typeof bodyHtml !== "string") {
+        return res.status(400).json({ success: false, error: "bodyHtml is required" });
+      }
+      const processedHtml = await eventCardService.replaceEventLinksWithCards(
+        bodyHtml,
+        process.env.APP_URL
+      );
+      res.json({ success: true, processedHtml });
+    } catch (err) {
+      console.error("preview-body error:", err);
+      res.status(500).json({ success: false, error: "Preview processing failed" });
+    }
+  }
+);
+
+/**
  * GET /api/admin/communications/queue-status
  * Returns Redis availability for bulk email queue (for diagnostics).
  */

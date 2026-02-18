@@ -92,6 +92,7 @@ const AdminBulkEmail = () => {
         eventId: eventId || null,
         recipientIds: selectedAttendeeIds,
         attachments: draft.attachments || [],
+        inlineImages: draft.inlineImages || [],
       };
       const result = await dispatch(saveDraft(payload)).unwrap();
       const id = result._id;

@@ -264,6 +264,8 @@ async function runBulkSendSync(communicationId, userId) {
           attachments,
           inlineImages,
           provider: "email",
+          recipientName: log.recipientName,
+          recipientEmail: log.recipientEmail,
         });
         await MessageLog.updateOne(
           { _id: log._id },
