@@ -199,13 +199,6 @@ const AdminDashboard = () => {
       color: "hover:bg-orange-50 dark:hover:bg-orange-900/20",
     },
     {
-      title: "Bulk Email",
-      description: "Send bulk emails to event attendees",
-      icon: Mail,
-      link: "/admin/bulk-email",
-      color: "hover:bg-indigo-50 dark:hover:bg-indigo-900/20",
-    },
-    {
       title: "Scan Logs",
       description: "View QR code scan history",
       icon: Eye,

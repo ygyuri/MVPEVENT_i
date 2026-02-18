@@ -37,7 +37,7 @@ const OrganizerDashboard = () => {
     isAuthenticated,
     loading: authLoading,
   } = useSelector((state) => state.auth);
-  const { overview = {}, events, loading } = useSelector((state) => state.organizer);
+  const { overview, events, loading } = useSelector((state) => state.organizer);
 
   // Check if user just published an event
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
