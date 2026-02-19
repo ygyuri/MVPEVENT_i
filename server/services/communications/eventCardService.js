@@ -85,7 +85,13 @@ function buildEventCardHtml(event, eventUrl, baseUrl) {
  */
 async function replaceEventLinksWithCards(bodyHtml, baseUrl) {
   if (!bodyHtml || typeof bodyHtml !== "string") return bodyHtml;
-  const url = (baseUrl || process.env.APP_URL || "").replace(/\/$/, "");
+  const url = (
+    baseUrl ||
+    process.env.APP_URL ||
+    process.env.BASE_URL ||
+    process.env.FRONTEND_URL ||
+    ""
+  ).replace(/\/$/, "");
 
   const linkMatches = [];
   let m;
@@ -100,7 +106,7 @@ async function replaceEventLinksWithCards(bodyHtml, baseUrl) {
     plainMatches.push({ fullMatch: m[1], slug: m[2] });
   }
 
-  const slugToCard = new Map();
+  const slugToEvent = new Map();
   const slugs = [...new Set([...linkMatches.map((x) => x.slug), ...plainMatches.map((x) => x.slug)])];
 
   for (const slug of slugs) {
@@ -108,23 +114,25 @@ async function replaceEventLinksWithCards(bodyHtml, baseUrl) {
       const event = await Event.findOne({ slug, status: "published" })
         .select("title slug shortDescription description media.coverImageUrl location dates pricing")
         .lean();
-      if (event) {
-        const eventUrl = `${url}/events/${slug}/checkout`;
-        slugToCard.set(slug, buildEventCardHtml(event, eventUrl, url));
-      }
+      if (event) slugToEvent.set(slug, event);
     } catch (err) {
       console.warn("[eventCardService] Failed to fetch event for card:", slug, err.message);
     }
   }
 
   let out = bodyHtml;
-  for (const { fullMatch, slug } of linkMatches) {
-    const card = slugToCard.get(slug);
-    if (card) out = out.replace(fullMatch, card);
+  // For <a href> links: use the exact URL the author wrote — don't reconstruct it.
+  for (const { fullMatch, fullUrl, slug } of linkMatches) {
+    const event = slugToEvent.get(slug);
+    if (event) out = out.replace(fullMatch, buildEventCardHtml(event, fullUrl, url));
   }
+  // For plain pasted URLs: same — use the URL as written.
   for (const { fullMatch, slug } of plainMatches) {
-    const card = slugToCard.get(slug);
-    if (card) out = out.replace(fullMatch, card);
+    const event = slugToEvent.get(slug);
+    if (event) {
+      const eventUrl = `${url}/events/${slug}/checkout`;
+      out = out.replace(fullMatch, buildEventCardHtml(event, eventUrl, url));
+    }
   }
 
   return out;
