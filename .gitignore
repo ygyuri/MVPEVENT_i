@@ -128,7 +128,8 @@ client/dist/
 server/dist/
 
 # Local development
-.local/ 
+.local/
+.claude/ 
 
 # Secrets directory - NEVER COMMIT sensitive information
 .secrets/
