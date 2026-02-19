@@ -12,9 +12,12 @@ const FONT_STACK =
 const EVENT_LINK_REGEX =
   /<a[^>]+href=["'](https?:\/\/[^"']*?\/events\/([a-z0-9-]+)(?:\/checkout)?[^"']*)["'][^>]*>[\s\S]*?<\/a>/gi;
 
-/** Match plain event URL (no <a>), e.g. pasted https://.../events/slug/checkout */
+/** Match plain event URL (no <a>), e.g. pasted https://.../events/slug/checkout.
+ * Lookahead must NOT include " or ' — otherwise this also matches URLs inside
+ * <a href="..."> attribute values, causing the plain-URL replacement to inject
+ * card HTML into an href and break the surrounding markup. */
 const PLAIN_EVENT_URL_REGEX =
-  /(https?:\/\/[^\s"'<>]+?\/events\/([a-z0-9-]+)(?:\/checkout)?)(?=[\s"']|$)/g;
+  /(https?:\/\/[^\s"'<>]+?\/events\/([a-z0-9-]+)(?:\/checkout)?)(?=[\s<>]|$)/g;
 
 function truncate(str, maxLen = 140) {
   if (!str || typeof str !== "string") return "";
@@ -123,12 +126,18 @@ async function replaceEventLinksWithCards(bodyHtml, baseUrl) {
 
   let out = bodyHtml;
   // For <a href> links: use the exact URL the author wrote — don't reconstruct it.
+  const linkedSlugs = new Set();
   for (const { fullMatch, fullUrl, slug } of linkMatches) {
     const event = slugToEvent.get(slug);
-    if (event) out = out.replace(fullMatch, buildEventCardHtml(event, fullUrl, url));
+    if (event) {
+      out = out.replace(fullMatch, buildEventCardHtml(event, fullUrl, url));
+      linkedSlugs.add(slug);
+    }
   }
-  // For plain pasted URLs: same — use the URL as written.
+  // For plain pasted URLs: skip any slug already handled above — str.replace() does
+  // exact-string matching and would otherwise inject card HTML into the card's own href.
   for (const { fullMatch, slug } of plainMatches) {
+    if (linkedSlugs.has(slug)) continue;
     const event = slugToEvent.get(slug);
     if (event) {
       const eventUrl = `${url}/events/${slug}/checkout`;
