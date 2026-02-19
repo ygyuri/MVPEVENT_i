@@ -85,7 +85,13 @@ function buildEventCardHtml(event, eventUrl, baseUrl) {
  */
 async function replaceEventLinksWithCards(bodyHtml, baseUrl) {
   if (!bodyHtml || typeof bodyHtml !== "string") return bodyHtml;
-  const url = (baseUrl || process.env.APP_URL || "").replace(/\/$/, "");
+  const url = (
+    baseUrl ||
+    process.env.APP_URL ||
+    process.env.BASE_URL ||
+    process.env.FRONTEND_URL ||
+    ""
+  ).replace(/\/$/, "");
 
   const linkMatches = [];
   let m;
