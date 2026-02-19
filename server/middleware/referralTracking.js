@@ -57,17 +57,21 @@ function visitorFingerprint(ip, ua) {
   return crypto.createHash('sha256').update(`${ip}|${ua}`).digest('hex').slice(0, 40);
 }
 
-// Rate limiter: More lenient in development to avoid issues with hot reload
+// Rate limiter: only fires for referral-link requests (?ref=...).
+// Applied globally via app.use(), so we skip everything without a ref param
+// to avoid rate-limiting normal API traffic and health checks.
 const clickLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 1000 in dev, 100 in prod
+  max: 200, // 200 referral-link clicks per IP per hour is generous
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting for development on localhost
-    return process.env.NODE_ENV !== 'production' &&
-           (req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1');
-  }
+    // Only enforce on requests that actually carry a referral token
+    if (!req.query.ref) return true;
+    // Also always skip health checks
+    if (req.path === '/api/health' || req.path === '/health') return true;
+    return false;
+  },
 });
 
 async function logClickAndSetCookie(req, res, next) {
