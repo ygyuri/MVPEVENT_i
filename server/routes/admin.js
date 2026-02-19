@@ -1880,15 +1880,27 @@ router.get(
       const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 50));
       const skip = (page - 1) * limit;
 
-      const [attendees, total] = await Promise.all([
+      const [attendees, totalResult] = await Promise.all([
         Ticket.aggregate([
           { $match: { eventId: new mongoose.Types.ObjectId(eventId), status: "active" } },
+          // Sort so $first picks the most recent ticket per person
           { $sort: { "holder.email": 1, createdAt: -1 } },
+          // Deduplicate by email — one row per unique address
+          {
+            $group: {
+              _id: { $toLower: { $ifNull: ["$holder.email", ""] } },
+              docId: { $first: "$_id" },
+              ticketNumber: { $first: "$ticketNumber" },
+              ticketType: { $first: "$ticketType" },
+              holder: { $first: "$holder" },
+            },
+          },
+          { $sort: { _id: 1 } },
           { $skip: skip },
           { $limit: limit },
           {
             $project: {
-              _id: 1,
+              _id: "$docId",
               ticketNumber: 1,
               ticketType: 1,
               "holder.email": 1,
@@ -1898,8 +1910,14 @@ router.get(
             },
           },
         ]),
-        Ticket.countDocuments({ eventId, status: "active" }),
+        // Count distinct emails, not total tickets
+        Ticket.aggregate([
+          { $match: { eventId: new mongoose.Types.ObjectId(eventId), status: "active" } },
+          { $group: { _id: { $toLower: { $ifNull: ["$holder.email", ""] } } } },
+          { $count: "total" },
+        ]),
       ]);
+      const total = totalResult[0]?.total || 0;
 
       res.json({
         success: true,
