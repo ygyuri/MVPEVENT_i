@@ -28,6 +28,7 @@ function buildEventCardHtml(event, eventUrl, baseUrl) {
   const desc = truncate(event.shortDescription || event.description || "", 140);
   const descSafe = desc.replace(/</g, "&lt;").replace(/>/g, "&gt;");
   let imgSrc = event.media?.coverImageUrl || "";
+  if (imgSrc && imgSrc.startsWith("data:")) imgSrc = ""; // skip embedded data: URLs — can't be used as email img src
   if (imgSrc && !/^https?:\/\//i.test(imgSrc)) {
     imgSrc = (baseUrl || "").replace(/\/$/, "") + (imgSrc.startsWith("/") ? imgSrc : "/" + imgSrc);
   }
