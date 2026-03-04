@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Plus, Trash2, Calendar, Users, DollarSign, AlertCircle } from 'lucide-react';
-import { addTicketType, updateTicketType, removeTicketType, setStepValidation } from '../../../store/slices/eventFormSlice';
+import { addTicketType, updateTicketType, removeTicketType, setStepValidation, updateFormData } from '../../../store/slices/eventFormSlice';
 import { validateField, stepValidators } from '../../../utils/eventValidation';
 import FormValidation, { FieldValidation, FieldSuccess } from '../../common/FormValidation';
 import { ticketUtils, currencyUtils, dateUtils } from '../../../utils/eventHelpers';
@@ -14,6 +14,7 @@ const TicketTypesStep = () => {
   const [fieldErrors, setFieldErrors] = useState({});
 
   const ticketTypes = formData.ticketTypes || [];
+  const ticketSortOrder = formData.ticketSortOrder || 'price_asc';
 
   // Real-time validation for ticket types
   const validateTicketTypes = () => {
@@ -67,8 +68,8 @@ const TicketTypesStep = () => {
       </div>
 
       <div className="max-w-4xl mx-auto space-y-6 px-4 sm:px-0">
-        {/* Add Ticket Type Button */}
-        <div className="flex justify-between items-center">
+        {/* Ticket Types Header + Sort Order */}
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               Ticket Types
@@ -77,14 +78,40 @@ const TicketTypesStep = () => {
               Create different ticket options for your event
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleAddTicketType}
-            className="btn-web3-primary flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Ticket Type
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Ticket list order (checkout)
+              </label>
+              <select
+                value={ticketSortOrder}
+                onChange={(e) =>
+                  dispatch(
+                    updateFormData({
+                      field: 'ticketSortOrder',
+                      value: e.target.value,
+                      step: 5
+                    })
+                  )
+                }
+                className="input-modern w-full sm:w-56"
+              >
+                <option value="price_asc">Price: Low → High</option>
+                <option value="price_desc">Price: High → Low</option>
+                <option value="name_asc">Name: A → Z</option>
+                <option value="name_desc">Name: Z → A</option>
+                <option value="custom">Custom (as created)</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddTicketType}
+              className="btn-web3-primary flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Ticket Type
+            </button>
+          </div>
         </div>
 
         {/* Ticket Types List */}

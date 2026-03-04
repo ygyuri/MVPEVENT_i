@@ -117,6 +117,8 @@ export const formUtils = {
       dates: formData.dates || undefined,
       capacity: formData.capacity || undefined,
       pricing: formData.pricing || undefined,
+      // Ticket configuration
+      ticketSortOrder: formData.ticketSortOrder || undefined,
       ticketTypes: formData.ticketTypes || undefined,
       recurrence: formData.recurrence || undefined,
       media: formData.media || undefined,
@@ -156,6 +158,8 @@ export const formUtils = {
         price: apiData.pricing?.price || 0,
         currency: apiData.pricing?.currency || 'USD'
       },
+      // Ticket configuration
+      ticketSortOrder: apiData.ticketSortOrder || 'price_asc',
       ticketTypes: apiData.ticketTypes || [],
       recurrence: {
         enabled: apiData.recurrence?.enabled || false,
