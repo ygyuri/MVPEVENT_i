@@ -222,13 +222,45 @@ const DirectCheckout = () => {
         const response = await api.get(`/api/events/${slug}/checkout${params}`);
 
         const eventData = response.data.event;
-        setEvent(eventData);
 
-        // Set default ticket type if available
-        if (eventData.ticketTypes && eventData.ticketTypes.length > 0) {
+        const sortOrder = eventData.ticketSortOrder || "price_asc";
+
+        const sortedTicketTypes = Array.isArray(eventData.ticketTypes)
+          ? [...eventData.ticketTypes].sort((a, b) => {
+              const priceA = typeof a.price === "number" ? a.price : 0;
+              const priceB = typeof b.price === "number" ? b.price : 0;
+              const nameA = (a.name || "").toString();
+              const nameB = (b.name || "").toString();
+
+              switch (sortOrder) {
+                case "price_desc":
+                  return priceB - priceA;
+                case "name_asc":
+                  return nameA.localeCompare(nameB);
+                case "name_desc":
+                  return nameB.localeCompare(nameA);
+                case "custom":
+                  // Preserve original order as created
+                  return 0;
+                case "price_asc":
+                default:
+                  return priceA - priceB;
+              }
+            })
+          : [];
+
+        const normalizedEvent = {
+          ...eventData,
+          ticketTypes: sortedTicketTypes,
+        };
+
+        setEvent(normalizedEvent);
+
+        // Set default ticket type to the first in the sorted list
+        if (sortedTicketTypes.length > 0) {
           setFormData((prev) => ({
             ...prev,
-            ticketType: eventData.ticketTypes[0].name,
+            ticketType: sortedTicketTypes[0].name,
           }));
         }
       } catch (err) {

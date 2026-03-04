@@ -45,6 +45,8 @@ const initialState = {
       price: 0,
       currency: 'KES'
     },
+    // Default ticket sort order for checkout display
+    ticketSortOrder: 'price_asc',
     ticketTypes: [],
     
     // Step 5: Recurrence Rules
@@ -335,6 +337,7 @@ const eventFormSlice = createSlice({
         dates: event.dates || initialState.formData.dates,
         capacity: event.capacity || null,
         pricing: event.pricing || initialState.formData.pricing,
+        ticketSortOrder: event.ticketSortOrder || 'price_asc',
         ticketTypes: event.ticketTypes || [],
         recurrence: event.recurrence || initialState.formData.recurrence,
         media: event.media || initialState.formData.media,

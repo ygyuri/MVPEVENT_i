@@ -115,6 +115,12 @@ const eventSchema = new mongoose.Schema({
     coverImageUrl: String,
     galleryUrls: [String]
   },
+  // How ticket types should be ordered in checkout
+  ticketSortOrder: {
+    type: String,
+    enum: ['price_asc', 'price_desc', 'name_asc', 'name_desc', 'custom'],
+    default: 'price_asc'
+  },
   ticketTypes: [{
     name: String,
     price: Number,
