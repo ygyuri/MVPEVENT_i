@@ -417,6 +417,11 @@ export const stepValidators = {
         const salesError = validators.dateRange(ticket.salesStart, ticket.salesEnd, 'Sales end date must be after sales start date');
         if (salesError) errors[`ticketTypes.${index}.salesWindow`] = salesError;
       }
+
+      // Voucher amount (optional, must be >= 0 if set)
+      if (ticket.voucherAmount != null && (typeof ticket.voucherAmount !== 'number' || ticket.voucherAmount < 0)) {
+        errors[`ticketTypes.${index}.voucherAmount`] = 'Voucher amount must be 0 or greater when set';
+      }
     });
 
     // Check total quantity against capacity

@@ -39,6 +39,21 @@ const getErrorMessage = (code, data = {}) => {
       message: 'This event has ended. Scanning is no longer available.',
       details: data.validUntil ? `Event ended: ${new Date(data.validUntil).toLocaleString()}` : 'The event has concluded.'
     },
+    'NOT_ENTRY_USED': {
+      title: 'Entry Required First',
+      message: 'This ticket must be scanned for entry before voucher redemption.',
+      details: 'Scan the ticket at the entry gate first, then bring it to the voucher desk.'
+    },
+    'VOUCHER_ALREADY_REDEEMED': {
+      title: 'Voucher Already Redeemed',
+      message: 'This voucher has already been redeemed.',
+      details: data.voucherRedeemedAt ? `Redeemed at: ${new Date(data.voucherRedeemedAt).toLocaleString()}` : 'This voucher was previously redeemed.'
+    },
+    'NO_VOUCHER_CONFIGURED': {
+      title: 'No Voucher',
+      message: 'No voucher is configured for this ticket type.',
+      details: 'This ticket type does not have a voucher amount set.'
+    },
     'ACCESS_DENIED': {
       title: 'Access Denied',
       message: 'You do not have permission to scan tickets for this event.',
@@ -177,6 +192,32 @@ export const flushOfflineQueue = createAsyncThunk('scanner/flushQueue', async (_
   return { flushed: queue.length - remaining.length, remaining: remaining.length };
 });
 
+export const validateVoucherScan = createAsyncThunk('scanner/validateVoucher', async ({ qr, location, device }, { rejectWithValue }) => {
+  try {
+    if (!qr || typeof qr !== 'string') {
+      return rejectWithValue({ success: false, error: 'Invalid QR code', code: 'INVALID_QR', ...getErrorMessage('INVALID_QR') });
+    }
+    const qrTrimmed = qr.trim();
+    if (!qrTrimmed) {
+      return rejectWithValue({ success: false, error: 'Empty QR code', code: 'INVALID_QR', ...getErrorMessage('INVALID_QR') });
+    }
+    const res = await api.post(`/api/vouchers/scan`, { qr: qrTrimmed, location, device });
+    return res.data;
+  } catch (e) {
+    const status = e.response?.status;
+    const data = e.response?.data || { success: false, error: 'Voucher scan failed' };
+    let errorCode = data.code || 'UNKNOWN_ERROR';
+    if (status === 400) errorCode = data.code || 'INVALID_QR';
+    else if (status === 403) errorCode = 'ACCESS_DENIED';
+    else if (status === 409) errorCode = 'VOUCHER_ALREADY_REDEEMED';
+    else if (status === 429) errorCode = 'RATE_LIMITED';
+    else if (status >= 500) errorCode = 'SERVER_ERROR';
+    else if (!e.response) errorCode = 'NETWORK_ERROR';
+    const errorMessage = getErrorMessage(errorCode, data);
+    return rejectWithValue({ ...data, code: errorCode, status, ...errorMessage });
+  }
+});
+
 // Fetch paginated recent scans from database
 export const fetchRecentScans = createAsyncThunk('scanner/fetchRecentScans', async ({ page = 1, limit = 20, eventId = null }, { rejectWithValue }) => {
   try {
@@ -196,6 +237,7 @@ const scannerSlice = createSlice({
   initialState: {
     scanning: false,
     lastResult: null,
+    voucherResult: null,
     error: null,
     offlineCount: 0,
     recentScans: {
@@ -215,6 +257,7 @@ const scannerSlice = createSlice({
   reducers: {
     clearScan(state) {
       state.lastResult = null;
+      state.voucherResult = null;
       state.error = null;
     },
     setScanning(state, action) {
@@ -236,6 +279,20 @@ const scannerSlice = createSlice({
       })
       .addCase(validateScan.rejected, (state, action) => {
         state.scanning = false;
+        state.error = action.payload || action.error;
+      })
+      .addCase(validateVoucherScan.pending, (state) => {
+        state.scanning = true;
+        state.error = null;
+      })
+      .addCase(validateVoucherScan.fulfilled, (state, action) => {
+        state.scanning = false;
+        state.voucherResult = action.payload;
+        state.error = null;
+      })
+      .addCase(validateVoucherScan.rejected, (state, action) => {
+        state.scanning = false;
+        state.voucherResult = null;
         state.error = action.payload || action.error;
       })
       .addCase(enqueueOfflineScan.fulfilled, (state, action) => {
