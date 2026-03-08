@@ -104,14 +104,21 @@ const ticketSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User' // Event staff who scanned the ticket
   },
-  
+
+  // Voucher redemption tracking (second scan after entry)
+  voucherRedeemedAt: Date,
+  voucherRedeemedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+
   // Scan attempts history (optional audit)
   scanHistory: [
     {
       scannedAt: { type: Date },
       scannedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       location: { type: String },
-      result: { type: String, enum: ['success', 'already_used', 'invalid', 'expired', 'denied'] }
+      result: { type: String, enum: ['success', 'already_used', 'invalid', 'expired', 'denied', 'voucher_redeemed'] }
     }
   ],
   

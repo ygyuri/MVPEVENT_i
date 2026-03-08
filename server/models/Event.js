@@ -130,7 +130,8 @@ const eventSchema = new mongoose.Schema({
     salesStart: Date,
     salesEnd: Date,
     minPerOrder: Number,
-    maxPerOrder: Number
+    maxPerOrder: Number,
+    voucherAmount: { type: Number, min: 0 }  // optional; if set, this ticket type has a voucher value
   }],
   tags: [{
     type: String,

@@ -14,6 +14,7 @@ const StepIndicator = ({
     'Location',
     'Schedule',
     'Pricing & Tickets',
+    'Vouchers',
     'Recurrence',
     'Media',
     'Preview'
