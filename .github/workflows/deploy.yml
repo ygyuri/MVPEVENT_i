@@ -149,7 +149,7 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
           source: ".env.production"
-          target: "/tmp"
+          target: "/root/MVPEVENT_i"
           port: ${{ secrets.VM_SSH_PORT || 22 }}
           timeout: 180s
           command_timeout: 10m
@@ -254,7 +254,9 @@ jobs:
             
             # Move and secure environment file
             ENV_SRC=""
-            if [ -f /tmp/.env.production ]; then
+            if [ -f /root/MVPEVENT_i/.env.production ]; then
+              ENV_SRC="/root/MVPEVENT_i/.env.production"
+            elif [ -f /tmp/.env.production ]; then
               ENV_SRC="/tmp/.env.production"
             elif [ -f /tmp/.env.production/.env.production ]; then
               ENV_SRC="/tmp/.env.production/.env.production"
@@ -273,7 +275,9 @@ jobs:
             fi
 
             sudo cp "$ENV_SRC" /root/MVPEVENT_i/.env.production
-            sudo rm -f "$ENV_SRC" || true
+            if [ "$ENV_SRC" != "/root/MVPEVENT_i/.env.production" ]; then
+              sudo rm -f "$ENV_SRC" || true
+            fi
             
             # Set proper permissions
             sudo chmod 755 /root/MVPEVENT_i
