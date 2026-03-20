@@ -5,7 +5,6 @@ import { Calendar, Clock, Timer, AlertCircle, CheckCircle, Zap, CalendarDays, Cl
 import { updateNestedFormData, setStepValidation, setBlurField } from '../../../store/slices/eventFormSlice';
 import { validateField, stepValidators } from '../../../utils/eventValidation';
 import FormValidation, { FieldValidation, FieldSuccess } from '../../common/FormValidation';
-import { dateUtils } from '../../../utils/eventHelpers';
 
 const ScheduleStep = () => {
   const dispatch = useDispatch();
@@ -91,15 +90,29 @@ const ScheduleStep = () => {
     // console.log(`✅ [PRESET] Applied ${preset.label}: Start ${startDate.toLocaleString()}, End ${endDate.toLocaleString()}`);
   };
 
-  // Calculate duration
-  const calculateDuration = () => {
-    if (formData.dates?.startDate && formData.dates?.endDate) {
-      return dateUtils.calculateDuration(formData.dates.startDate, formData.dates.endDate);
-    }
-    return 0;
+  const calculateDurationMinutes = () => {
+    if (!formData.dates?.startDate || !formData.dates?.endDate) return 0;
+    const start = new Date(formData.dates.startDate);
+    const end = new Date(formData.dates.endDate);
+    const diffMs = end - start;
+    if (!Number.isFinite(diffMs) || diffMs <= 0) return 0;
+    return Math.round(diffMs / (1000 * 60));
   };
 
-  const duration = calculateDuration();
+  const formatDuration = (totalMinutes) => {
+    const minutes = Math.max(0, Math.floor(totalMinutes));
+    const days = Math.floor(minutes / (60 * 24));
+    const hours = Math.floor((minutes % (60 * 24)) / 60);
+    const mins = minutes % 60;
+
+    const parts = [];
+    if (days) parts.push(`${days} day${days === 1 ? '' : 's'}`);
+    if (hours) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`);
+    if (mins || parts.length === 0) parts.push(`${mins} minute${mins === 1 ? '' : 's'}`);
+    return parts.join(' ');
+  };
+
+  const durationMinutes = calculateDurationMinutes();
 
   // Get minimum date (today)
   const getMinDate = () => {
@@ -497,9 +510,7 @@ const ScheduleStep = () => {
               <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800/50 rounded-lg">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Duration</span>
                 <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                  {duration < 60 ? `${duration} minutes` : 
-                   duration === 60 ? '1 hour' : 
-                   `${Math.floor(duration / 60)} hours ${duration % 60 ? `and ${duration % 60} minutes` : ''}`}
+                  {formatDuration(durationMinutes)}
                 </span>
               </div>
 

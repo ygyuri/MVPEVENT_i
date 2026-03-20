@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { BookOpen, Tag, FileText, Hash } from 'lucide-react';
+import { BookOpen, FileText } from 'lucide-react';
 import { setStepValidation } from '../../../store/slices/eventFormSlice';
 import { createEventDraft, updateEventDraft } from '../../../store/slices/organizerSlice';
 import { categoriesAPI } from '../../../utils/organizerAPI';
@@ -214,56 +214,6 @@ const BasicInfoStep = () => {
             touched={touched.category}
           />
         </div>
-
-        {/* Tags */}
-        <div>
-          <label htmlFor="tags" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Tags
-            <span className="text-gray-500 dark:text-gray-400 ml-1">(Optional)</span>
-          </label>
-          <div className="relative">
-            <input
-              id="tags"
-              type="text"
-              value={Array.isArray(formData.tags) ? formData.tags.join(', ') : ''}
-              onChange={(e) => {
-                const raw = e.target.value;
-                const tags = raw
-                  .split(',')
-                  .map(tag => tag.trim())
-                  .map(tag => tag.replace(/^[\[\s'"`]+|[\]\s'"`]+$/g, ''))
-                  .filter(Boolean);
-                console.log('🏷️ [TAGS INPUT] Parsed tags:', tags);
-                validateAndUpdateField('tags', tags);
-              }}
-              onBlur={() => setTouched(prev => ({ ...prev, tags: true }))}
-              placeholder="e.g., react, javascript, conference, networking"
-              className="input-modern w-full"
-            />
-            
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-              <Hash className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-            </div>
-          </div>
-          
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Separate tags with commas. These help people discover your event.
-          </p>
-          
-          {/* Display tags */}
-          {formData.tags && formData.tags.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {formData.tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Help Section */}
@@ -279,7 +229,7 @@ const BasicInfoStep = () => {
                 <li>• Use a clear, descriptive title that explains what your event is about</li>
                 <li>• Include key details like what attendees will learn or experience</li>
                 <li>• Mention any special speakers, topics, or activities</li>
-                <li>• Choose relevant tags to help people find your event</li>
+                <li>• Highlight what makes your event unique and valuable</li>
               </ul>
             </div>
           </div>
