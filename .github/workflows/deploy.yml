@@ -431,7 +431,7 @@ jobs:
             if sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps | grep -q "Up"; then
               echo "✅ Containers are running"
               # Check for any exited containers
-              EXITED_COUNT=$(sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps | grep -c "Exited" || echo "0")
+              EXITED_COUNT=$(sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps | grep -c "Exited" || true)
               if [ "$EXITED_COUNT" -gt 0 ]; then
                 echo "⚠️ Some containers have exited ($EXITED_COUNT)"
                 echo "📋 Container logs:"
