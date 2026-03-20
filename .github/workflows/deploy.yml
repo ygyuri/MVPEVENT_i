@@ -253,17 +253,27 @@ jobs:
             fi
             
             # Move and secure environment file
+            ENV_SRC=""
             if [ -f /tmp/.env.production ]; then
-              sudo mv /tmp/.env.production /root/MVPEVENT_i/.env.production
-            elif [ -d /tmp/.env.production ] && [ -f /tmp/.env.production/.env.production ]; then
-              sudo cp /tmp/.env.production/.env.production /root/MVPEVENT_i/.env.production
-              sudo rm -rf /tmp/.env.production
+              ENV_SRC="/tmp/.env.production"
+            elif [ -f /tmp/.env.production/.env.production ]; then
+              ENV_SRC="/tmp/.env.production/.env.production"
             else
-              echo "❌ Missing /tmp/.env.production on VM (transfer step did not place it as expected)"
+              ENV_SRC=$(sudo find /tmp -maxdepth 2 -type f -name ".env.production" 2>/dev/null | head -n 1 || true)
+              if [ -z "$ENV_SRC" ]; then
+                ENV_SRC=$(sudo find /tmp -maxdepth 2 -type f -name "env.production" 2>/dev/null | head -n 1 || true)
+              fi
+            fi
+
+            if [ -z "$ENV_SRC" ]; then
+              echo "❌ Missing .env.production on VM after transfer"
               ls -la /tmp || true
-              ls -la /tmp/.env.production 2>/dev/null || true
+              sudo find /tmp -maxdepth 3 -type f -name "*env*" 2>/dev/null | head -n 50 || true
               exit 1
             fi
+
+            sudo cp "$ENV_SRC" /root/MVPEVENT_i/.env.production
+            sudo rm -f "$ENV_SRC" || true
             
             # Set proper permissions
             sudo chmod 755 /root/MVPEVENT_i
