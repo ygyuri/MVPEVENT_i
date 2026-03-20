@@ -102,6 +102,11 @@ jobs:
           SMTP_USER=${{ secrets.SMTP_USER }}
           SMTP_PASS=${{ secrets.SMTP_PASS }}
           EMAIL_FROM=${{ secrets.EMAIL_FROM }}
+
+          # Google OAuth Configuration
+          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          CALLBACK_URL=${{ secrets.CALLBACK_URL }}
           
           # Security Configuration
           TICKET_QR_SECRET=${{ secrets.TICKET_QR_SECRET }}
@@ -144,7 +149,7 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
           source: ".env.production"
-          target: "/tmp/.env.production"
+          target: "/tmp"
           port: ${{ secrets.VM_SSH_PORT || 22 }}
           timeout: 180s
           command_timeout: 10m
@@ -248,11 +253,16 @@ jobs:
             fi
             
             # Move and secure environment file
-            if [ -d /tmp/.env.production ]; then
+            if [ -f /tmp/.env.production ]; then
+              sudo mv /tmp/.env.production /root/MVPEVENT_i/.env.production
+            elif [ -d /tmp/.env.production ] && [ -f /tmp/.env.production/.env.production ]; then
               sudo cp /tmp/.env.production/.env.production /root/MVPEVENT_i/.env.production
               sudo rm -rf /tmp/.env.production
             else
-              sudo mv /tmp/.env.production /root/MVPEVENT_i/.env.production
+              echo "❌ Missing /tmp/.env.production on VM (transfer step did not place it as expected)"
+              ls -la /tmp || true
+              ls -la /tmp/.env.production 2>/dev/null || true
+              exit 1
             fi
             
             # Set proper permissions
