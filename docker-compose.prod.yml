@@ -86,6 +86,10 @@ services:
       SENTRY_DSN: ${SENTRY_DSN}
       LOG_TO_FILE: ${LOG_TO_FILE}
       LOG_FILE_PATH: ${LOG_FILE_PATH}
+      # Google OAuth Configuration
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      CALLBACK_URL: ${CALLBACK_URL}
     # Don't expose server port directly - access through nginx
     # ports:
     #   - "5000:5000"
