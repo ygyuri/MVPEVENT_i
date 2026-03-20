@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 const crypto = require("crypto");
+const passport = require("passport");
 const User = require("../models/User");
 const Session = require("../models/Session");
 const emailService = require("../services/emailService");
@@ -15,6 +16,12 @@ const {
 } = require("../middleware/auth");
 
 const router = express.Router();
+
+const getFrontendBaseUrl = () => {
+  if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL;
+  if (process.env.NODE_ENV === "production") return "https://event-i.co.ke";
+  return "http://localhost:3001";
+};
 
 // Generate JWT tokens
 const generateTokens = (userId) => {
@@ -600,6 +607,49 @@ router.put(
     } catch (error) {
       console.error("Update profile error:", error);
       res.status(500).json({ error: "Failed to update profile" });
+    }
+  }
+);
+
+// Google OAuth - Initiate
+router.get(
+  "/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    session: false,
+    prompt: "select_account",
+  })
+);
+
+// Google OAuth - Callback
+router.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    session: false,
+    failureRedirect: `${getFrontendBaseUrl()}/?authError=google_oauth_failed`,
+  }),
+  async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.redirect(
+          `${getFrontendBaseUrl()}/?authError=google_oauth_no_user`
+        );
+      }
+
+      const { accessToken, refreshToken } = generateTokens(user._id);
+      await storeSession(user._id, accessToken, refreshToken, req);
+
+      const redirectUrl = new URL(`${getFrontendBaseUrl()}/oauth/callback`);
+      redirectUrl.searchParams.set("accessToken", accessToken);
+      redirectUrl.searchParams.set("refreshToken", refreshToken);
+
+      return res.redirect(redirectUrl.toString());
+    } catch (error) {
+      console.error("Google OAuth callback error:", error);
+      return res.redirect(
+        `${getFrontendBaseUrl()}/?authError=google_oauth_server_error`
+      );
     }
   }
 );

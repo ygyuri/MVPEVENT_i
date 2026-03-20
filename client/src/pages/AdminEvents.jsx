@@ -785,10 +785,12 @@ const AdminEvents = () => {
                           <div
                             className="text-gray-600 dark:text-gray-400 prose dark:prose-invert max-w-none"
                             dangerouslySetInnerHTML={{
-                              __html: eventDetails.description.replace(
-                                /\n/g,
-                                "<br />"
-                              ),
+                              __html: eventDetails.description
+                                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+                                .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
+                                .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
+                                .replace(/javascript:/gi, "")
+                                .replace(/\n/g, "<br />"),
                             }}
                           />
                         </div>

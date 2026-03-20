@@ -56,8 +56,11 @@ const payheroRoutes = require("./routes/payhero");
 const ticketRoutes = require("./routes/tickets");
 const pollsSimpleRoutes = require("./routes/polls-simple");
 
+const passport = require("passport");
+require("./config/passport")(passport);
+
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Disable ETag in development to avoid 304 Not Modified on API JSON
 if (process.env.NODE_ENV !== "production") {
@@ -66,6 +69,7 @@ if (process.env.NODE_ENV !== "production") {
 
 // Middleware
 app.use(helmet());
+app.use(passport.initialize());
 
 // Trust proxy for rate limiting behind nginx
 // Use 1 to trust only the first proxy (nginx), not true (too permissive)
