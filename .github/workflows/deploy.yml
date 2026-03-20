@@ -1,5 +1,7 @@
 name: Build and Deploy to VM
 
+# noop: trigger deploy workflow on push
+
 on:
   push:
     branches: [ main ]
