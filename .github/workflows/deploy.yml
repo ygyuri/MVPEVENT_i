@@ -150,6 +150,8 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           source: ".env.production"
           target: "/root/MVPEVENT_i"
+          overwrite: true
+          rm: true
           port: ${{ secrets.VM_SSH_PORT || 22 }}
           timeout: 180s
           command_timeout: 10m
