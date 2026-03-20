@@ -35,6 +35,7 @@ import PollsTest from "./pages/PollsTest";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import CookiePolicy from "./pages/CookiePolicy";
+import OAuthCallback from "./pages/OAuthCallback";
 import Error404 from "./pages/Error404";
 import {
   OrganizerUpdatesDashboard,
@@ -68,6 +69,7 @@ function App() {
               <main className="relative">
                 <Routes>
                   <Route path="/" element={<Home />} />
+                  <Route path="/oauth/callback" element={<OAuthCallback />} />
                   <Route path="/events" element={<Events />} />
                   <Route
                     path="/events/:slug/checkout"

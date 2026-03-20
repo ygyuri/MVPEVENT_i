@@ -17,6 +17,7 @@
     "@tiptap/extension-link": "^2.10.4",
     "@tiptap/react": "^2.10.4",
     "@tiptap/starter-kit": "^2.10.4",
+    "@react-oauth/google": "^0.12.2",
     "browser-image-compression": "^2.0.2",
     "@reduxjs/toolkit": "^2.8.2",
     "@testing-library/jest-dom": "6.8.0",

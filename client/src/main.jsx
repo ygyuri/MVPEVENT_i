@@ -6,6 +6,8 @@ import { store } from "./store";
 import App from "./App.jsx";
 import "./index.css";
 import { HelmetProvider } from "react-helmet-async";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { UserProvider } from "./contexts/UserContext";
 
 // Console log for deployment status
 // console.log("🚀 Event-i Application Starting:", {
@@ -23,14 +25,18 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <Provider store={store}>
       <HelmetProvider>
-        <BrowserRouter
-          future={{
-            v7_startTransition: true,
-            v7_relativeSplatPath: true,
-          }}
-        >
-          <App />
-        </BrowserRouter>
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}>
+          <UserProvider>
+            <BrowserRouter
+              future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true,
+              }}
+            >
+              <App />
+            </BrowserRouter>
+          </UserProvider>
+        </GoogleOAuthProvider>
       </HelmetProvider>
     </Provider>
   </React.StrictMode>

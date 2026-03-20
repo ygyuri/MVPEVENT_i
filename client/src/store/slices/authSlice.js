@@ -58,7 +58,9 @@ export const logout = createAsyncThunk(
         await api.post("/api/auth/logout");
       }
     } catch (error) {
-      console.error("Logout error:", error);
+      if (import.meta.env.DEV) {
+        console.error("Logout error:", error);
+      }
     } finally {
       // Clear localStorage
       localStorage.removeItem("authToken");
@@ -113,12 +115,14 @@ export const getCurrentUser = createAsyncThunk(
 
       return response.data.user;
     } catch (error) {
-      console.error("❌ [API AUTH] Error:", {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      });
+      if (import.meta.env.DEV) {
+        console.error("❌ [API AUTH] Error:", {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
       const errorMessage =
         error.response?.data?.error ||
@@ -133,27 +137,33 @@ export const updateUserProfile = createAsyncThunk(
   "auth/updateProfile",
   async (profileData, { rejectWithValue }) => {
     try {
-      console.log("🔄 [API PROFILE UPDATE] Request:", {
-        data: profileData,
-        timestamp: new Date().toISOString(),
-      });
+      if (import.meta.env.DEV) {
+        console.log("🔄 [API PROFILE UPDATE] Request:", {
+          data: profileData,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
       const response = await api.put("/api/auth/profile", profileData);
 
-      console.log("✅ [API PROFILE UPDATE] Response:", {
-        status: response.status,
-        data: response.data.user,
-        timestamp: new Date().toISOString(),
-      });
+      if (import.meta.env.DEV) {
+        console.log("✅ [API PROFILE UPDATE] Response:", {
+          status: response.status,
+          data: response.data.user,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
       return response.data.user;
     } catch (error) {
-      console.error("❌ [API PROFILE UPDATE] Error:", {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
-        timestamp: new Date().toISOString(),
-      });
+      if (import.meta.env.DEV) {
+        console.error("❌ [API PROFILE UPDATE] Error:", {
+          status: error.response?.status,
+          data: error.response?.data,
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        });
+      }
 
       const errorMessage =
         error.response?.data?.error ||

@@ -172,6 +172,23 @@ const AuthModal = ({ isOpen, onClose }) => {
     resetForm();
   };
 
+  const getBackendBaseUrl = () => {
+    if (import.meta.env.VITE_API_URL) {
+      return import.meta.env.VITE_API_URL;
+    }
+    if (import.meta.env.DEV) {
+      const hostname =
+        typeof window !== "undefined" ? window.location.hostname : "localhost";
+      return `http://${hostname}:5001`;
+    }
+    return "https://event-i.co.ke";
+  };
+
+  const handleGoogleLogin = () => {
+    const backend = getBackendBaseUrl();
+    window.location.href = `${backend}/api/auth/google`;
+  };
+
   return (
     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
       {/* Backdrop with better blur */}
@@ -690,6 +707,19 @@ const AuthModal = ({ isOpen, onClose }) => {
                   {isLogin ? "Sign In" : "Create Account"}
                 </div>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={loading}
+              className={`w-full py-3 sm:py-4 px-6 rounded-xl font-semibold text-base sm:text-lg border transition-all duration-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed ${
+                isDarkMode
+                  ? "bg-gray-800 border-gray-600 text-white hover:bg-gray-700"
+                  : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
+              }`}
+            >
+              <span>Continue with Google</span>
             </button>
           </form>
 
