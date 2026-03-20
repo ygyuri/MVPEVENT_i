@@ -149,9 +149,7 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
           source: ".env.production"
-          target: "/root/MVPEVENT_i"
-          overwrite: true
-          rm: true
+          target: "/tmp/.env.production"
           port: ${{ secrets.VM_SSH_PORT || 22 }}
           timeout: 180s
           command_timeout: 10m
@@ -255,30 +253,11 @@ jobs:
             fi
             
             # Move and secure environment file
-            ENV_SRC=""
-            if [ -f /root/MVPEVENT_i/.env.production ]; then
-              ENV_SRC="/root/MVPEVENT_i/.env.production"
-            elif [ -f /tmp/.env.production ]; then
-              ENV_SRC="/tmp/.env.production"
-            elif [ -f /tmp/.env.production/.env.production ]; then
-              ENV_SRC="/tmp/.env.production/.env.production"
+            if [ -d /tmp/.env.production ]; then
+              sudo cp /tmp/.env.production/.env.production /root/MVPEVENT_i/.env.production
+              sudo rm -rf /tmp/.env.production
             else
-              ENV_SRC=$(sudo find /tmp -maxdepth 2 -type f -name ".env.production" 2>/dev/null | head -n 1 || true)
-              if [ -z "$ENV_SRC" ]; then
-                ENV_SRC=$(sudo find /tmp -maxdepth 2 -type f -name "env.production" 2>/dev/null | head -n 1 || true)
-              fi
-            fi
-
-            if [ -z "$ENV_SRC" ]; then
-              echo "❌ Missing .env.production on VM after transfer"
-              ls -la /tmp || true
-              sudo find /tmp -maxdepth 3 -type f -name "*env*" 2>/dev/null | head -n 50 || true
-              exit 1
-            fi
-
-            sudo cp "$ENV_SRC" /root/MVPEVENT_i/.env.production
-            if [ "$ENV_SRC" != "/root/MVPEVENT_i/.env.production" ]; then
-              sudo rm -f "$ENV_SRC" || true
+              sudo mv /tmp/.env.production /root/MVPEVENT_i/.env.production
             fi
             
             # Set proper permissions
@@ -457,7 +436,7 @@ jobs:
             if sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps | grep -q "Up"; then
               echo "✅ Containers are running"
               # Check for any exited containers
-              EXITED_COUNT=$(sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps | grep -c "Exited" || true)
+              EXITED_COUNT=$(sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml ps | grep -c "Exited" || echo "0")
               if [ "$EXITED_COUNT" -gt 0 ]; then
                 echo "⚠️ Some containers have exited ($EXITED_COUNT)"
                 echo "📋 Container logs:"
@@ -538,6 +517,22 @@ jobs:
               echo "❌ API health check failed after 5 attempts"
               echo "📋 Server logs:"
               sudo docker compose -f /root/MVPEVENT_i/docker-compose.prod.yml logs server --tail=50
+              exit 1
+            fi
+
+            # Temporary Google OAuth redirect check
+            echo "🔍 Testing Google OAuth redirect..."
+            OAUTH_HEADERS=$(curl -s -I -L --max-redirs 0 https://event-i.co.ke/api/auth/google 2>/dev/null || true)
+            OAUTH_CODE=$(echo "$OAUTH_HEADERS" | head -n 1 | awk '{print $2}' || echo "")
+            OAUTH_LOCATION=$(echo "$OAUTH_HEADERS" | grep -i '^location:' | head -n 1 | tr -d '\r' | cut -d' ' -f2- || true)
+            echo "OAuth status: ${OAUTH_CODE}"
+            echo "OAuth location: ${OAUTH_LOCATION}"
+            if [ "$OAUTH_CODE" != "302" ] && [ "$OAUTH_CODE" != "303" ]; then
+              echo "❌ Google OAuth endpoint did not return 302/303"
+              exit 1
+            fi
+            if ! echo "$OAUTH_LOCATION" | grep -qi "accounts.google.com"; then
+              echo "❌ Google OAuth did not redirect to accounts.google.com"
               exit 1
             fi
             
