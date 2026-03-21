@@ -2,14 +2,13 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { PollList } from '../components/polls';
-import CategoryPollsPicker from '../components/polls/CategoryPollsPicker';
 import { ArrowLeft, Users, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const PollsPage = () => {
   const { eventId } = useParams();
   const { user } = useSelector(state => state.auth);
-
+  
   const isOrganizer = user?.role === 'organizer' || user?.events_organized?.includes(eventId);
 
   return (
@@ -26,20 +25,20 @@ const PollsPage = () => {
               Back to Event
             </Link>
           </div>
-
+          
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Event Polls
               </h1>
               <p className="text-gray-600">
-                {isOrganizer
+                {isOrganizer 
                   ? "Create and manage interactive polls for your event"
                   : "Participate in event polls and see real-time results"
                 }
               </p>
             </div>
-
+            
             <div className="flex items-center gap-6 text-sm text-gray-500">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
@@ -55,11 +54,7 @@ const PollsPage = () => {
 
         {/* Polls Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          {isOrganizer ? (
-            <PollList eventId={eventId} />
-          ) : (
-            <CategoryPollsPicker eventId={eventId} />
-          )}
+          <PollList eventId={eventId} />
         </div>
 
         {/* Info Section */}
@@ -78,7 +73,7 @@ const PollsPage = () => {
                   <li>• Close polls manually or automatically</li>
                 </ul>
               </div>
-
+              
               <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-green-900 mb-3">
                   Best Practices
@@ -106,7 +101,7 @@ const PollsPage = () => {
                   <li>• Participate anonymously if enabled</li>
                 </ul>
               </div>
-
+              
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-purple-900 mb-3">
                   Poll Types

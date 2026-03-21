@@ -4,11 +4,10 @@ const { verifyToken, requireRole, optionalAuth } = require('../middleware/auth')
 const pollsController = require('../src/controllers/pollsController');
 const { verifyOrganizer, verifyPollOrganizer, canCreatePoll } = require('../src/middleware/verifyOrganizer');
 const { verifyTicketHolder, verifyVotingAccess, verifyResultsAccess, checkPollAccess } = require('../src/middleware/verifyTicketHolder');
-const { requirePaidEventAccess } = require('../src/middleware/requirePaidEventAccess');
-const {
-  pollCreationLimiter,
-  votingLimiter,
-  resultsLimiter,
+const { 
+  pollCreationLimiter, 
+  votingLimiter, 
+  resultsLimiter, 
   pollManagementLimiter,
   anonymousTokenLimiter,
   rateLimitPollCreation,
@@ -17,27 +16,6 @@ const {
 } = require('../src/middleware/rateLimitPoll');
 
 const router = express.Router();
-
-router.get(
-  '/polls/event/:eventId',
-  verifyToken,
-  requirePaidEventAccess,
-  pollsController.listCategoryPolls
-);
-
-router.post(
-  '/polls/vote',
-  verifyToken,
-  requirePaidEventAccess,
-  pollsController.submitCategoryVote
-);
-
-router.get(
-  '/polls/event/:eventId/results',
-  verifyToken,
-  verifyOrganizer,
-  pollsController.getEventCategoryResults
-);
 
 // Validation middleware
 const validatePollCreation = [

@@ -83,35 +83,17 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
       }
     }
 
-    if (formData.category) {
-      if (formData.max_votes !== 1) {
-        errors.max_votes = 'Category polls allow exactly 1 vote';
-      }
-      if (formData.allow_vote_changes) {
-        errors.allow_vote_changes = 'Category polls lock after voting';
-      }
-    }
-
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   // Handle form field changes
   const handleFieldChange = (field, value) => {
-    setFormData(prev => {
-      const next = { ...prev, [field]: value };
-
-      if (field === 'category') {
-        const isCategoryPoll = !!value;
-        if (isCategoryPoll) {
-          next.max_votes = 1;
-          next.allow_vote_changes = false;
-        }
-      }
-
-      return next;
-    });
-
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
     // Clear validation error for this field
     if (validationErrors[field]) {
       setValidationErrors(prev => ({
@@ -128,7 +110,7 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
       ...newOptions[index],
       [field]: value
     };
-
+    
     setFormData(prev => ({
       ...prev,
       options: newOptions
@@ -148,7 +130,7 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
     if (formData.options.length >= 10) {
       return;
     }
-
+    
     setFormData(prev => ({
       ...prev,
       options: [...prev.options, { label: '', description: '' }]
@@ -160,7 +142,7 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
     if (formData.options.length <= 2) {
       return;
     }
-
+    
     setFormData(prev => ({
       ...prev,
       options: prev.options.filter((_, i) => i !== index)
@@ -170,13 +152,13 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    
     if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
-
+    
     try {
       // Clean up options (remove empty ones)
       const cleanedOptions = formData.options
@@ -203,17 +185,17 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
 
       console.log('Submitting poll data:', pollData);
 
-      const result = await dispatch(createPoll({
-        eventId,
-        pollData
+      const result = await dispatch(createPoll({ 
+        eventId, 
+        pollData 
       })).unwrap();
 
       console.log('Poll created successfully:', result);
-
+      
       if (onSuccess) {
         onSuccess(result);
       }
-
+      
       if (onClose) {
         onClose();
       }
@@ -228,7 +210,7 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div
+      <div 
         className="rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         style={{
           background: isDarkMode ? 'var(--bg-card)' : 'var(--bg-card)',
@@ -237,7 +219,7 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2
+          <h2 
             className="text-2xl font-bold"
             style={{ color: isDarkMode ? 'var(--text-primary)' : 'var(--text-primary)' }}
           >
@@ -264,10 +246,11 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
                   key={type.value}
                   type="button"
                   onClick={() => handleFieldChange('poll_type', type.value)}
-                  className={`p-4 rounded-lg border-2 transition-all ${formData.poll_type === type.value
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    formData.poll_type === type.value
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                    }`}
+                  }`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{type.icon}</span>
@@ -289,8 +272,9 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
               placeholder="e.g., What is your favorite music genre?"
               rows={3}
               maxLength={300}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${validationErrors.question ? 'border-red-500' : 'border-gray-300'
-                }`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                validationErrors.question ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
             <div className="flex justify-between mt-1">
               {validationErrors.question && (
@@ -382,8 +366,9 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
                 value={formData.closes_at}
                 onChange={(e) => handleFieldChange('closes_at', e.target.value)}
                 min={new Date().toISOString().slice(0, 16)}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${validationErrors.closes_at ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  validationErrors.closes_at ? 'border-red-500' : 'border-gray-300'
+                }`}
               />
               {validationErrors.closes_at && (
                 <p className="text-sm text-red-600 mt-1">{validationErrors.closes_at}</p>
@@ -494,9 +479,9 @@ const OptionInput = ({ index, option, pollType, onChange, onRemove, canRemove })
           onChange={(e) => onChange(index, 'label', e.target.value)}
           placeholder={
             pollType === 'artist_selection' ? 'Artist name (e.g., Drake)' :
-              pollType === 'theme_selection' ? 'Theme name (e.g., Neon Nights)' :
-                pollType === 'feature_selection' ? 'Feature name (e.g., VIP Lounge)' :
-                  'Option label'
+            pollType === 'theme_selection' ? 'Theme name (e.g., Neon Nights)' :
+            pollType === 'feature_selection' ? 'Feature name (e.g., VIP Lounge)' :
+            'Option label'
           }
           required
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
