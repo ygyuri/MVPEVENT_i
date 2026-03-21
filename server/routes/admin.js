@@ -219,6 +219,49 @@ router.get("/overview", verifyToken, requireRole("admin"), async (req, res) => {
   }
 });
 
+// Update event commission rate (admin only)
+router.patch(
+  "/events/:eventId/commission",
+  verifyToken,
+  requireRole("admin"),
+  [
+    param("eventId").isMongoId(),
+    body("commissionRate").isFloat({ min: 0, max: 100 }).toFloat(),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res
+          .status(400)
+          .json({ error: "Invalid input", details: errors.array() });
+      }
+
+      const { eventId } = req.params;
+      const { commissionRate } = req.body;
+
+      const event = await Event.findById(eventId);
+      if (!event) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+
+      event.commissionRate = commissionRate;
+      await event.save();
+
+      res.json({
+        success: true,
+        data: {
+          id: event._id,
+          commissionRate: event.commissionRate,
+        },
+      });
+    } catch (error) {
+      console.error("Update event commission error:", error);
+      res.status(500).json({ error: "Failed to update event commission" });
+    }
+  }
+);
+
 // Example organizer/admin shared route
 router.get("/users", verifyToken, requireRole(["admin"]), async (req, res) => {
   try {
@@ -425,7 +468,7 @@ router.get("/orders", verifyToken, requireRole("admin"), async (req, res) => {
       // If status filter is provided, use that status for revenue calculation
       revenueQuery.status = status;
     }
-    
+
     const [orders, total, revenueResult] = await Promise.all([
       Order.find(query)
         .populate({
@@ -508,7 +551,7 @@ router.get("/events", verifyToken, requireRole("admin"), async (req, res) => {
         .populate("organizer", "email username firstName lastName")
         .populate("category", "name slug color icon")
         .select(
-          "title slug status flags coverImageUrl dates createdAt capacity currentAttendees location category pricing ticketTypes shortDescription"
+          "title slug status flags coverImageUrl dates createdAt capacity currentAttendees location category pricing ticketTypes shortDescription commissionRate"
         )
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -779,12 +822,12 @@ router.get(
         ticketNumber: ticket.ticketNumber,
         event: ticket.eventId
           ? {
-              id: ticket.eventId._id,
-              title: ticket.eventId.title,
-              slug: ticket.eventId.slug,
-              startDate: ticket.eventId.dates?.startDate,
-              location: ticket.eventId.location,
-            }
+            id: ticket.eventId._id,
+            title: ticket.eventId.title,
+            slug: ticket.eventId.slug,
+            startDate: ticket.eventId.dates?.startDate,
+            location: ticket.eventId.location,
+          }
           : null,
         holder: {
           firstName: ticket.holder?.firstName,
@@ -933,9 +976,8 @@ router.post(
           tickets,
           customerEmail: order.customer.email,
           customerName:
-            `${order.customer.firstName || ""} ${
-              order.customer.lastName || ""
-            }`.trim() ||
+            `${order.customer.firstName || ""} ${order.customer.lastName || ""
+              }`.trim() ||
             order.customer.name ||
             "Customer",
         });
@@ -1043,7 +1085,7 @@ router.post(
 
       // Fetch orders
       const orders = await Order.find({ _id: { $in: orderIds } })
-        .populate("items.eventId", "title organizer")
+        .populate("items.eventId", "title organizer commissionRate")
         .lean();
 
       if (orders.length === 0) {
@@ -1054,27 +1096,53 @@ router.post(
       let totalRevenue = 0;
       let serviceFees = 0;
       let transactionFees = 0;
+      let commissionFees = 0;
       const eventIds = new Set();
       const eventTitles = new Set();
 
       orders.forEach((order) => {
-        const orderAmount = order.totalAmount || order.pricing?.total || 0;
-        const serviceFee = order.pricing?.serviceFee || 0;
-        const transactionFee = order.pricing?.transactionFee || 0;
+        const orderSubtotal = order.pricing?.subtotal || 0;
+        const orderServiceFee = order.pricing?.serviceFee || 0;
+        const orderTransactionFee = order.pricing?.transactionFee || 0;
 
-        totalRevenue += orderAmount;
-        serviceFees += serviceFee;
-        transactionFees += transactionFee;
+        // Only include items that belong to this organizer
+        const organizerItems = Array.isArray(order.items)
+          ? order.items.filter((item) => {
+            const ev = item?.eventId;
+            return ev && String(ev.organizer) === String(organizerId);
+          })
+          : [];
 
-        order.items?.forEach((item) => {
-          if (item.eventId) {
+        const organizerSubtotal = organizerItems.reduce(
+          (sum, item) => sum + (item?.subtotal || 0),
+          0
+        );
+
+        // Allocate order-level fees by subtotal share (protects multi-event orders)
+        const share = orderSubtotal > 0 ? organizerSubtotal / orderSubtotal : 0;
+        const allocatedServiceFee = orderServiceFee * share;
+        const allocatedTransactionFee = orderTransactionFee * share;
+
+        let orderCommission = 0;
+        organizerItems.forEach((item) => {
+          const itemSubtotal = item?.subtotal || 0;
+          const rate = item?.eventId?.commissionRate ?? 6;
+          orderCommission += itemSubtotal * (rate / 100);
+          if (item?.eventId?._id) {
             eventIds.add(item.eventId._id.toString());
+          }
+          if (item?.eventId?.title) {
             eventTitles.add(item.eventId.title);
           }
         });
+
+        totalRevenue += organizerSubtotal;
+        serviceFees += allocatedServiceFee;
+        transactionFees += allocatedTransactionFee;
+        commissionFees += orderCommission;
       });
 
-      const totalFees = serviceFees + transactionFees;
+      const totalFees = serviceFees + transactionFees + commissionFees;
       const netAmount = totalRevenue - totalFees;
 
       // Get date range
@@ -1091,6 +1159,7 @@ router.post(
           totalRevenue,
           serviceFees,
           transactionFees,
+          commissionFees,
           totalFees,
           netAmount,
         },
@@ -1535,8 +1604,7 @@ router.post(
       const isDryRun = dryRun === 'true' || dryRun === true;
 
       console.log(
-        `📧 Admin bulk resend requested${eventId ? ` for event ${eventId}` : " (all events)"}${
-          startDate || endDate ? ` with date range: ${startDate || "start"} to ${endDate || "end"}` : ""
+        `📧 Admin bulk resend requested${eventId ? ` for event ${eventId}` : " (all events)"}${startDate || endDate ? ` with date range: ${startDate || "start"} to ${endDate || "end"}` : ""
         }`
       );
 

@@ -6,7 +6,7 @@ const analyticsAPI = {
     const params = organizerId ? `?organizerId=${organizerId}` : '';
     return api.get(`/api/organizer/analytics/dashboard-overview${params}`);
   },
-  
+
   // Sales chart
   getSalesChart: (eventId, options = {}, organizerId = null) => {
     const params = new URLSearchParams();
@@ -15,16 +15,16 @@ const analyticsAPI = {
     if (options.endDate) params.append('endDate', options.endDate);
     if (options.ticketType) params.append('ticketType', options.ticketType);
     if (organizerId) params.append('organizerId', organizerId);
-    
+
     return api.get(`/api/organizer/analytics/sales-chart/${eventId}?${params}`);
   },
-  
+
   // Revenue overview
   getRevenueOverview: (eventId, organizerId = null) => {
     const params = organizerId ? `?organizerId=${organizerId}` : '';
     return api.get(`/api/organizer/analytics/revenue-overview/${eventId}${params}`);
   },
-  
+
   // Revenue trends
   getRevenueTrends: (options = {}, organizerId = null) => {
     const params = new URLSearchParams();
@@ -33,10 +33,10 @@ const analyticsAPI = {
     if (options.endDate) params.append('endDate', options.endDate);
     if (options.eventIds) params.append('eventIds', JSON.stringify(options.eventIds));
     if (organizerId) params.append('organizerId', organizerId);
-    
+
     return api.get(`/api/organizer/analytics/revenue-trends?${params}`);
   },
-  
+
   // Export attendees
   exportAttendees: (eventId, options = {}) => {
     const params = new URLSearchParams();
@@ -45,28 +45,34 @@ const analyticsAPI = {
     if (options.ticketType) params.append('ticketType', options.ticketType);
     if (options.dateFrom) params.append('dateFrom', options.dateFrom);
     if (options.dateTo) params.append('dateTo', options.dateTo);
-    
+
     return api.get(`/api/organizer/analytics/export/attendees/${eventId}?${params}`);
   },
-  
+
   // Create export job
-  createExportJob: (eventId, options) => 
+  createExportJob: (eventId, options) =>
     api.post(`/api/organizer/analytics/export/attendees/${eventId}`, options),
-  
+
   // Event summary
-  getEventSummary: (eventId) => 
+  getEventSummary: (eventId) =>
     api.get(`/api/organizer/analytics/events/${eventId}/summary`),
-  
+
+  // Event finance
+  getEventFinance: (eventId, organizerId = null) => {
+    const params = organizerId ? `?organizerId=${organizerId}` : '';
+    return api.get(`/api/organizer/analytics/events/${eventId}/finance${params}`);
+  },
+
   // Export job status
-  getExportStatus: (jobId) => 
+  getExportStatus: (jobId) =>
     api.get(`/api/organizer/analytics/export-status/${jobId}`),
-  
+
   // Download file
-  downloadFile: (eventId, format) => 
+  downloadFile: (eventId, format) =>
     api.get(`/api/organizer/analytics/download/${eventId}/${format}`, {
       responseType: 'blob'
     }),
-  
+
   // Cache management
   clearCache: () => api.get('/api/organizer/analytics/cache/clear'),
   clearEventCache: (eventId) => api.get(`/api/organizer/analytics/cache/clear/${eventId}`)

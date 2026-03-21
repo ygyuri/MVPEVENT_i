@@ -21,6 +21,7 @@ import { Helmet } from "react-helmet-async";
 import payheroLogo from "../assets/payhero-logo.png";
 import tajilabsLogo from "../assets/tajilabs-logo-horizontal.png";
 import FeaturedEventsMasonry from "../components/FeaturedEventsMasonry";
+import LoadingOverlay from "../components/shared/LoadingOverlay";
 
 const DirectCheckout = () => {
   const { slug } = useParams();
@@ -483,8 +484,9 @@ const DirectCheckout = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-12 h-12 animate-spin text-[#4f0f69]" />
+      <div className="min-h-screen">
+        <LoadingOverlay show={true} label="Loading event..." />
+        <div className="min-h-screen" />
       </div>
     );
   }

@@ -1,17 +1,17 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  Calendar, 
-  Users, 
-  Eye, 
-  Edit, 
-  Copy, 
-  Trash2, 
+import {
+  Search,
+  Filter,
+  Plus,
+  Calendar,
+  Users,
+  Eye,
+  Edit,
+  Copy,
+  Trash2,
   MoreVertical,
   ChevronDown,
   SortAsc,
@@ -28,30 +28,29 @@ import EventList from '../components/organizer/EventList';
 import DateRangePicker from '../components/analytics/DateRangePicker';
 import EventActions from '../components/organizer/EventActions';
 import EnhancedButton from '../components/EnhancedButton';
-import { 
-  fetchMyEvents, 
-  deleteEvent, 
-  cloneEvent,
+import LoadingOverlay from '../components/shared/LoadingOverlay';
+import {
+  fetchMyEvents,
+  deleteEvent,
   cancelEvent,
   unpublishEvent,
   publishEvent
 } from '../store/slices/organizerSlice';
 import { setSelectedEvent } from '../store/slices/analyticsSlice';
-import { dateUtils } from '../utils/eventHelpers';
 
 const EventManagement = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user, isAuthenticated, loading: authLoading } = useSelector(state => state.auth);
   const { events, loading, error, eventsPagination } = useSelector(state => state.organizer);
-  
+
   // Local state for filtering and sorting
   const [filters, setFilters] = useState({
-    status: 'all',
+    quickFilter: 'all',
     search: '',
     dateRange: 'all'
   });
-  
+
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,11 +66,11 @@ const EventManagement = () => {
   const [bulkResendPreview, setBulkResendPreview] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [previewPage, setPreviewPage] = useState(1);
-  
+
   // Debounced search
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
@@ -87,12 +86,14 @@ const EventManagement = () => {
     }
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchTime;
-    
+
     // Prevent duplicate calls within 2 seconds unless forced
     if (!forceRefresh && timeSinceLastFetch < 2000) {
       // console.log('🚫 [DASHBOARD] Preventing duplicate API call (too soon)');
       return;
     }
+
+    const apiFilterParams = { status: 'all', dateRange: 'all' };
 
     const params = {
       page: currentPage,
@@ -100,15 +101,15 @@ const EventManagement = () => {
       sort: sortBy,
       order: sortOrder,
       ...(debouncedSearch && { search: debouncedSearch }),
-      ...(filters.status !== 'all' && { status: filters.status }),
-      ...(filters.dateRange !== 'all' && { dateRange: filters.dateRange })
+      ...(apiFilterParams.status !== 'all' && { status: apiFilterParams.status }),
+      ...(apiFilterParams.dateRange !== 'all' && { dateRange: apiFilterParams.dateRange })
     };
-    
+
     // console.log('🔄 [DASHBOARD] Fetching events data:', { params, forceRefresh, timeSinceLastFetch });
     setLastFetchTime(now);
     await dispatch(fetchMyEvents(params));
   }, [dispatch, currentPage, sortBy, sortOrder, debouncedSearch, filters, lastFetchTime, authLoading, isAuthenticated, user]);
-  
+
   // Single useEffect for initial load and filter changes
   useEffect(() => {
     // console.log('🔄 [EVENT MANAGEMENT] useEffect triggered', {
@@ -148,7 +149,7 @@ const EventManagement = () => {
   // Refresh data when navigating back to this page
   useEffect(() => {
     const handlePopState = () => {
-      console.log('🔄 [DASHBOARD] Navigation back - refreshing events data');
+      // console.log('🔄 [DASHBOARD] Navigation back - refreshing events data');
       fetchEventsData(true); // Force refresh on navigation back
     };
 
@@ -160,7 +161,7 @@ const EventManagement = () => {
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     console.log('🔄 [DASHBOARD] Manual refresh triggered');
-    
+
     try {
       await fetchEventsData(true); // Force refresh
       toast.success('Events refreshed successfully!');
@@ -176,26 +177,50 @@ const EventManagement = () => {
   const filteredEvents = useMemo(() => {
     // console.log('📊 [EVENT MANAGEMENT] Total events in state:', events.length);
     // console.log('📊 [EVENT MANAGEMENT] Events:', events);
-    
+
     let filtered = [...events];
-    
+
     // Apply search filter
     if (debouncedSearch) {
       const searchLower = debouncedSearch.toLowerCase();
-      filtered = filtered.filter(event => 
+      filtered = filtered.filter(event =>
         event.title?.toLowerCase().includes(searchLower) ||
         event.description?.toLowerCase().includes(searchLower) ||
         event.location?.venueName?.toLowerCase().includes(searchLower)
       );
     }
-    
-    // Apply status filter
-    if (filters.status !== 'all') {
-      filtered = filtered.filter(event => event.status === filters.status);
-      console.log(`🔍 [EVENT MANAGEMENT] Filtered by status '${filters.status}':`, filtered.length);
+
+    // Apply quick filter
+    if (filters.quickFilter !== 'all') {
+      if (['draft', 'published', 'cancelled', 'completed'].includes(filters.quickFilter)) {
+        filtered = filtered.filter(event => event.status === filters.quickFilter);
+      }
+
+      if (['upcoming', 'past', 'thisWeek', 'thisMonth'].includes(filters.quickFilter)) {
+        const now = new Date();
+        filtered = filtered.filter(event => {
+          const eventDate = new Date(event.dates?.startDate);
+          switch (filters.quickFilter) {
+            case 'upcoming':
+              return eventDate > now;
+            case 'past':
+              return eventDate < now;
+            case 'thisWeek': {
+              const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+              return eventDate > now && eventDate < weekFromNow;
+            }
+            case 'thisMonth': {
+              const monthFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+              return eventDate > now && eventDate < monthFromNow;
+            }
+            default:
+              return true;
+          }
+        });
+      }
     }
-    
-    // Apply date range filter
+
+    // Apply date range filter (advanced)
     if (filters.dateRange !== 'all') {
       const now = new Date();
       filtered = filtered.filter(event => {
@@ -216,12 +241,12 @@ const EventManagement = () => {
         }
       });
     }
-    
+
     // console.log('📊 [EVENT MANAGEMENT] Filtered events:', filtered.length);
-    
+
     return filtered;
   }, [events, debouncedSearch, filters]);
-  
+
   // Handle event actions
   const handleEventAction = useCallback(async (action, eventId, eventData = {}) => {
     try {
@@ -229,26 +254,21 @@ const EventManagement = () => {
         case 'edit':
           navigate(`/organizer/events/${eventId}/edit`);
           break;
-          
-        case 'clone':
-          await dispatch(cloneEvent({ eventId })).unwrap();
-          toast.success('Event cloned successfully!');
-          break;
-          
+
         case 'delete':
           if (window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
             await dispatch(deleteEvent(eventId)).unwrap();
             toast.success('Event deleted successfully!');
           }
           break;
-          
+
         case 'cancel':
           if (window.confirm('Are you sure you want to cancel this event?')) {
             await dispatch(cancelEvent(eventId)).unwrap();
             toast.success('Event cancelled successfully!');
           }
           break;
-          
+
         case 'unpublish':
           if (window.confirm('Are you sure you want to unpublish this event?')) {
             await dispatch(unpublishEvent(eventId)).unwrap();
@@ -267,16 +287,16 @@ const EventManagement = () => {
           }
           navigate('/organizer/analytics');
           break;
-          
+
         case 'view':
-          navigate(`/events/${eventData.slug}`);
+          navigate(`/organizer/events/${eventId}`);
           break;
 
         case 'bulk-resend':
           setBulkResendEventId(eventId);
           setShowBulkResendModal(true);
           break;
-          
+
         default:
           console.warn('Unknown action:', action);
       }
@@ -285,7 +305,7 @@ const EventManagement = () => {
       toast.error(`Failed to ${action} event: ${error.message || 'Unknown error'}`);
     }
   }, [dispatch, navigate]);
-  
+
   // Handle load preview
   const handleLoadPreview = useCallback(async (page = 1) => {
     if (!bulkResendEventId) {
@@ -322,8 +342,8 @@ const EventManagement = () => {
       console.error('Failed to load preview:', err);
       toast.error(
         err.response?.data?.error ||
-          err.response?.data?.message ||
-          'Failed to load preview'
+        err.response?.data?.message ||
+        'Failed to load preview'
       );
     } finally {
       setLoadingPreview(false);
@@ -391,8 +411,8 @@ const EventManagement = () => {
       console.error('Failed to bulk resend tickets:', err);
       toast.error(
         err.response?.data?.error ||
-          err.response?.data?.message ||
-          'Failed to process bulk resend'
+        err.response?.data?.message ||
+        'Failed to process bulk resend'
       );
     } finally {
       setBulkResending(false);
@@ -405,10 +425,12 @@ const EventManagement = () => {
       toast.error('Please select events first');
       return;
     }
-    
+
     try {
       const promises = selectedEvents.map(eventId => {
         switch (action) {
+          case 'publish':
+            return dispatch(publishEvent(eventId)).unwrap();
           case 'delete':
             return dispatch(deleteEvent(eventId)).unwrap();
           case 'cancel':
@@ -419,16 +441,29 @@ const EventManagement = () => {
             return Promise.resolve();
         }
       });
-      
+
       await Promise.all(promises);
+      const count = selectedEvents.length;
       setSelectedEvents([]);
-      toast.success(`${selectedEvents.length} events ${action}ed successfully!`);
+      const successMessageMap = {
+        publish: 'published',
+        unpublish: 'unpublished',
+        cancel: 'cancelled',
+        delete: 'deleted',
+      };
+      toast.success(`${count} event${count === 1 ? '' : 's'} ${successMessageMap[action] || action} successfully!`);
     } catch (error) {
       console.error('Bulk action failed:', error);
-      toast.error(`Failed to ${action} events: ${error.message || 'Unknown error'}`);
+      const message =
+        (typeof error === 'string' && error) ||
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Unknown error';
+      toast.error(`Failed to ${action} events: ${message}`);
     }
   }, [dispatch, selectedEvents]);
-  
+
   // Handle sort change
   const handleSortChange = useCallback((field) => {
     if (sortBy === field) {
@@ -438,7 +473,7 @@ const EventManagement = () => {
       setSortOrder('desc');
     }
   }, [sortBy, sortOrder]);
-  
+
   // Handle event selection
   const handleEventSelect = useCallback((eventId, selected) => {
     if (selected) {
@@ -447,7 +482,7 @@ const EventManagement = () => {
       setSelectedEvents(prev => prev.filter(id => id !== eventId));
     }
   }, []);
-  
+
   // Handle select all
   const handleSelectAll = useCallback((selected) => {
     if (selected) {
@@ -456,16 +491,24 @@ const EventManagement = () => {
       setSelectedEvents([]);
     }
   }, [filteredEvents]);
-  
-  // Status filter options
-  const statusOptions = [
-    { value: 'all', label: 'All Events', count: events.length },
-    { value: 'draft', label: 'Drafts', count: events.filter(e => e.status === 'draft').length },
-    { value: 'published', label: 'Published', count: events.filter(e => e.status === 'published').length },
-    { value: 'cancelled', label: 'Cancelled', count: events.filter(e => e.status === 'cancelled').length },
-    { value: 'completed', label: 'Completed', count: events.filter(e => e.status === 'completed').length }
-  ];
-  
+
+  const quickFilters = useMemo(() => {
+    const now = new Date();
+
+    const isUpcoming = (event) => new Date(event.dates?.startDate) > now;
+    const isPast = (event) => new Date(event.dates?.startDate) < now;
+
+    return [
+      { value: 'all', label: 'All', count: events.length },
+      { value: 'draft', label: 'Draft', count: events.filter(e => e.status === 'draft').length },
+      { value: 'published', label: 'Published', count: events.filter(e => e.status === 'published').length },
+      { value: 'cancelled', label: 'Cancelled', count: events.filter(e => e.status === 'cancelled').length },
+      // { value: 'completed', label: 'Completed', count: events.filter(e => e.status === 'completed').length },
+      { value: 'upcoming', label: 'Upcoming', count: events.filter(isUpcoming).length },
+      { value: 'past', label: 'Past', count: events.filter(isPast).length }
+    ];
+  }, [events]);
+
   // Date range filter options
   const dateRangeOptions = [
     { value: 'all', label: 'All Dates' },
@@ -474,7 +517,7 @@ const EventManagement = () => {
     { value: 'thisWeek', label: 'This Week' },
     { value: 'thisMonth', label: 'This Month' }
   ];
-  
+
   // Sort options
   const sortOptions = [
     { value: 'createdAt', label: 'Created Date' },
@@ -485,17 +528,17 @@ const EventManagement = () => {
   ];
 
   // Show loading state while authentication is in progress
-  if (authLoading || !isAuthenticated) {
+  if (authLoading) {
     return (
       <div className="container-modern">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-          </div>
-        </div>
+        <LoadingOverlay show={true} label="Loading..." />
+        <div className="min-h-screen" />
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
   }
 
   // Show error if user is not an organizer
@@ -515,45 +558,46 @@ const EventManagement = () => {
       </div>
     );
   }
-  
+
   return (
     <div className="container-modern">
+      <LoadingOverlay show={loading?.events} label="Loading your events..." />
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+      <div className="mb-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">
               Event Management
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Manage your events, track performance, and handle event operations
-            </p>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <EnhancedButton
               variant="secondary"
               onClick={() => setShowFilters(!showFilters)}
               icon={Filter}
+              size="sm"
               className="hidden sm:flex"
             >
               Filters
             </EnhancedButton>
-            
+
             <EnhancedButton
               variant="secondary"
               onClick={handleRefresh}
               icon={RefreshCw}
               disabled={isRefreshing}
+              size="sm"
               className={`btn-web3-secondary ${isRefreshing ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isRefreshing ? 'Refreshing...' : 'Refresh'}
             </EnhancedButton>
-            
+
             <EnhancedButton
               variant="primary"
               onClick={() => navigate('/organizer/events/create')}
               icon={Plus}
+              size="sm"
               className="btn-web3-primary"
             >
               Create Event
@@ -561,45 +605,47 @@ const EventManagement = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Filters and Search */}
       <div className="mb-6">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search */}
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search events by title, description, or venue..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input-modern pl-12 w-full"
+                className="input-modern !pl-11 w-full"
               />
             </div>
           </div>
-          
+
           {/* Status Filter */}
           <div className="flex gap-2 flex-wrap overflow-x-auto">
-            {statusOptions.map((option) => (
+            {quickFilters.map((option) => (
               <button
                 key={option.value}
-                onClick={() => setFilters(prev => ({ ...prev, status: option.value }))}
-                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors duration-200 inline-flex items-center gap-2 ${
-                  filters.status === option.value
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`}
+                onClick={() => setFilters(prev => ({ ...prev, quickFilter: option.value }))}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors duration-200 inline-flex items-center gap-2 ${filters.quickFilter === option.value
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
               >
-                <span className="truncate max-w-[8rem]">{option.label}</span>
-                <span className="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded-full text-xs shrink-0">
+                <span className="truncate max-w-[7rem]">{option.label}</span>
+                <span className={`px-2 py-0.5 rounded-full text-[11px] shrink-0 ${filters.quickFilter === option.value
+                    ? 'bg-blue-200/70 dark:bg-blue-900/40'
+                    : 'bg-gray-200 dark:bg-gray-700'
+                  }`}>
                   {option.count}
                 </span>
               </button>
             ))}
           </div>
         </div>
-        
+
         {/* Advanced Filters */}
         <AnimatePresence>
           {showFilters && (
@@ -627,7 +673,7 @@ const EventManagement = () => {
                     ))}
                   </select>
                 </div>
-                
+
                 {/* Sort Options */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -657,7 +703,7 @@ const EventManagement = () => {
                     </button>
                   </div>
                 </div>
-                
+
                 {/* Bulk Actions */}
                 {selectedEvents.length > 0 && (
                   <div>
@@ -685,21 +731,63 @@ const EventManagement = () => {
           )}
         </AnimatePresence>
       </div>
-      
+
       {/* Event List */}
-      <EventList
-        events={filteredEvents}
-        loading={loading?.events}
-        error={error}
-        onEventAction={handleEventAction}
-        onEventSelect={handleEventSelect}
-        onSelectAll={handleSelectAll}
-        selectedEvents={selectedEvents}
-        sortBy={sortBy}
-        sortOrder={sortOrder}
-        onSortChange={handleSortChange}
-      />
-      
+      {selectedEvents.length > 0 && (
+        <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-gray-200/60 dark:border-gray-700/60 bg-white/40 dark:bg-gray-900/20 backdrop-blur-sm px-4 py-3">
+          <div className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+            {selectedEvents.length} selected
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setSelectedEvents([])}
+              className="px-3 py-2 bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200 rounded-lg text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
+            >
+              Clear
+            </button>
+            <button
+              onClick={() => handleBulkAction('publish')}
+              className="px-3 py-2 bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-900/30 transition-colors duration-200"
+            >
+              Publish
+            </button>
+            <button
+              onClick={() => handleBulkAction('cancel')}
+              className="px-3 py-2 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300 rounded-lg text-sm hover:bg-yellow-200 dark:hover:bg-yellow-900/30 transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => handleBulkAction('unpublish')}
+              className="px-3 py-2 bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 rounded-lg text-sm hover:bg-blue-200 dark:hover:bg-blue-900/30 transition-colors duration-200"
+            >
+              Unpublish
+            </button>
+            <button
+              onClick={() => handleBulkAction('delete')}
+              className="px-3 py-2 bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300 rounded-lg text-sm hover:bg-red-200 dark:hover:bg-red-900/30 transition-colors duration-200"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className={loading?.events ? 'pointer-events-none select-none blur-[1px]' : ''}>
+        <EventList
+          events={filteredEvents}
+          loading={false}
+          error={error}
+          onEventAction={handleEventAction}
+          onEventSelect={handleEventSelect}
+          onSelectAll={handleSelectAll}
+          selectedEvents={selectedEvents}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSortChange={handleSortChange}
+        />
+      </div>
+
       {/* Pagination */}
       {eventsPagination && eventsPagination.totalPages > 1 && (
         <div className="mt-8 flex justify-center">
@@ -711,7 +799,7 @@ const EventManagement = () => {
             >
               Previous
             </button>
-            
+
             <div className="flex items-center gap-1">
               {Array.from({ length: Math.min(5, eventsPagination.totalPages) }, (_, i) => {
                 const page = i + 1;
@@ -719,18 +807,17 @@ const EventManagement = () => {
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                      currentPage === page
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${currentPage === page
                         ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
                         : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                    }`}
+                      }`}
                   >
                     {page}
                   </button>
                 );
               })}
             </div>
-            
+
             <button
               onClick={() => setCurrentPage(prev => Math.min(eventsPagination.totalPages, prev + 1))}
               disabled={currentPage === eventsPagination.totalPages}
@@ -998,9 +1085,9 @@ const EventManagement = () => {
                                 Execute Bulk Resend
                               </>
                             )}
-                    </button>
-                  </div>
-                </>
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
                 </>

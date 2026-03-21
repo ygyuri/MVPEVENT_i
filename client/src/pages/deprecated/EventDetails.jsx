@@ -6,6 +6,7 @@ import { addToCart } from '../store/slices/checkoutSlice'
 import { Calendar, MapPin, Users, Ticket, ArrowLeft, Clock, Star, Shield, Zap, Globe, Wallet, ShoppingCart, User, TrendingUp } from 'lucide-react'
 import { PriceDisplay } from '../components/CurrencyConverter'
 import { scheduleReminders } from '../utils/remindersAPI'
+import LoadingOverlay from "../../components/shared/LoadingOverlay";
 import { useTheme } from '../contexts/ThemeContext'
 import { Link } from 'react-router-dom'
 import { PollList } from '../components/polls'
@@ -108,11 +109,9 @@ const EventDetails = () => {
 
   if (loading) {
     return (
-      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} flex items-center justify-center`}>
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} font-medium`}>Loading event details...</p>
-        </div>
+      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+        <LoadingOverlay show={true} label="Loading event details..." />
+        <div className="min-h-screen" />
       </div>
     )
   }

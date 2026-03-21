@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { Link, useLocation } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import {
   Plus,
   Calendar,
@@ -28,6 +28,7 @@ import { dateUtils } from "../utils/eventHelpers";
 import { useEventUpdates } from "../hooks/useEventUpdates";
 import { useSocket } from "../hooks/useSocket";
 import AdminOrganizerList from "../components/AdminOrganizerList";
+import LoadingOverlay from "../components/shared/LoadingOverlay";
 
 const OrganizerDashboard = () => {
   const dispatch = useDispatch();
@@ -89,17 +90,17 @@ const OrganizerDashboard = () => {
   }, [dispatch, isAuthenticated, user, authLoading, isImpersonating]);
 
   // Show loading state while authentication is in progress
-  if (authLoading || !isAuthenticated) {
+  if (authLoading) {
     return (
       <div className="container-modern">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-          </div>
-        </div>
+        <LoadingOverlay show={true} label="Loading..." />
+        <div className="min-h-screen" />
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
   }
 
   // If admin but NOT impersonating, show organizer list

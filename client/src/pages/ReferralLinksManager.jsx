@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import api from '../utils/api';
 
 export default function ReferralLinksManager() {
   const [links, setLinks] = useState([]);
@@ -10,11 +11,8 @@ export default function ReferralLinksManager() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/affiliates/referral-links', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setLinks(data.links || []);
-      }
+      const res = await api.get('/api/affiliates/referral-links');
+      setLinks(res.data?.links || []);
     } catch (e) {
       toast.error('Failed to load referral links');
     } finally {
@@ -27,13 +25,7 @@ export default function ReferralLinksManager() {
   const create = async () => {
     if (!eventId) { toast.error('Provide eventId'); return; }
     try {
-      const res = await fetch(`/api/events/${eventId}/referral-links`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ campaign_name: campaign || undefined })
-      });
-      if (!res.ok) throw new Error('Create failed');
+      await api.post(`/api/events/${eventId}/referral-links`, { campaign_name: campaign || undefined });
       toast.success('Referral link created');
       setCampaign('');
       await load();
@@ -44,8 +36,7 @@ export default function ReferralLinksManager() {
 
   const shorten = async (id) => {
     try {
-      const res = await fetch(`/api/referral-links/${id}/shorten`, { method: 'POST', credentials: 'include' });
-      if (!res.ok) throw new Error('Shorten failed');
+      await api.post(`/api/referral-links/${id}/shorten`);
       toast.success('Short URL generated');
       await load();
     } catch (e) { toast.error('Shorten failed'); }

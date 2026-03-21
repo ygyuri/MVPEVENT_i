@@ -48,6 +48,13 @@ const payoutSchema = new mongoose.Schema(
         min: 0,
         default: 0,
       },
+      // Commission fees (percentage per event, default 6%)
+      commissionFees: {
+        type: Number,
+        required: false,
+        min: 0,
+        default: 0,
+      },
       // Total fees (service + transaction)
       totalFees: {
         type: Number,

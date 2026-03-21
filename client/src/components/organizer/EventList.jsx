@@ -86,22 +86,7 @@ const EventList = ({
 
   // Loading state
   if (loading) {
-    return (
-      <div className="space-y-4">
-        {Array.from({ length: 6 }, (_, i) => (
-          <div key={i} className="bg-web3-card rounded-xl p-6 animate-pulse">
-            <div className="flex items-center gap-4">
-              <div className="w-6 h-6 bg-gray-300 dark:bg-gray-700 rounded"></div>
-              <div className="flex-1">
-                <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/3 mb-2"></div>
-                <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
-              </div>
-              <div className="w-20 h-8 bg-gray-300 dark:bg-gray-700 rounded"></div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    return null;
   }
 
   // Error state
@@ -165,13 +150,13 @@ const EventList = ({
     { key: "location", label: "Location", sortable: false },
     { key: "capacity", label: "Capacity", sortable: true },
     { key: "status", label: "Status", sortable: true },
-    { key: "actions", label: "Actions", sortable: false },
+    { key: "actions", label: "", sortable: false },
   ];
 
   return (
     <div className="space-y-4">
       {/* Table Header */}
-      <div className="hidden lg:block bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 overflow-x-auto">
+      <div className="hidden lg:block rounded-lg px-4 py-2 overflow-x-auto border border-gray-200/60 dark:border-gray-700/60 bg-white/40 dark:bg-gray-900/20 backdrop-blur-sm">
         <div className="grid grid-cols-12 gap-4 items-center">
           {/* Select All */}
           <div className="col-span-1">
@@ -179,7 +164,7 @@ const EventList = ({
               onClick={() =>
                 handleSelectAll(selectedEvents.length !== events.length)
               }
-              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors duration-200"
+              className="p-0.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors duration-200"
             >
               {selectedEvents.length === events.length ? (
                 <CheckSquare className="w-5 h-5 text-blue-600" />
@@ -197,23 +182,27 @@ const EventList = ({
                 header.key === "title" ? "col-span-3" : "col-span-2"
               }`}
             >
-              <button
-                onClick={() => header.sortable && handleSortChange(header.key)}
-                className={`flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 ${
-                  header.sortable
-                    ? "hover:text-gray-900 dark:hover:text-white cursor-pointer"
-                    : "cursor-default"
-                }`}
-              >
-                {header.label}
-                {header.sortable &&
-                  sortBy === header.key &&
-                  (sortOrder === "asc" ? (
-                    <SortAsc className="w-4 h-4" />
-                  ) : (
-                    <SortDesc className="w-4 h-4" />
-                  ))}
-              </button>
+              {header.key === 'actions' ? (
+                <div className="h-5" />
+              ) : (
+                <button
+                  onClick={() => header.sortable && handleSortChange(header.key)}
+                  className={`flex items-center gap-2 text-xs font-semibold leading-none text-gray-600 dark:text-gray-300 ${
+                    header.sortable
+                      ? "hover:text-gray-900 dark:hover:text-white cursor-pointer"
+                      : "cursor-default"
+                  }`}
+                >
+                  {header.label}
+                  {header.sortable &&
+                    sortBy === header.key &&
+                    (sortOrder === "asc" ? (
+                      <SortAsc className="w-4 h-4" />
+                    ) : (
+                      <SortDesc className="w-4 h-4" />
+                    ))}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -227,7 +216,7 @@ const EventList = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="bg-web3-card rounded-none p-6 hover:bg-web3-card-hover transition-all duration-200 border border-gray-200/30 dark:border-gray-700/30"
+            className="bg-web3-card rounded-lg p-5 hover:bg-web3-card-hover transition-all duration-200 border border-gray-200/30 dark:border-gray-700/30"
           >
             {/* Mobile Layout */}
             <div className="lg:hidden">
@@ -240,7 +229,7 @@ const EventList = ({
                       !selectedEvents.includes(event._id)
                     )
                   }
-                  className="mt-1 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors duration-200"
+                  className="mt-1 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors duration-200"
                 >
                   {selectedEvents.includes(event._id) ? (
                     <CheckSquare className="w-5 h-5 text-blue-600" />
@@ -255,7 +244,7 @@ const EventList = ({
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                       {event.title}
                     </h3>
-                    <EventStatusBadge status={event.status} />
+                    <EventStatusBadge status={event.status} size="small" />
                   </div>
 
                   <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">
@@ -314,7 +303,7 @@ const EventList = ({
 
             {/* Desktop Layout */}
             <div className="hidden lg:block">
-              <div className="grid grid-cols-12 gap-4 items-center">
+              <div className="grid grid-cols-12 gap-5 items-center">
                 {/* Selection Checkbox */}
                 <div className="col-span-1">
                   <button
@@ -351,15 +340,26 @@ const EventList = ({
                       year: "numeric",
                       month: "short",
                       day: "numeric",
+                      hour: undefined,
+                      minute: undefined,
+                      timeZoneName: undefined,
                     })}
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {`${dateUtils.formatDate(event.dates?.startDate, {
                       hour: "2-digit",
                       minute: "2-digit",
-                    })} - ${dateUtils.formatDate(event.dates?.endDate, {
+                      year: undefined,
+                      month: undefined,
+                      day: undefined,
+                      timeZoneName: 'short'
+                    })} – ${dateUtils.formatDate(event.dates?.endDate, {
                       hour: "2-digit",
                       minute: "2-digit",
+                      year: undefined,
+                      month: undefined,
+                      day: undefined,
+                      timeZoneName: 'short'
                     })}`}
                   </div>
                 </div>
@@ -390,6 +390,7 @@ const EventList = ({
                 <div className="col-span-1 flex items-center">
                   <EventStatusBadge
                     status={event.status}
+                    size="small"
                     className="whitespace-nowrap"
                   />
                 </div>

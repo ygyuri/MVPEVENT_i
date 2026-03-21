@@ -307,7 +307,7 @@ router.get(
 
       // Get organizer's events
       const organizerEvents = await Event.find({ organizer: organizerId })
-        .select("_id status dates.startDate")
+        .select("_id status dates.startDate commissionRate")
         .lean();
 
       const eventIds = organizerEvents.map((e) => e._id);
@@ -344,20 +344,156 @@ router.get(
         // Total tickets sold (active tickets from paid orders)
         eventIds.length > 0
           ? Ticket.countDocuments({
-              eventId: { $in: eventIds },
-              orderId: { $exists: true },
-              status: { $in: ["active", "used"] }, // Count active and used tickets (exclude cancelled/refunded)
-            })
+            eventId: { $in: eventIds },
+            orderId: { $exists: true },
+            status: { $in: ["active", "used"] }, // Count active and used tickets (exclude cancelled/refunded)
+          })
           : 0,
 
         // Total revenue from paid orders
         eventIds.length > 0
           ? Order.aggregate([
+            {
+              $match: {
+                "items.eventId": { $in: eventIds },
+                status: { $in: ["completed", "paid"] },
+                paymentStatus: { $in: ["paid", "completed"] },
+              },
+            },
+            { $unwind: "$items" },
+            {
+              $match: {
+                "items.eventId": { $in: eventIds },
+              },
+            },
+            {
+              $lookup: {
+                from: "events",
+                localField: "items.eventId",
+                foreignField: "_id",
+                as: "event",
+              },
+            },
+            {
+              $unwind: {
+                path: "$event",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $addFields: {
+                _orderSubtotal: { $ifNull: ["$pricing.subtotal", 0] },
+                _orderTransactionFee: { $ifNull: ["$pricing.transactionFee", 0] },
+                _itemSubtotal: { $ifNull: ["$items.subtotal", 0] },
+                _commissionRate: { $ifNull: ["$event.commissionRate", 6] },
+              },
+            },
+            {
+              $addFields: {
+                _itemShare: {
+                  $cond: [
+                    { $gt: ["$_orderSubtotal", 0] },
+                    { $divide: ["$_itemSubtotal", "$_orderSubtotal"] },
+                    0,
+                  ],
+                },
+              },
+            },
+            {
+              $addFields: {
+                _itemTransactionFee: {
+                  $multiply: ["$_orderTransactionFee", "$_itemShare"],
+                },
+                _itemCommission: {
+                  $multiply: ["$_itemSubtotal", { $divide: ["$_commissionRate", 100] }],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: {
+                  $sum: {
+                    $subtract: [
+                      "$_itemSubtotal",
+                      { $add: ["$_itemCommission", "$_itemTransactionFee"] },
+                    ],
+                  },
+                },
+              },
+            },
+          ])
+          : Promise.resolve([{ total: 0 }]),
+
+        // Total orders
+        eventIds.length > 0
+          ? Order.countDocuments({
+            "items.eventId": { $in: eventIds },
+          })
+          : 0,
+
+        // This month's revenue
+        eventIds.length > 0
+          ? (() => {
+            const startOfMonth = new Date();
+            startOfMonth.setDate(1);
+            startOfMonth.setHours(0, 0, 0, 0);
+            return Order.aggregate([
               {
                 $match: {
                   "items.eventId": { $in: eventIds },
                   status: { $in: ["completed", "paid"] },
                   paymentStatus: { $in: ["paid", "completed"] },
+                  createdAt: { $gte: startOfMonth },
+                },
+              },
+              { $unwind: "$items" },
+              {
+                $match: {
+                  "items.eventId": { $in: eventIds },
+                },
+              },
+              {
+                $lookup: {
+                  from: "events",
+                  localField: "items.eventId",
+                  foreignField: "_id",
+                  as: "event",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$event",
+                  preserveNullAndEmptyArrays: true,
+                },
+              },
+              {
+                $addFields: {
+                  _orderSubtotal: { $ifNull: ["$pricing.subtotal", 0] },
+                  _orderTransactionFee: { $ifNull: ["$pricing.transactionFee", 0] },
+                  _itemSubtotal: { $ifNull: ["$items.subtotal", 0] },
+                  _commissionRate: { $ifNull: ["$event.commissionRate", 6] },
+                },
+              },
+              {
+                $addFields: {
+                  _itemShare: {
+                    $cond: [
+                      { $gt: ["$_orderSubtotal", 0] },
+                      { $divide: ["$_itemSubtotal", "$_orderSubtotal"] },
+                      0,
+                    ],
+                  },
+                },
+              },
+              {
+                $addFields: {
+                  _itemTransactionFee: {
+                    $multiply: ["$_orderTransactionFee", "$_itemShare"],
+                  },
+                  _itemCommission: {
+                    $multiply: ["$_itemSubtotal", { $divide: ["$_commissionRate", 100] }],
+                  },
                 },
               },
               {
@@ -365,70 +501,30 @@ router.get(
                   _id: null,
                   total: {
                     $sum: {
-                      $cond: [
-                        { $gt: [{ $ifNull: ["$totalAmount", 0] }, 0] },
-                        { $ifNull: ["$totalAmount", 0] },
-                        { $ifNull: ["$pricing.total", 0] }
-                      ]
-                    }
-                  },
-                },
-              },
-            ])
-          : Promise.resolve([{ total: 0 }]),
-
-        // Total orders
-        eventIds.length > 0
-          ? Order.countDocuments({
-              "items.eventId": { $in: eventIds },
-            })
-          : 0,
-
-        // This month's revenue
-        eventIds.length > 0
-          ? (() => {
-              const startOfMonth = new Date();
-              startOfMonth.setDate(1);
-              startOfMonth.setHours(0, 0, 0, 0);
-              return Order.aggregate([
-                {
-                  $match: {
-                    "items.eventId": { $in: eventIds },
-                    status: { $in: ["completed", "paid"] },
-                    paymentStatus: { $in: ["paid", "completed"] },
-                    createdAt: { $gte: startOfMonth },
-                  },
-                },
-                {
-                  $group: {
-                    _id: null,
-                    total: {
-                      $sum: {
-                        $cond: [
-                          { $gt: [{ $ifNull: ["$totalAmount", 0] }, 0] },
-                          { $ifNull: ["$totalAmount", 0] },
-                          { $ifNull: ["$pricing.total", 0] }
-                        ]
-                      }
+                      $subtract: [
+                        "$_itemSubtotal",
+                        { $add: ["$_itemCommission", "$_itemTransactionFee"] },
+                      ],
                     },
                   },
                 },
-              ]);
-            })()
+              },
+            ]);
+          })()
           : Promise.resolve([{ total: 0 }]),
 
         // This month's tickets sold
         eventIds.length > 0
           ? (() => {
-              const startOfMonth = new Date();
-              startOfMonth.setDate(1);
-              startOfMonth.setHours(0, 0, 0, 0);
-              return Ticket.countDocuments({
-                eventId: { $in: eventIds },
-                status: { $in: ["active", "used"] }, // Count active and used tickets (exclude cancelled/refunded)
-                createdAt: { $gte: startOfMonth },
-              });
-            })()
+            const startOfMonth = new Date();
+            startOfMonth.setDate(1);
+            startOfMonth.setHours(0, 0, 0, 0);
+            return Ticket.countDocuments({
+              eventId: { $in: eventIds },
+              status: { $in: ["active", "used"] }, // Count active and used tickets (exclude cancelled/refunded)
+              createdAt: { $gte: startOfMonth },
+            });
+          })()
           : 0,
       ]);
 
@@ -470,14 +566,15 @@ router.get(
       // Calculate pending payouts (paid orders that haven't been paid to organizer yet)
       const allPaidOrders = eventIds.length > 0
         ? await Order.find({
-            "items.eventId": { $in: eventIds },
-            $or: [
-              { status: "paid", paymentStatus: "paid" },
-              { status: "completed", paymentStatus: "paid" },
-            ],
-          })
-            .select("_id pricing totalAmount")
-            .lean()
+          "items.eventId": { $in: eventIds },
+          $or: [
+            { status: "paid", paymentStatus: "paid" },
+            { status: "completed", paymentStatus: "paid" },
+          ],
+        })
+          .select("_id pricing totalAmount items")
+          .populate("items.eventId", "commissionRate")
+          .lean()
         : [];
 
       const unpaidOrders = allPaidOrders.filter(
@@ -487,12 +584,24 @@ router.get(
       let pendingPayout = 0;
       let pendingFees = 0;
       unpaidOrders.forEach(order => {
-        const amount = order.totalAmount || order.pricing?.total || 0;
-        const serviceFee = order.pricing?.serviceFee || 0;
+        const orderSubtotal = order.pricing?.subtotal || 0;
         const transactionFee = order.pricing?.transactionFee || 0;
-        const totalFees = serviceFee + transactionFee;
+        const serviceFee = order.pricing?.serviceFee || 0;
 
-        pendingPayout += (amount - totalFees);
+        // Commission is applied per-item (per event), default 6%.
+        let commissionFee = 0;
+        if (Array.isArray(order.items)) {
+          order.items.forEach((item) => {
+            const itemSubtotal = item?.subtotal || 0;
+            const rate = item?.eventId?.commissionRate ?? 6;
+            commissionFee += itemSubtotal * (rate / 100);
+          });
+        } else {
+          commissionFee = orderSubtotal * (6 / 100);
+        }
+
+        const totalFees = serviceFee + transactionFee + commissionFee;
+        pendingPayout += (orderSubtotal - (commissionFee + transactionFee));
         pendingFees += totalFees;
       });
 
@@ -830,7 +939,7 @@ router.post(
           "options:",
           tagsPath?.options
         );
-      } catch (_) {}
+      } catch (_) { }
 
       const created = await Event.create(payload);
 
@@ -1609,8 +1718,7 @@ router.post(
       }
 
       console.log(
-        `📧 Organizer bulk resend requested for event ${eventId} by organizer ${organizerId}${
-          startDate || endDate ? ` with date range: ${startDate || "start"} to ${endDate || "end"}` : ""
+        `📧 Organizer bulk resend requested for event ${eventId} by organizer ${organizerId}${startDate || endDate ? ` with date range: ${startDate || "start"} to ${endDate || "end"}` : ""
         }`
       );
 

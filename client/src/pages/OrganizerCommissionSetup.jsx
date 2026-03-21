@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import api from '../utils/api';
 
 const currency = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n || 0);
 
@@ -43,18 +44,11 @@ export default function OrganizerCommissionSetup() {
   useEffect(() => {
     (async () => {
       try {
-        const token = localStorage.getItem('authToken');
-        const auth = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await fetch(`/api/events/${eventId}/commission-config`, { credentials: 'include', headers: { ...auth } });
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.config) setConfig(prev => ({ ...prev, ...data.config }));
-        }
-        const a = await fetch(`/api/organizer/marketing-agencies`, { credentials: 'include', headers: { ...auth } });
-        if (a.ok) {
-          const ax = await a.json();
-          setAgencies(ax.items || ax.payouts || []);
-        }
+        const res = await api.get(`/api/events/${eventId}/commission-config`);
+        if (res.data?.config) setConfig(prev => ({ ...prev, ...res.data.config }));
+
+        const a = await api.get(`/api/organizer/marketing-agencies`);
+        setAgencies(a.data?.items || a.data?.payouts || []);
       } catch (e) {
         toast.error('Failed to load commission config');
       } finally {
@@ -111,15 +105,7 @@ export default function OrganizerCommissionSetup() {
     if (!confirm(`You'll keep ${currency(preview.net)} per $100 ticket. Continue?`)) return;
     setSaving(true);
     try {
-      const token = localStorage.getItem('authToken');
-      const auth = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`/api/events/${eventId}/commission-config`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...auth },
-        credentials: 'include',
-        body: JSON.stringify(config)
-      });
-      if (!res.ok) throw new Error('Save failed');
+      await api.patch(`/api/events/${eventId}/commission-config`, config);
       toast.success('Configuration saved');
     } catch (e) {
       toast.error('Failed to save commission config');

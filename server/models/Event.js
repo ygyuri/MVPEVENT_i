@@ -8,7 +8,7 @@ const eventSchema = new mongoose.Schema({
   },
   title: {
     type: String,
-    required: function() { return this.status === 'published'; },
+    required: function () { return this.status === 'published'; },
     trim: true,
     maxlength: 255
   },
@@ -20,7 +20,7 @@ const eventSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: function() { return this.status === 'published'; }
+    required: function () { return this.status === 'published'; }
   },
   shortDescription: {
     type: String,
@@ -45,11 +45,11 @@ const eventSchema = new mongoose.Schema({
   dates: {
     startDate: {
       type: Date,
-      required: function() { return this.status === 'published'; }
+      required: function () { return this.status === 'published'; }
     },
     endDate: {
       type: Date,
-      required: function() { return this.status === 'published'; }
+      required: function () { return this.status === 'published'; }
     },
     timezone: {
       type: String,
@@ -94,6 +94,12 @@ const eventSchema = new mongoose.Schema({
     type: String,
     enum: ['draft', 'published', 'cancelled', 'completed'],
     default: 'draft'
+  },
+  commissionRate: {
+    type: Number,
+    default: 6,
+    min: 0,
+    max: 100
   },
   // Parent event for recurrence series (children reference the master)
   parentEventId: {
@@ -171,39 +177,39 @@ eventSchema.index({ status: 1, 'flags.isTrending': 1, 'dates.startDate': 1 });
 eventSchema.index({ status: 1, 'pricing.isFree': 1, 'pricing.price': 1 });
 
 // Virtual for full location
-eventSchema.virtual('fullLocation').get(function() {
+eventSchema.virtual('fullLocation').get(function () {
   const loc = this.location;
   if (!loc.city) return '';
   return [loc.city, loc.state, loc.country].filter(Boolean).join(', ');
 });
 
 // Virtual for price display
-eventSchema.virtual('priceDisplay').get(function() {
+eventSchema.virtual('priceDisplay').get(function () {
   if (this.pricing.isFree) return 'Free';
   if (!this.pricing.price) return 'TBD';
   return `$${this.pricing.price}`;
 });
 
 // Pre-save middleware
-eventSchema.pre('save', async function(next) {
+eventSchema.pre('save', async function (next) {
   // Auto-generate slug if not provided
   if (!this.slug && this.title) {
     let baseSlug = this.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
-    
+
     // Check for uniqueness and add suffix if needed
     let slug = baseSlug;
     let counter = 1;
-    
+
     while (true) {
       const existing = await this.constructor.findOne({ slug: slug, _id: { $ne: this._id } });
       if (!existing) break;
       slug = `${baseSlug}-${counter}`;
       counter++;
     }
-    
+
     this.slug = slug;
   }
   next();
@@ -212,7 +218,7 @@ eventSchema.pre('save', async function(next) {
 // JSON serialization
 eventSchema.set('toJSON', {
   virtuals: true,
-  transform: function(doc, ret) {
+  transform: function (doc, ret) {
     ret.id = ret._id;
     delete ret._id;
     delete ret.__v;

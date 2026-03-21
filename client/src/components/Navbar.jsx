@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -23,6 +23,7 @@ const Navbar = ({ onOpenAuthModal }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const dispatch = useDispatch();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
@@ -55,6 +56,7 @@ const Navbar = ({ onOpenAuthModal }) => {
   const handleLogout = async () => {
     await dispatch(logout());
     setIsUserMenuOpen(false);
+    navigate("/");
   };
 
   return (
@@ -429,6 +431,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                         </Link>
 
                         {/* Reminders Section */}
+                        {/*
                         <div
                           className={`px-4 py-2 mt-1 ${
                             isDarkMode
@@ -468,6 +471,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                             <span>History</span>
                           </Link>
                         </div>
+                        */}
 
                         {/* Organizer Section */}
                         {(user?.role === "admin" ||

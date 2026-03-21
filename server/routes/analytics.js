@@ -4,6 +4,8 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 const analyticsService = require('../services/analyticsService');
 const exportService = require('../services/exportService');
 const Event = require('../models/Event');
+const Order = require('../models/Order');
+const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 const rateLimit = require('express-rate-limit');
@@ -50,10 +52,10 @@ const adminRateLimit = rateLimit({
 const handleValidation = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    res.status(400).json({ 
-      success: false, 
-      error: 'Validation failed', 
-      details: errors.array() 
+    res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      details: errors.array()
     });
     return false;
   }
@@ -69,15 +71,15 @@ const validateEventOwnership = async (eventId, userId, userRole, impersonatedOrg
   if (!event) {
     throw new Error('Event not found');
   }
-  
+
   // If admin is impersonating, check ownership against impersonated organizer
-  const targetOrganizerId = (userRole === 'admin' && impersonatedOrganizerId) 
-    ? impersonatedOrganizerId 
+  const targetOrganizerId = (userRole === 'admin' && impersonatedOrganizerId)
+    ? impersonatedOrganizerId
     : userId;
-  
+
   const isOwner = String(event.organizer) === String(targetOrganizerId);
   const isAdmin = userRole === 'admin';
-  
+
   // Admins can access any event when not impersonating, but when impersonating must be event owner
   if (userRole === 'admin' && impersonatedOrganizerId) {
     // When impersonating, must be event owner
@@ -93,7 +95,7 @@ const validateEventOwnership = async (eventId, userId, userRole, impersonatedOrg
       throw new Error('Access denied - not event owner');
     }
   }
-  
+
   return event;
 };
 
@@ -107,41 +109,41 @@ router.get('/updates/:eventId', verifyToken, requireRole(['organizer', 'admin'])
 ], async (req, res) => {
   try {
     if (!handleValidation(req, res)) return;
-    
+
     const { eventId } = req.params;
-    
+
     // Get impersonated organizer ID if admin is impersonating
-    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
-      ? req.query.organizerId 
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId
+      ? req.query.organizerId
       : null;
-    
+
     // Validate event ownership
     await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
-    
+
     // Get update analytics data
     const updateAnalytics = await analyticsService.getUpdateAnalytics(eventId);
-    
+
     res.json({
       success: true,
       data: updateAnalytics
     });
   } catch (error) {
     console.error('Update analytics error:', error);
-    
+
     if (error.message === 'Event not found') {
       return res.status(404).json({
         success: false,
         error: 'Event not found'
       });
     }
-    
+
     if (error.message === 'Access denied - not event owner') {
       return res.status(403).json({
         success: false,
         error: 'Access denied'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to load update analytics'
@@ -161,9 +163,9 @@ router.get('/dashboard-overview', verifyToken, requireRole(['organizer', 'admin'
       req.user.role === 'admin' && req.query.organizerId
         ? req.query.organizerId
         : req.user._id;
-    
+
     const overview = await analyticsService.getDashboardOverview(organizerId);
-    
+
     res.json({
       success: true,
       data: overview
@@ -191,42 +193,42 @@ router.get('/sales-chart/:eventId', analyticsRateLimit, verifyToken, requireRole
 ], async (req, res) => {
   try {
     if (!handleValidation(req, res)) return;
-    
+
     const { eventId } = req.params;
     const { period, startDate, endDate, ticketType } = req.query;
-    
+
     // Get impersonated organizer ID if admin is impersonating
-    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
-      ? req.query.organizerId 
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId
+      ? req.query.organizerId
       : null;
-    
+
     // Validate event ownership
     await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
-    
+
     const options = { period, startDate, endDate, ticketType };
     const salesData = await analyticsService.getSalesChart(eventId, options);
-    
+
     res.json({
       success: true,
       data: salesData
     });
   } catch (error) {
     console.error('Sales chart error:', error);
-    
+
     if (error.message === 'Event not found') {
       return res.status(404).json({
         success: false,
         error: 'Event not found'
       });
     }
-    
+
     if (error.message === 'Access denied - not event owner') {
       return res.status(403).json({
         success: false,
         error: 'Access denied'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to load sales chart data'
@@ -244,40 +246,40 @@ router.get('/revenue-overview/:eventId', verifyToken, requireRole(['organizer', 
 ], async (req, res) => {
   try {
     if (!handleValidation(req, res)) return;
-    
+
     const { eventId } = req.params;
-    
+
     // Get impersonated organizer ID if admin is impersonating
-    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
-      ? req.query.organizerId 
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId
+      ? req.query.organizerId
       : null;
-    
+
     // Validate event ownership
     await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
-    
+
     const revenueData = await analyticsService.getRevenueOverview(eventId);
-    
+
     res.json({
       success: true,
       data: revenueData
     });
   } catch (error) {
     console.error('Revenue overview error:', error);
-    
+
     if (error.message === 'Event not found') {
       return res.status(404).json({
         success: false,
         error: 'Event not found'
       });
     }
-    
+
     if (error.message === 'Access denied - not event owner') {
       return res.status(403).json({
         success: false,
         error: 'Access denied'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to load revenue overview'
@@ -298,9 +300,9 @@ router.get('/revenue-trends', verifyToken, requireRole(['organizer', 'admin']), 
 ], async (req, res) => {
   try {
     if (!handleValidation(req, res)) return;
-    
+
     const { period, startDate, endDate, eventIds } = req.query;
-    
+
     // Parse event IDs if provided
     let parsedEventIds = null;
     if (eventIds) {
@@ -316,16 +318,16 @@ router.get('/revenue-trends', verifyToken, requireRole(['organizer', 'admin']), 
         });
       }
     }
-    
+
     // Allow admins to view organizer revenue trends by passing organizerId
     const organizerId =
       req.user.role === 'admin' && req.query.organizerId
         ? req.query.organizerId
         : req.user._id;
-    
+
     const options = { period, startDate, endDate, eventIds: parsedEventIds };
     const trendsData = await analyticsService.getRevenueTrends(organizerId, options);
-    
+
     res.json({
       success: true,
       data: trendsData
@@ -354,23 +356,23 @@ router.get('/export/attendees/:eventId', exportRateLimit, verifyToken, requireRo
 ], async (req, res) => {
   try {
     if (!handleValidation(req, res)) return;
-    
+
     const { eventId } = req.params;
     const { format, status, ticketType, dateFrom, dateTo } = req.query;
-    
+
     // Get impersonated organizer ID if admin is impersonating
-    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
-      ? req.query.organizerId 
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId
+      ? req.query.organizerId
       : null;
-    
+
     // Validate event ownership
     await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
-    
+
     const filters = { status, ticketType, dateFrom, dateTo };
     const options = { format, filters };
-    
+
     const exportData = await analyticsService.exportAttendees(eventId, options);
-    
+
     // Set appropriate headers based on format
     const formatHeaders = {
       csv: {
@@ -390,14 +392,14 @@ router.get('/export/attendees/:eventId', exportRateLimit, verifyToken, requireRo
         'Content-Disposition': `attachment; filename="attendees-${eventId}.json"`
       }
     };
-    
+
     const headers = formatHeaders[format] || formatHeaders.json;
-    
+
     // Set headers
     Object.entries(headers).forEach(([key, value]) => {
       res.setHeader(key, value);
     });
-    
+
     if (format === 'json') {
       res.json({
         success: true,
@@ -415,21 +417,21 @@ router.get('/export/attendees/:eventId', exportRateLimit, verifyToken, requireRo
     }
   } catch (error) {
     console.error('Export attendees error:', error);
-    
+
     if (error.message === 'Event not found') {
       return res.status(404).json({
         success: false,
         error: 'Event not found'
       });
     }
-    
+
     if (error.message === 'Access denied - not event owner') {
       return res.status(403).json({
         success: false,
         error: 'Access denied'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to export attendee data'
@@ -450,23 +452,23 @@ router.post('/export/attendees/:eventId', verifyToken, requireRole(['organizer',
 ], async (req, res) => {
   try {
     if (!handleValidation(req, res)) return;
-    
+
     const { eventId } = req.params;
     const { format, filters = {}, fields = [] } = req.body;
-    
+
     // Get impersonated organizer ID if admin is impersonating
-    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
-      ? req.query.organizerId 
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId
+      ? req.query.organizerId
       : null;
-    
+
     // Validate event ownership
     await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
-    
+
     // For large exports, you would typically queue this job
     // For now, process immediately
     const options = { format, filters, fields };
     const exportData = await analyticsService.exportAttendees(eventId, options);
-    
+
     res.json({
       success: true,
       message: 'Export job completed',
@@ -480,21 +482,21 @@ router.post('/export/attendees/:eventId', verifyToken, requireRole(['organizer',
     });
   } catch (error) {
     console.error('Export job error:', error);
-    
+
     if (error.message === 'Event not found') {
       return res.status(404).json({
         success: false,
         error: 'Event not found'
       });
     }
-    
+
     if (error.message === 'Access denied - not event owner') {
       return res.status(403).json({
         success: false,
         error: 'Access denied'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to create export job'
@@ -512,22 +514,22 @@ router.get('/events/:eventId/summary', verifyToken, requireRole(['organizer', 'a
 ], async (req, res) => {
   try {
     if (!handleValidation(req, res)) return;
-    
+
     const { eventId } = req.params;
-    
+
     // Get impersonated organizer ID if admin is impersonating
-    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
-      ? req.query.organizerId 
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId
+      ? req.query.organizerId
       : null;
-    
+
     // Validate event ownership
     await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
-    
+
     const [salesSummary, revenueOverview] = await Promise.all([
       analyticsService.getSalesChart(eventId, { period: 'daily' }),
       analyticsService.getRevenueOverview(eventId)
     ]);
-    
+
     res.json({
       success: true,
       data: {
@@ -538,24 +540,166 @@ router.get('/events/:eventId/summary', verifyToken, requireRole(['organizer', 'a
     });
   } catch (error) {
     console.error('Event summary error:', error);
-    
+
     if (error.message === 'Event not found') {
       return res.status(404).json({
         success: false,
         error: 'Event not found'
       });
     }
-    
+
     if (error.message === 'Access denied - not event owner') {
       return res.status(403).json({
         success: false,
         error: 'Access denied'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to load event summary'
+    });
+  }
+});
+
+/**
+ * @route GET /api/organizer/analytics/events/:eventId/finance
+ * @desc Get per-event finance metrics (gross subtotal, transaction fees, commission, net to organizer)
+ * @access Private (Organizer/Admin)
+ */
+router.get('/events/:eventId/finance', verifyToken, requireRole(['organizer', 'admin']), [
+  param('eventId').isMongoId().withMessage('Invalid event ID')
+], async (req, res) => {
+  try {
+    if (!handleValidation(req, res)) return;
+
+    const { eventId } = req.params;
+
+    // Get impersonated organizer ID if admin is impersonating
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId
+      ? req.query.organizerId
+      : null;
+
+    // Validate event ownership (admins can access all events unless impersonating)
+    const event = await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
+
+    const eventObjectId = new mongoose.Types.ObjectId(eventId);
+
+    const pipeline = [
+      {
+        $match: {
+          'items.eventId': eventObjectId,
+          status: { $in: ['completed', 'paid'] },
+          paymentStatus: { $in: ['paid', 'completed'] }
+        }
+      },
+      { $unwind: '$items' },
+      { $match: { 'items.eventId': eventObjectId } },
+      {
+        $addFields: {
+          _orderSubtotal: { $ifNull: ['$pricing.subtotal', 0] },
+          _orderTransactionFee: { $ifNull: ['$pricing.transactionFee', 0] },
+          _itemSubtotal: { $ifNull: ['$items.subtotal', 0] },
+          _itemQuantity: { $ifNull: ['$items.quantity', 0] },
+          _commissionRate: { $ifNull: [event.commissionRate, 6] }
+        }
+      },
+      {
+        $addFields: {
+          _itemShare: {
+            $cond: [
+              { $gt: ['$_orderSubtotal', 0] },
+              { $divide: ['$_itemSubtotal', '$_orderSubtotal'] },
+              0
+            ]
+          }
+        }
+      },
+      {
+        $addFields: {
+          _itemTransactionFee: { $multiply: ['$_orderTransactionFee', '$_itemShare'] },
+          _itemCommission: {
+            $multiply: ['$_itemSubtotal', { $divide: ['$_commissionRate', 100] }]
+          },
+          _itemNetToOrganizer: {
+            $subtract: [
+              '$_itemSubtotal',
+              {
+                $add: ['$_itemTransactionFee', {
+                  $multiply: ['$_itemSubtotal', { $divide: ['$_commissionRate', 100] }]
+                }]
+              }
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          ticketsSold: { $sum: '$_itemQuantity' },
+          grossSubtotal: { $sum: '$_itemSubtotal' },
+          transactionFees: { $sum: '$_itemTransactionFee' },
+          commissionFees: { $sum: '$_itemCommission' },
+          netToOrganizer: { $sum: '$_itemNetToOrganizer' },
+          _orderIds: { $addToSet: '$_id' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          ticketsSold: 1,
+          grossSubtotal: 1,
+          transactionFees: 1,
+          commissionFees: 1,
+          netToOrganizer: {
+            $subtract: [
+              '$grossSubtotal',
+              { $add: ['$transactionFees', '$commissionFees'] }
+            ]
+          },
+          ordersCount: { $size: '$_orderIds' }
+        }
+      }
+    ];
+
+    const [agg] = await Order.aggregate(pipeline);
+
+    res.json({
+      success: true,
+      data: {
+        eventId: eventId,
+        commissionRate: event.commissionRate ?? 6,
+        ticketsSold: agg?.ticketsSold || 0,
+        ordersCount: agg?.ordersCount || 0,
+        grossSubtotal: agg?.grossSubtotal || 0,
+        transactionFees: agg?.transactionFees || 0,
+        commissionFees: agg?.commissionFees || 0,
+        netToOrganizer: agg?.netToOrganizer || 0
+      }
+    });
+  } catch (error) {
+    console.error('Event finance error:', error);
+
+    if (error.message === 'Event not found') {
+      return res.status(404).json({
+        success: false,
+        error: 'Event not found'
+      });
+    }
+
+    if (
+      error.message === 'Access denied - not event owner' ||
+      error.message === 'Access denied - event does not belong to impersonated organizer'
+    ) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load event finance'
     });
   }
 });
@@ -568,7 +712,7 @@ router.get('/events/:eventId/summary', verifyToken, requireRole(['organizer', 'a
 router.get('/cache/clear', adminRateLimit, verifyToken, requireRole('admin'), async (req, res) => {
   try {
     analyticsService.clearAllCache();
-    
+
     res.json({
       success: true,
       message: 'Analytics cache cleared successfully'
@@ -592,40 +736,40 @@ router.get('/cache/clear/:eventId', verifyToken, requireRole(['organizer', 'admi
 ], async (req, res) => {
   try {
     if (!handleValidation(req, res)) return;
-    
+
     const { eventId } = req.params;
-    
+
     // Get impersonated organizer ID if admin is impersonating
-    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
-      ? req.query.organizerId 
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId
+      ? req.query.organizerId
       : null;
-    
+
     // Validate event ownership
     await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
-    
+
     analyticsService.clearEventCache(eventId);
-    
+
     res.json({
       success: true,
       message: `Analytics cache cleared for event ${eventId}`
     });
   } catch (error) {
     console.error('Event cache clear error:', error);
-    
+
     if (error.message === 'Event not found') {
       return res.status(404).json({
         success: false,
         error: 'Event not found'
       });
     }
-    
+
     if (error.message === 'Access denied - not event owner') {
       return res.status(403).json({
         success: false,
         error: 'Access denied'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to clear event cache'
@@ -644,21 +788,21 @@ router.get('/download/:eventId/:format', verifyToken, requireRole(['organizer', 
 ], async (req, res) => {
   try {
     if (!handleValidation(req, res)) return;
-    
+
     const { eventId, format } = req.params;
-    
+
     // Get impersonated organizer ID if admin is impersonating
-    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId 
-      ? req.query.organizerId 
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId
+      ? req.query.organizerId
       : null;
-    
+
     // Validate event ownership
     await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
-    
+
     // Generate filename
     const filename = exportService.generateFilename(eventId, format);
     const filePath = path.join(exportService.exportDir, `${filename}.${format}`);
-    
+
     // Check if file exists
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({
@@ -666,7 +810,7 @@ router.get('/download/:eventId/:format', verifyToken, requireRole(['organizer', 
         error: 'Export file not found. Please generate a new export.'
       });
     }
-    
+
     // Set appropriate headers
     const headers = {
       csv: {
@@ -686,39 +830,39 @@ router.get('/download/:eventId/:format', verifyToken, requireRole(['organizer', 
         'Content-Disposition': `attachment; filename="${filename}.json"`
       }
     };
-    
+
     const fileHeaders = headers[format];
     Object.entries(fileHeaders).forEach(([key, value]) => {
       res.setHeader(key, value);
     });
-    
+
     // Stream file to client
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
-    
+
     // Clean up file after download (optional)
     fileStream.on('end', () => {
       // Optionally delete file after successful download
       // fs.unlinkSync(filePath);
     });
-    
+
   } catch (error) {
     console.error('File download error:', error);
-    
+
     if (error.message === 'Event not found') {
       return res.status(404).json({
         success: false,
         error: 'Event not found'
       });
     }
-    
+
     if (error.message === 'Access denied - not event owner') {
       return res.status(403).json({
         success: false,
         error: 'Access denied'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: 'Failed to download file'
@@ -736,9 +880,9 @@ router.get('/export-status/:jobId', verifyToken, requireRole(['organizer', 'admi
 ], async (req, res) => {
   try {
     if (!handleValidation(req, res)) return;
-    
+
     const { jobId } = req.params;
-    
+
     // For now, return mock status - implement actual job tracking later
     res.json({
       success: true,

@@ -443,9 +443,12 @@ const PricingAndTicketsStep = () => {
                       <input
                         id="price"
                         type="number"
-                        value={formData.pricing?.price || ''}
+                        value={formData.pricing?.price ?? ''}
                         onChange={(e) => validateAndUpdatePricing('price', parseFloat(e.target.value) || 0)}
-                        onBlur={() => setTouched(prev => ({ ...prev, price: true }))}
+                        onBlur={() => {
+                          setTouched(prev => ({ ...prev, price: true }));
+                          dispatch(setBlurField('pricing.price'));
+                        }}
                         placeholder="0.00"
                         min="0"
                         step="0.01"
@@ -469,7 +472,10 @@ const PricingAndTicketsStep = () => {
                         id="currency"
                         value={formData.pricing?.currency || 'KES'}
                         onChange={(e) => validateAndUpdatePricing('currency', e.target.value)}
-                        onBlur={() => setTouched(prev => ({ ...prev, currency: true }))}
+                        onBlur={() => {
+                          setTouched(prev => ({ ...prev, currency: true }));
+                          dispatch(setBlurField('pricing.currency'));
+                        }}
                         className="input-modern w-full"
                         style={{ paddingRight: '3rem' }}
                       >

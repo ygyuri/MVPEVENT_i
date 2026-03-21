@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import api from '../utils/api';
 
 export default function AffiliateAnalytics() {
   const [loading, setLoading] = useState(true);
@@ -9,16 +10,12 @@ export default function AffiliateAnalytics() {
   useEffect(() => {
     (async () => {
       try {
-        const o = await fetch('/api/affiliates/dashboard/overview', { credentials: 'include' });
-        const p = await fetch('/api/affiliates/dashboard/performance', { credentials: 'include' });
-        if (o.ok) {
-          const data = await o.json();
-          setOverview(data.data);
-        }
-        if (p.ok) {
-          const data = await p.json();
-          setPerformance(data.data?.time_buckets || []);
-        }
+        const [o, p] = await Promise.all([
+          api.get('/api/affiliates/dashboard/overview'),
+          api.get('/api/affiliates/dashboard/performance'),
+        ]);
+        setOverview(o.data?.data);
+        setPerformance(p.data?.data?.time_buckets || []);
       } catch (e) {
         toast.error('Failed to load affiliate analytics');
       } finally {

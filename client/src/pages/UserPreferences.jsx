@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchReminders, setReminderPreferences, deleteReminder, selectFilteredReminders } from '../store/slices/remindersSlice';
+import { fetchReminders, setReminderPreferences, deleteReminder, selectFilteredReminders } from "../store/slices/remindersSlice";
+import LoadingOverlay from "../components/shared/LoadingOverlay";
 
 function PreferenceCard({ reminder, onUpdate, onDelete }) {
   const [method, setMethod] = useState(reminder.deliveryMethod || 'email');
@@ -69,11 +70,9 @@ export default function UserPreferences() {
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
+        <LoadingOverlay show={true} label="Loading reminders..." />
+        <div className="min-h-[40vh]" />
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Reminder Preferences</h1>
-        <div className="text-center py-8">
-          <div className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading reminders...</p>
-        </div>
       </div>
     );
   }

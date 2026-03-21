@@ -334,7 +334,7 @@ export const getOrganizerOverview = createAsyncThunk(
         const lastRequest = requestCache.get(requestKey);
         if (now - lastRequest < 10000) {
           // 10 seconds cache for overview
-          console.log("🚫 [API OVERVIEW] Deduplicating request:", requestKey);
+          // console.log("🚫 [API OVERVIEW] Deduplicating request:", requestKey);
           return new Promise((resolve) => {
             // Return cached promise or wait for ongoing request
             setTimeout(() => {
@@ -347,21 +347,21 @@ export const getOrganizerOverview = createAsyncThunk(
       // Store request timestamp
       requestCache.set(requestKey, now);
 
-      console.log("🔄 [API OVERVIEW] Request:", {
-        url: requestKey,
-        timestamp: new Date().toISOString(),
-      });
+      // console.log("🔄 [API OVERVIEW] Request:", {
+      //   url: requestKey,
+      //   timestamp: new Date().toISOString(),
+      // });
 
       const response = await api.get(requestKey);
 
       // Store result in cache
       requestCache.set(requestKey + "_result", response.data.overview);
 
-      console.log("✅ [API OVERVIEW] Response:", {
-        status: response.status,
-        data: response.data.overview,
-        timestamp: new Date().toISOString(),
-      });
+      // console.log("✅ [API OVERVIEW] Response:", {
+      //   status: response.status,
+      //   data: response.data.overview,
+      //   timestamp: new Date().toISOString(),
+      // });
 
       return response.data.overview;
     } catch (error) {
@@ -646,19 +646,36 @@ const organizerSlice = createSlice({
       .addCase(unpublishEvent.fulfilled, (state, action) => {
         const { eventId, data } = action.payload;
 
+        const nextStatus =
+          data?.status ||
+          data?.event?.status ||
+          data?.data?.status ||
+          data?.data?.event?.status ||
+          "draft";
+
+        const nextVersion =
+          data?.version ||
+          data?.event?.version ||
+          data?.data?.version ||
+          data?.data?.event?.version;
+
         // Update event status in list
         const eventIndex = state.events.findIndex(
           (event) => event._id === eventId
         );
         if (eventIndex !== -1) {
-          state.events[eventIndex].status = data.status;
-          state.events[eventIndex].version = data.version;
+          state.events[eventIndex].status = nextStatus;
+          if (nextVersion !== undefined) {
+            state.events[eventIndex].version = nextVersion;
+          }
         }
 
         // Update current event if it's the same
         if (state.currentEvent && state.currentEvent._id === eventId) {
-          state.currentEvent.status = data.status;
-          state.currentEvent.version = data.version;
+          state.currentEvent.status = nextStatus;
+          if (nextVersion !== undefined) {
+            state.currentEvent.version = nextVersion;
+          }
         }
       })
 
