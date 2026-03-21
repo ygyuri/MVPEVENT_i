@@ -138,3 +138,4 @@ server/dist/
 *.pem
 *.p12
 *.pfx
+.env.development
