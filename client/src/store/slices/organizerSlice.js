@@ -334,7 +334,7 @@ export const getOrganizerOverview = createAsyncThunk(
         const lastRequest = requestCache.get(requestKey);
         if (now - lastRequest < 10000) {
           // 10 seconds cache for overview
-          console.log("🚫 [API OVERVIEW] Deduplicating request:", requestKey);
+          // console.log("🚫 [API OVERVIEW] Deduplicating request:", requestKey);
           return new Promise((resolve) => {
             // Return cached promise or wait for ongoing request
             setTimeout(() => {
@@ -347,21 +347,21 @@ export const getOrganizerOverview = createAsyncThunk(
       // Store request timestamp
       requestCache.set(requestKey, now);
 
-      console.log("🔄 [API OVERVIEW] Request:", {
-        url: requestKey,
-        timestamp: new Date().toISOString(),
-      });
+      // console.log("🔄 [API OVERVIEW] Request:", {
+      //   url: requestKey,
+      //   timestamp: new Date().toISOString(),
+      // });
 
       const response = await api.get(requestKey);
 
       // Store result in cache
       requestCache.set(requestKey + "_result", response.data.overview);
 
-      console.log("✅ [API OVERVIEW] Response:", {
-        status: response.status,
-        data: response.data.overview,
-        timestamp: new Date().toISOString(),
-      });
+      // console.log("✅ [API OVERVIEW] Response:", {
+      //   status: response.status,
+      //   data: response.data.overview,
+      //   timestamp: new Date().toISOString(),
+      // });
 
       return response.data.overview;
     } catch (error) {
