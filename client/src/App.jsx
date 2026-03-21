@@ -24,6 +24,7 @@ import EventQRSettings from "./pages/EventQRSettings";
 import OrganizerDashboard from "./pages/OrganizerDashboard";
 import EventCreate from "./pages/EventCreate";
 import EventManagement from "./pages/EventManagement";
+import OrganizerEventPreview from "./pages/OrganizerEventPreview";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import OrganizerCommissionSetup from "./pages/OrganizerCommissionSetup";
 import AffiliateAnalytics from "./pages/AffiliateAnalytics";
@@ -94,6 +95,10 @@ function App() {
                   <Route
                     path="/organizer/events"
                     element={<EventManagement />}
+                  />
+                  <Route
+                    path="/organizer/events/:eventId"
+                    element={<OrganizerEventPreview />}
                   />
                   <Route
                     path="/organizer/events/create"

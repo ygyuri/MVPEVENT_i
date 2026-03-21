@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   X,
 } from "lucide-react";
+import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
 // Analytics components
@@ -31,6 +32,7 @@ import EventSelector from "../components/analytics/EventSelector";
 import DateRangePicker from "../components/analytics/DateRangePicker";
 import AnalyticsFilters from "../components/analytics/AnalyticsFilters";
 import PollAnalyticsDashboard from "../components/organizer/PollAnalyticsDashboard";
+import LoadingOverlay from "../components/shared/LoadingOverlay";
 
 // Redux actions
 import {
@@ -254,15 +256,17 @@ const AnalyticsDashboard = () => {
   };
 
   // Show loading state while authentication is in progress
-  if (authLoading || !isAuthenticated) {
+  if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <LoadingOverlay show={true} label="Loading..." />
+        <div className="min-h-screen" />
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
   }
 
   // Show error if user is not an organizer and not admin impersonating

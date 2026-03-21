@@ -45,10 +45,20 @@ const API_BASE_URL = getApiBaseUrl();
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+const redirectToRootOnce = () => {
+  if (typeof window === 'undefined') return;
+  if (window.__eventi_redirecting_to_root__) return;
+  window.__eventi_redirecting_to_root__ = true;
+  if (window.location.pathname !== '/') {
+    window.location.replace('/');
+  }
+};
 
 // Add request interceptor for logging
 api.interceptors.request.use(
@@ -111,13 +121,24 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // If session is invalid/expired, redirect to root to avoid hanging UI.
+    // We do this before refresh attempts for non-refreshable sessions (cookie-only, missing refresh token, etc.).
+    const status = error.response.status;
+    const isUnauthorized = status === 401 || status === 403;
+
     // If unauthorized, try one refresh attempt
-    if (error.response.status === 401 && !originalRequest._retry) {
+    if (status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
+        if (!refreshToken) {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('refreshToken');
+          delete api.defaults.headers.common?.Authorization;
+          redirectToRootOnce();
+          return Promise.reject(error);
+        }
 
         const refreshResponse = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken });
         const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.tokens;
@@ -136,8 +157,16 @@ api.interceptors.response.use(
         localStorage.removeItem('authToken');
         localStorage.removeItem('refreshToken');
         delete api.defaults.headers.common?.Authorization;
+        redirectToRootOnce();
         return Promise.reject(refreshError);
       }
+    }
+
+    if (isUnauthorized) {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
+      delete api.defaults.headers.common?.Authorization;
+      redirectToRootOnce();
     }
 
     return Promise.reject(error);

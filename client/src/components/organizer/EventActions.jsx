@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Eye, 
   Edit, 
-  Copy, 
   Trash2, 
   MoreVertical,
   Play,
@@ -17,7 +16,6 @@ import {
   Mail
 } from 'lucide-react';
 import EnhancedButton from '../EnhancedButton';
-import { dateUtils } from '../../utils/eventHelpers';
 
 const EventActions = ({ 
   event, 
@@ -64,18 +62,19 @@ const EventActions = ({
       });
     }
     
-    // Clone action (always available)
-    actions.push({
-      key: 'clone',
-      label: 'Clone Event',
-      icon: Copy,
-      variant: 'secondary',
-      className: 'text-purple-600 hover:text-purple-700'
-    });
-    
     // Status-specific actions
     switch (event.status) {
       case 'draft':
+        actions.push({
+          key: 'publish',
+          label: 'Publish Event',
+          icon: Play,
+          variant: 'primary',
+          className: 'text-green-600 hover:text-green-700'
+        });
+        break;
+      
+      case 'cancelled':
         actions.push({
           key: 'publish',
           label: 'Publish Event',
@@ -140,70 +139,47 @@ const EventActions = ({
   
   // Compact mode - show only primary actions
   if (compact) {
-    const primaryActions = availableActions.filter(action => 
-      ['view', 'edit', 'publish', 'unpublish'].includes(action.key)
-    );
-    
     return (
-      <div className={`flex items-center gap-2 ${className}`}>
-        {primaryActions.slice(0, 2).map((action) => (
-          <button
-            key={action.key}
-            onClick={() => handleAction(action.key)}
-            disabled={actionLoading === action.key}
-            className={`p-2 rounded-lg transition-colors duration-200 ${
-              action.className
-            } ${
-              actionLoading === action.key 
-                ? 'opacity-50 cursor-not-allowed' 
-                : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
-            title={action.label}
-          >
-            <action.icon className="w-4 h-4" />
-          </button>
-        ))}
-        
-        {availableActions.length > 2 && (
-          <div className="relative">
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-2 rounded-lg text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
-              title="More actions"
+      <div className={`relative ${className}`}>
+        <button
+          onClick={() => setShowMenu(!showMenu)}
+          disabled={!!actionLoading}
+          className={`p-2 rounded-lg text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200 ${
+            actionLoading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+          title="Actions"
+        >
+          <MoreVertical className="w-4 h-4" />
+        </button>
+
+        <AnimatePresence>
+          {showMenu && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
             >
-              <MoreVertical className="w-4 h-4" />
-            </button>
-            
-            <AnimatePresence>
-              {showMenu && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                  className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
-                >
-                  <div className="py-2">
-                    {availableActions.slice(2).map((action) => (
-                      <button
-                        key={action.key}
-                        onClick={() => handleAction(action.key)}
-                        disabled={actionLoading === action.key}
-                        className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors duration-200 ${
-                          actionLoading === action.key 
-                            ? 'opacity-50 cursor-not-allowed' 
-                            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                        } ${action.className}`}
-                      >
-                        <action.icon className="w-4 h-4" />
-                        {action.label}
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
+              <div className="py-2">
+                {availableActions.map((action) => (
+                  <button
+                    key={action.key}
+                    onClick={() => handleAction(action.key)}
+                    disabled={actionLoading === action.key}
+                    className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors duration-200 ${
+                      actionLoading === action.key
+                        ? 'opacity-50 cursor-not-allowed'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                    } ${action.className}`}
+                  >
+                    <action.icon className="w-4 h-4" />
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }

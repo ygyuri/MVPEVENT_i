@@ -646,19 +646,36 @@ const organizerSlice = createSlice({
       .addCase(unpublishEvent.fulfilled, (state, action) => {
         const { eventId, data } = action.payload;
 
+        const nextStatus =
+          data?.status ||
+          data?.event?.status ||
+          data?.data?.status ||
+          data?.data?.event?.status ||
+          "draft";
+
+        const nextVersion =
+          data?.version ||
+          data?.event?.version ||
+          data?.data?.version ||
+          data?.data?.event?.version;
+
         // Update event status in list
         const eventIndex = state.events.findIndex(
           (event) => event._id === eventId
         );
         if (eventIndex !== -1) {
-          state.events[eventIndex].status = data.status;
-          state.events[eventIndex].version = data.version;
+          state.events[eventIndex].status = nextStatus;
+          if (nextVersion !== undefined) {
+            state.events[eventIndex].version = nextVersion;
+          }
         }
 
         // Update current event if it's the same
         if (state.currentEvent && state.currentEvent._id === eventId) {
-          state.currentEvent.status = data.status;
-          state.currentEvent.version = data.version;
+          state.currentEvent.status = nextStatus;
+          if (nextVersion !== undefined) {
+            state.currentEvent.version = nextVersion;
+          }
         }
       })
 

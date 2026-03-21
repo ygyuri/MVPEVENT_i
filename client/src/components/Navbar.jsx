@@ -431,6 +431,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                         </Link>
 
                         {/* Reminders Section */}
+                        {/*
                         <div
                           className={`px-4 py-2 mt-1 ${
                             isDarkMode
@@ -470,6 +471,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                             <span>History</span>
                           </Link>
                         </div>
+                        */}
 
                         {/* Organizer Section */}
                         {(user?.role === "admin" ||

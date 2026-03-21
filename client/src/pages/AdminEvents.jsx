@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import api from "../utils/api";
 import { toast } from "react-hot-toast";
+import LoadingOverlay from "../components/shared/LoadingOverlay";
 
 const AdminEvents = () => {
   const navigate = useNavigate();
@@ -190,14 +191,8 @@ const AdminEvents = () => {
   if (loading && events.length === 0) {
     return (
       <div className="container-modern py-12">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4f0f69] mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">
-              Loading events...
-            </p>
-          </div>
-        </div>
+        <LoadingOverlay show={true} label="Loading events..." />
+        <div className="min-h-[60vh]" />
       </div>
     );
   }
@@ -656,41 +651,46 @@ const AdminEvents = () => {
               }}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              onClick={() => setShowEventModal(false)}
             >
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                {loadingDetails ? (
-                  <div className="flex items-center justify-center min-h-[400px]">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#4f0f69] mx-auto mb-4"></div>
-                      <p className="text-gray-600 dark:text-gray-400">
-                        Loading event details...
-                      </p>
+              <motion.div
+                initial={{ y: 20 }}
+                animate={{ y: 0 }}
+                exit={{ y: 20 }}
+                className="w-full max-w-4xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                  {loadingDetails ? (
+                    <div className="relative min-h-[400px]">
+                      <LoadingOverlay show={true} label="Loading event details..." />
+                      <div className="min-h-[400px]" />
                     </div>
-                  </div>
-                ) : eventDetails ? (
-                  <div>
-                    {/* Header */}
-                    <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
-                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        Event Details
-                      </h2>
-                      <button
-                        onClick={() => {
-                          setShowEventModal(false);
-                          setEventDetails(null);
-                        }}
-                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-                      </button>
-                    </div>
+                  ) : eventDetails ? (
+                    <>
+                      <div className="p-8">
+                        {/* Header */}
+                        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
+                          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                            Event Details
+                          </h2>
+                          <button
+                            onClick={() => {
+                              setShowEventModal(false);
+                              setEventDetails(null);
+                            }}
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          >
+                            <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                          </button>
+                        </div>
+                      </div>
 
-                    <div className="p-6 space-y-6">
+                      <div className="p-6 space-y-6">
                       {/* Cover Image */}
                       {eventDetails.media?.coverImageUrl && (
                         <div className="w-full h-64 rounded-xl overflow-hidden">
@@ -1012,9 +1012,10 @@ const AdminEvents = () => {
                         )}
                       </div>
                     </div>
-                  </div>
-                ) : null}
-              </div>
+                    </>
+                  ) : null}
+                </div>
+              </motion.div>
             </motion.div>
           </>
         )}
