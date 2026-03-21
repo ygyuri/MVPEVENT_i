@@ -31,6 +31,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import api from "../utils/api";
+import analyticsAPI from "../utils/analyticsAPI";
 import { toast } from "react-hot-toast";
 import LoadingOverlay from "../components/shared/LoadingOverlay";
 
@@ -49,8 +50,14 @@ const AdminEvents = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [eventDetails, setEventDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [financeDetails, setFinanceDetails] = useState(null);
+  const [financeLoading, setFinanceLoading] = useState(false);
+  const [financeError, setFinanceError] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState({});
+  const [showCommissionModal, setShowCommissionModal] = useState(false);
+  const [commissionEvent, setCommissionEvent] = useState(null);
+  const [commissionRateInput, setCommissionRateInput] = useState("6");
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.role !== "admin") {
@@ -85,6 +92,46 @@ const AdminEvents = () => {
     }
   };
 
+  const openCommissionModal = (event) => {
+    setCommissionEvent(event);
+    setCommissionRateInput(
+      String(
+        event?.commissionRate !== undefined && event?.commissionRate !== null
+          ? event.commissionRate
+          : 6
+      )
+    );
+    setShowCommissionModal(true);
+    setShowStatusMenu({ ...showStatusMenu, [event._id]: false });
+  };
+
+  const saveCommissionRate = async () => {
+    if (!commissionEvent?._id) return;
+    const parsed = Number(commissionRateInput);
+    if (Number.isNaN(parsed) || parsed < 0 || parsed > 100) {
+      toast.error("Commission rate must be between 0 and 100");
+      return;
+    }
+    try {
+      setUpdating({ ...updating, [commissionEvent._id]: true });
+      const response = await api.patch(
+        `/api/admin/events/${commissionEvent._id}/commission`,
+        { commissionRate: parsed }
+      );
+      if (response.data?.success) {
+        toast.success("Commission rate updated");
+        setShowCommissionModal(false);
+        setCommissionEvent(null);
+        fetchEvents();
+      }
+    } catch (err) {
+      console.error("Failed to update commission:", err);
+      toast.error(err.response?.data?.error || "Failed to update commission rate");
+    } finally {
+      setUpdating({ ...updating, [commissionEvent?._id]: false });
+    }
+  };
+
   const updateEventFlags = async (eventId, flagType, value) => {
     try {
       setUpdating({ ...updating, [eventId]: true });
@@ -93,8 +140,7 @@ const AdminEvents = () => {
       });
       if (response.data?.success) {
         toast.success(
-          `Event ${
-            flagType === "isFeatured" ? "featured" : "trending"
+          `Event ${flagType === "isFeatured" ? "featured" : "trending"
           } status updated`
         );
         fetchEvents();
@@ -133,16 +179,27 @@ const AdminEvents = () => {
   const fetchEventDetails = async (eventId) => {
     try {
       setLoadingDetails(true);
+      setFinanceLoading(true);
+      setFinanceError(null);
+      setFinanceDetails(null);
       const response = await api.get(`/api/organizer/events/${eventId}`);
       if (response.data?.success || response.data?.data) {
         setEventDetails(response.data.data || response.data.event);
         setShowEventModal(true);
+      }
+
+      try {
+        const financeResponse = await analyticsAPI.getEventFinance(eventId);
+        setFinanceDetails(financeResponse.data?.data || null);
+      } catch (err) {
+        setFinanceError(err?.response?.data?.error || "Failed to load finance");
       }
     } catch (err) {
       console.error("Failed to fetch event details:", err);
       toast.error("Failed to load event details");
     } finally {
       setLoadingDetails(false);
+      setFinanceLoading(false);
     }
   };
 
@@ -231,6 +288,77 @@ const AdminEvents = () => {
           <p className="text-red-700 dark:text-red-300">{error}</p>
         </div>
       )}
+
+      <AnimatePresence>
+        {showCommissionModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          >
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setShowCommissionModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 10 }}
+              className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 p-5"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Set Commission Rate
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Event: {commissionEvent?.title || ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowCommissionModal(false)}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                </button>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Commission % (default 6)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  value={commissionRateInput}
+                  onChange={(e) => setCommissionRateInput(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+
+              <div className="mt-5 flex items-center justify-end gap-2">
+                <button
+                  onClick={() => setShowCommissionModal(false)}
+                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveCommissionRate}
+                  disabled={commissionEvent?._id ? updating[commissionEvent._id] : false}
+                  className="px-4 py-2 rounded-lg bg-[#4f0f69] text-white hover:bg-[#3e0c52] disabled:opacity-60 transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -382,9 +510,8 @@ const AdminEvents = () => {
                               <Users className="w-4 h-4" />
                               <span>
                                 {event.organizer.firstName
-                                  ? `${event.organizer.firstName} ${
-                                      event.organizer.lastName || ""
-                                    }`
+                                  ? `${event.organizer.firstName} ${event.organizer.lastName || ""
+                                  }`
                                   : event.organizer.email}
                               </span>
                             </div>
@@ -413,11 +540,17 @@ const AdminEvents = () => {
                       {/* Status and Actions */}
                       <div className="flex items-start gap-2 ml-4">
                         <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize whitespace-nowrap ${
-                            statusColors[event.status] || statusColors.draft
-                          }`}
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize whitespace-nowrap ${statusColors[event.status] || statusColors.draft
+                            }`}
                         >
                           {event.status}
+                        </span>
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-200 border border-indigo-200/60 dark:border-indigo-800/40">
+                          {Number(
+                            event?.commissionRate !== undefined && event?.commissionRate !== null
+                              ? event.commissionRate
+                              : 6
+                          )}% commission
                         </span>
                         <div className="relative">
                           <button
@@ -447,12 +580,17 @@ const AdminEvents = () => {
                                   initial={{ opacity: 0, scale: 0.95, y: -10 }}
                                   animate={{ opacity: 1, scale: 1, y: 0 }}
                                   exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                  className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-20"
+                                  className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50"
                                 >
-                                  <div className="py-1">
-                                    <p className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-                                      Change Status
-                                    </p>
+                                  <div className="py-2">
+                                    <button
+                                      onClick={() => openCommissionModal(event)}
+                                      className="w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    >
+                                      <DollarSign className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
+                                      Set Commission %
+                                    </button>
+                                    <div className="my-1 border-t border-gray-200 dark:border-gray-700" />
                                     {statusOptions.map((option) => (
                                       <button
                                         key={option.value}
@@ -464,15 +602,11 @@ const AdminEvents = () => {
                                             );
                                           }
                                         }}
-                                        disabled={
-                                          event.status === option.value ||
-                                          updating[event._id]
-                                        }
-                                        className={`w-full flex items-center gap-2 px-4 py-2 text-sm ${
-                                          event.status === option.value
-                                            ? "bg-[#4f0f69] text-white"
-                                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                        disabled={updating[event._id]}
+                                        className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${updating[event._id]
+                                          ? "opacity-50 cursor-not-allowed"
+                                          : ""
+                                          }`}
                                       >
                                         <option.icon className="w-4 h-4" />
                                         {option.label}
@@ -549,16 +683,14 @@ const AdminEvents = () => {
                           )
                         }
                         disabled={updating[event._id]}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                          event.flags?.isFeatured
-                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                            : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-yellow-100 dark:hover:bg-yellow-900"
-                        } disabled:opacity-50`}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${event.flags?.isFeatured
+                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                          : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-yellow-100 dark:hover:bg-yellow-900"
+                          } disabled:opacity-50`}
                       >
                         <Star
-                          className={`w-4 h-4 ${
-                            event.flags?.isFeatured ? "fill-current" : ""
-                          }`}
+                          className={`w-4 h-4 ${event.flags?.isFeatured ? "fill-current" : ""
+                            }`}
                         />
                         Featured
                       </button>
@@ -572,16 +704,14 @@ const AdminEvents = () => {
                           )
                         }
                         disabled={updating[event._id]}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                          event.flags?.isTrending
-                            ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-                            : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-purple-100 dark:hover:bg-purple-900"
-                        } disabled:opacity-50`}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${event.flags?.isTrending
+                          ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                          : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-purple-100 dark:hover:bg-purple-900"
+                          } disabled:opacity-50`}
                       >
                         <TrendingUp
-                          className={`w-4 h-4 ${
-                            event.flags?.isTrending ? "fill-current" : ""
-                          }`}
+                          className={`w-4 h-4 ${event.flags?.isTrending ? "fill-current" : ""
+                            }`}
                         />
                         Trending
                       </button>
@@ -614,27 +744,29 @@ const AdminEvents = () => {
       </div>
 
       {/* Pagination */}
-      {total > limit && (
-        <div className="flex items-center justify-center gap-4 mt-8">
-          <button
-            onClick={() => setPage(page - 1)}
-            disabled={page === 1}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-          <span className="text-gray-600 dark:text-gray-400">
-            Page {page} of {Math.ceil(total / limit)}
-          </span>
-          <button
-            onClick={() => setPage(page + 1)}
-            disabled={page >= Math.ceil(total / limit)}
-            className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
-        </div>
-      )}
+      {
+        total > limit && (
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <button
+              onClick={() => setPage(page - 1)}
+              disabled={page === 1}
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="text-gray-600 dark:text-gray-400">
+              Page {page} of {Math.ceil(total / limit)}
+            </span>
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={page >= Math.ceil(total / limit)}
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        )
+      }
 
       {/* Event Details Modal */}
       <AnimatePresence>
@@ -648,6 +780,8 @@ const AdminEvents = () => {
               onClick={() => {
                 setShowEventModal(false);
                 setEventDetails(null);
+                setFinanceDetails(null);
+                setFinanceError(null);
               }}
             />
             <motion.div
@@ -682,6 +816,8 @@ const AdminEvents = () => {
                             onClick={() => {
                               setShowEventModal(false);
                               setEventDetails(null);
+                              setFinanceDetails(null);
+                              setFinanceError(null);
                             }}
                             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                           >
@@ -691,327 +827,405 @@ const AdminEvents = () => {
                       </div>
 
                       <div className="p-6 space-y-6">
-                      {/* Cover Image */}
-                      {eventDetails.media?.coverImageUrl && (
-                        <div className="w-full h-64 rounded-xl overflow-hidden">
-                          <img
-                            src={eventDetails.media.coverImageUrl}
-                            alt={eventDetails.title}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
+                        {/* Cover Image */}
+                        {eventDetails.media?.coverImageUrl && (
+                          <div className="w-full h-64 rounded-xl overflow-hidden">
+                            <img
+                              src={eventDetails.media.coverImageUrl}
+                              alt={eventDetails.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
 
-                      {/* Title and Status */}
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                            {eventDetails.title}
-                          </h3>
-                          {eventDetails.shortDescription && (
-                            <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">
-                              {eventDetails.shortDescription}
-                            </p>
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                              Revenue (This Event)
+                            </h4>
+                            <button
+                              onClick={async () => {
+                                if (!eventDetails?._id) return;
+                                try {
+                                  setFinanceLoading(true);
+                                  setFinanceError(null);
+                                  const financeResponse = await analyticsAPI.getEventFinance(
+                                    eventDetails._id
+                                  );
+                                  setFinanceDetails(financeResponse.data?.data || null);
+                                } catch (err) {
+                                  setFinanceError(
+                                    err?.response?.data?.error || "Failed to load finance"
+                                  );
+                                } finally {
+                                  setFinanceLoading(false);
+                                }
+                              }}
+                              disabled={financeLoading}
+                              className="text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-60"
+                            >
+                              Refresh
+                            </button>
+                          </div>
+
+                          <div className="relative">
+                            {financeLoading && (
+                              <LoadingOverlay show={true} label="Loading revenue..." />
+                            )}
+
+                            {financeError && !financeLoading && (
+                              <div className="text-sm text-red-700 dark:text-red-300">
+                                {financeError}
+                              </div>
+                            )}
+
+                            {!financeError && !financeLoading && (
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                <div className="rounded-lg border border-gray-200/60 dark:border-gray-600/40 bg-white/70 dark:bg-gray-900/20 p-3">
+                                  <div className="text-[11px] text-gray-600 dark:text-gray-400">Tickets sold</div>
+                                  <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    {financeDetails?.ticketsSold || 0}
+                                  </div>
+                                </div>
+                                <div className="rounded-lg border border-gray-200/60 dark:border-gray-600/40 bg-white/70 dark:bg-gray-900/20 p-3">
+                                  <div className="text-[11px] text-gray-600 dark:text-gray-400">Gross (subtotal)</div>
+                                  <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    {formatCurrency(financeDetails?.grossSubtotal || 0)}
+                                  </div>
+                                </div>
+                                <div className="rounded-lg border border-gray-200/60 dark:border-gray-600/40 bg-white/70 dark:bg-gray-900/20 p-3">
+                                  <div className="text-[11px] text-gray-600 dark:text-gray-400">Transaction fees</div>
+                                  <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    {formatCurrency(financeDetails?.transactionFees || 0)}
+                                  </div>
+                                </div>
+                                <div className="rounded-lg border border-gray-200/60 dark:border-gray-600/40 bg-white/70 dark:bg-gray-900/20 p-3">
+                                  <div className="text-[11px] text-gray-600 dark:text-gray-400">
+                                    Commission ({Number(financeDetails?.commissionRate ?? 6)}%)
+                                  </div>
+                                  <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    {formatCurrency(financeDetails?.commissionFees || 0)}
+                                  </div>
+                                </div>
+                                <div className="rounded-lg border border-gray-200/60 dark:border-gray-600/40 bg-white/70 dark:bg-gray-900/20 p-3">
+                                  <div className="text-[11px] text-gray-600 dark:text-gray-400">Net to organizer</div>
+                                  <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                    {formatCurrency(financeDetails?.netToOrganizer || 0)}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Title and Status */}
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                              {eventDetails.title}
+                            </h3>
+                            {eventDetails.shortDescription && (
+                              <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">
+                                {eventDetails.shortDescription}
+                              </p>
+                            )}
+                          </div>
+                          <span
+                            className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium capitalize whitespace-nowrap ${statusColors[eventDetails.status] ||
+                              statusColors.draft
+                              }`}
+                          >
+                            {eventDetails.status}
+                          </span>
+                        </div>
+
+                        {/* Stats Grid */}
+                        {selectedEvent?.stats && (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <ShoppingBag className="w-5 h-5 text-blue-500" />
+                                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                  Orders
+                                </span>
+                              </div>
+                              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {selectedEvent.stats.ordersCount || 0}
+                              </p>
+                            </div>
+                            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Ticket className="w-5 h-5 text-purple-500" />
+                                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                  Tickets
+                                </span>
+                              </div>
+                              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {selectedEvent.stats.ticketsCount || 0}
+                              </p>
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <DollarSign className="w-5 h-5 text-green-500" />
+                                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                  Revenue
+                                </span>
+                              </div>
+                              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {formatCurrency(selectedEvent.stats.revenue || 0)}
+                              </p>
+                            </div>
+                            <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Users className="w-5 h-5 text-orange-500" />
+                                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                  Attendees
+                                </span>
+                              </div>
+                              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                {eventDetails.currentAttendees || 0}
+                                {eventDetails.capacity &&
+                                  ` / ${eventDetails.capacity}`}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Description */}
+                        {eventDetails.description && (
+                          <div>
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                              Description
+                            </h4>
+                            <div
+                              className="text-gray-600 dark:text-gray-400 prose dark:prose-invert max-w-none"
+                              dangerouslySetInnerHTML={{
+                                __html: eventDetails.description
+                                  .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+                                  .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
+                                  .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
+                                  .replace(/javascript:/gi, "")
+                                  .replace(/\n/g, "<br />"),
+                              }}
+                            />
+                          </div>
+                        )}
+
+                        {/* Event Details Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Date & Time */}
+                          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                              <Clock className="w-4 h-4" />
+                              Date & Time
+                            </h4>
+                            <div className="space-y-2 text-sm">
+                              {eventDetails.dates?.startDate && (
+                                <div>
+                                  <span className="text-gray-600 dark:text-gray-400">
+                                    Start:{" "}
+                                  </span>
+                                  <span className="text-gray-900 dark:text-white font-medium">
+                                    {new Date(
+                                      eventDetails.dates.startDate
+                                    ).toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                              {eventDetails.dates?.endDate && (
+                                <div>
+                                  <span className="text-gray-600 dark:text-gray-400">
+                                    End:{" "}
+                                  </span>
+                                  <span className="text-gray-900 dark:text-white font-medium">
+                                    {new Date(
+                                      eventDetails.dates.endDate
+                                    ).toLocaleString()}
+                                  </span>
+                                </div>
+                              )}
+                              {eventDetails.dates?.timezone && (
+                                <div>
+                                  <span className="text-gray-600 dark:text-gray-400">
+                                    Timezone:{" "}
+                                  </span>
+                                  <span className="text-gray-900 dark:text-white font-medium">
+                                    {eventDetails.dates.timezone}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Location */}
+                          {eventDetails.location && (
+                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                <MapPin className="w-4 h-4" />
+                                Location
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                {eventDetails.location.venueName && (
+                                  <div className="text-gray-900 dark:text-white font-medium">
+                                    {eventDetails.location.venueName}
+                                  </div>
+                                )}
+                                {eventDetails.location.address && (
+                                  <div className="text-gray-600 dark:text-gray-400">
+                                    {eventDetails.location.address}
+                                  </div>
+                                )}
+                                {(eventDetails.location.city ||
+                                  eventDetails.location.state ||
+                                  eventDetails.location.country) && (
+                                    <div className="text-gray-600 dark:text-gray-400">
+                                      {[
+                                        eventDetails.location.city,
+                                        eventDetails.location.state,
+                                        eventDetails.location.country,
+                                      ]
+                                        .filter(Boolean)
+                                        .join(", ")}
+                                    </div>
+                                  )}
+                                {eventDetails.location.postalCode && (
+                                  <div className="text-gray-600 dark:text-gray-400">
+                                    {eventDetails.location.postalCode}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Organizer */}
+                          {eventDetails.organizer && (
+                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                <Users className="w-4 h-4" />
+                                Organizer
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="text-gray-900 dark:text-white font-medium">
+                                  {eventDetails.organizer.firstName
+                                    ? `${eventDetails.organizer.firstName} ${eventDetails.organizer.lastName || ""
+                                    }`
+                                    : eventDetails.organizer.username ||
+                                    eventDetails.organizer.email}
+                                </div>
+                                {eventDetails.organizer.email && (
+                                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                    <Mail className="w-4 h-4" />
+                                    {eventDetails.organizer.email}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Category */}
+                          {eventDetails.category && (
+                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                <Tag className="w-4 h-4" />
+                                Category
+                              </h4>
+                              <div className="text-sm">
+                                <span className="text-gray-900 dark:text-white font-medium">
+                                  {eventDetails.category.name}
+                                </span>
+                              </div>
+                            </div>
                           )}
                         </div>
-                        <span
-                          className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium capitalize whitespace-nowrap ${
-                            statusColors[eventDetails.status] ||
-                            statusColors.draft
-                          }`}
-                        >
-                          {eventDetails.status}
-                        </span>
-                      </div>
 
-                      {/* Stats Grid */}
-                      {selectedEvent?.stats && (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <ShoppingBag className="w-5 h-5 text-blue-500" />
-                              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                Orders
-                              </span>
-                            </div>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                              {selectedEvent.stats.ordersCount || 0}
-                            </p>
-                          </div>
-                          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Ticket className="w-5 h-5 text-purple-500" />
-                              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                Tickets
-                              </span>
-                            </div>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                              {selectedEvent.stats.ticketsCount || 0}
-                            </p>
-                          </div>
-                          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <DollarSign className="w-5 h-5 text-green-500" />
-                              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                Revenue
-                              </span>
-                            </div>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                              {formatCurrency(selectedEvent.stats.revenue || 0)}
-                            </p>
-                          </div>
-                          <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Users className="w-5 h-5 text-orange-500" />
-                              <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                Attendees
-                              </span>
-                            </div>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                              {eventDetails.currentAttendees || 0}
-                              {eventDetails.capacity &&
-                                ` / ${eventDetails.capacity}`}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Description */}
-                      {eventDetails.description && (
-                        <div>
-                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                            Description
-                          </h4>
-                          <div
-                            className="text-gray-600 dark:text-gray-400 prose dark:prose-invert max-w-none"
-                            dangerouslySetInnerHTML={{
-                              __html: eventDetails.description
-                                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-                                .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
-                                .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
-                                .replace(/javascript:/gi, "")
-                                .replace(/\n/g, "<br />"),
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      {/* Event Details Grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Date & Time */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
-                            Date & Time
-                          </h4>
-                          <div className="space-y-2 text-sm">
-                            {eventDetails.dates?.startDate && (
-                              <div>
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  Start:{" "}
-                                </span>
-                                <span className="text-gray-900 dark:text-white font-medium">
-                                  {new Date(
-                                    eventDetails.dates.startDate
-                                  ).toLocaleString()}
-                                </span>
-                              </div>
-                            )}
-                            {eventDetails.dates?.endDate && (
-                              <div>
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  End:{" "}
-                                </span>
-                                <span className="text-gray-900 dark:text-white font-medium">
-                                  {new Date(
-                                    eventDetails.dates.endDate
-                                  ).toLocaleString()}
-                                </span>
-                              </div>
-                            )}
-                            {eventDetails.dates?.timezone && (
-                              <div>
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  Timezone:{" "}
-                                </span>
-                                <span className="text-gray-900 dark:text-white font-medium">
-                                  {eventDetails.dates.timezone}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Location */}
-                        {eventDetails.location && (
-                          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                              <MapPin className="w-4 h-4" />
-                              Location
-                            </h4>
-                            <div className="space-y-2 text-sm">
-                              {eventDetails.location.venueName && (
-                                <div className="text-gray-900 dark:text-white font-medium">
-                                  {eventDetails.location.venueName}
-                                </div>
-                              )}
-                              {eventDetails.location.address && (
-                                <div className="text-gray-600 dark:text-gray-400">
-                                  {eventDetails.location.address}
-                                </div>
-                              )}
-                              {(eventDetails.location.city ||
-                                eventDetails.location.state ||
-                                eventDetails.location.country) && (
-                                <div className="text-gray-600 dark:text-gray-400">
-                                  {[
-                                    eventDetails.location.city,
-                                    eventDetails.location.state,
-                                    eventDetails.location.country,
-                                  ]
-                                    .filter(Boolean)
-                                    .join(", ")}
-                                </div>
-                              )}
-                              {eventDetails.location.postalCode && (
-                                <div className="text-gray-600 dark:text-gray-400">
-                                  {eventDetails.location.postalCode}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Organizer */}
-                        {eventDetails.organizer && (
-                          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                              <Users className="w-4 h-4" />
-                              Organizer
-                            </h4>
-                            <div className="space-y-2 text-sm">
-                              <div className="text-gray-900 dark:text-white font-medium">
-                                {eventDetails.organizer.firstName
-                                  ? `${eventDetails.organizer.firstName} ${
-                                      eventDetails.organizer.lastName || ""
-                                    }`
-                                  : eventDetails.organizer.username ||
-                                    eventDetails.organizer.email}
-                              </div>
-                              {eventDetails.organizer.email && (
-                                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                                  <Mail className="w-4 h-4" />
-                                  {eventDetails.organizer.email}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Category */}
-                        {eventDetails.category && (
-                          <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                              <Tag className="w-4 h-4" />
-                              Category
-                            </h4>
-                            <div className="text-sm">
-                              <span className="text-gray-900 dark:text-white font-medium">
-                                {eventDetails.category.name}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Ticket Types */}
-                      {eventDetails.ticketTypes &&
-                        eventDetails.ticketTypes.length > 0 && (
-                          <div>
-                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                              Ticket Types
-                            </h4>
-                            <div className="space-y-2">
-                              {eventDetails.ticketTypes.map((ticket, idx) => (
-                                <div
-                                  key={idx}
-                                  className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4"
-                                >
-                                  <div className="flex items-start justify-between">
-                                    <div>
-                                      <div className="font-semibold text-gray-900 dark:text-white">
-                                        {ticket.name}
-                                      </div>
-                                      {ticket.description && (
-                                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                          {ticket.description}
+                        {/* Ticket Types */}
+                        {eventDetails.ticketTypes &&
+                          eventDetails.ticketTypes.length > 0 && (
+                            <div>
+                              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                                Ticket Types
+                              </h4>
+                              <div className="space-y-2">
+                                {eventDetails.ticketTypes.map((ticket, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4"
+                                  >
+                                    <div className="flex items-start justify-between">
+                                      <div>
+                                        <div className="font-semibold text-gray-900 dark:text-white">
+                                          {ticket.name}
                                         </div>
-                                      )}
-                                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
-                                        <span>
-                                          Price:{" "}
-                                          <span className="font-medium text-gray-900 dark:text-white">
-                                            {ticket.currency || "KES"}{" "}
-                                            {(
-                                              ticket.price || 0
-                                            ).toLocaleString()}
-                                          </span>
-                                        </span>
-                                        {ticket.quantity && (
+                                        {ticket.description && (
+                                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                            {ticket.description}
+                                          </div>
+                                        )}
+                                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
                                           <span>
-                                            Available:{" "}
+                                            Price:{" "}
                                             <span className="font-medium text-gray-900 dark:text-white">
-                                              {ticket.quantity}
+                                              {ticket.currency || "KES"}{" "}
+                                              {(
+                                                ticket.price || 0
+                                              ).toLocaleString()}
                                             </span>
                                           </span>
-                                        )}
+                                          {ticket.quantity && (
+                                            <span>
+                                              Available:{" "}
+                                              <span className="font-medium text-gray-900 dark:text-white">
+                                                {ticket.quantity}
+                                              </span>
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                      {/* Flags */}
-                      <div className="flex items-center gap-2">
-                        {eventDetails.flags?.isFeatured && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                            <Star className="w-4 h-4 fill-current" />
-                            Featured
-                          </span>
-                        )}
-                        {eventDetails.flags?.isTrending && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                            <TrendingUp className="w-4 h-4 fill-current" />
-                            Trending
-                          </span>
-                        )}
-                      </div>
+                        {/* Flags */}
+                        <div className="flex items-center gap-2">
+                          {eventDetails.flags?.isFeatured && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                              <Star className="w-4 h-4 fill-current" />
+                              Featured
+                            </span>
+                          )}
+                          {eventDetails.flags?.isTrending && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                              <TrendingUp className="w-4 h-4 fill-current" />
+                              Trending
+                            </span>
+                          )}
+                        </div>
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                        <a
-                          href={`/events/${eventDetails.slug}/checkout`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-4 py-2 bg-[#4f0f69] text-white rounded-lg hover:bg-[#6b1a8a] transition-colors"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          View Public Page
-                        </a>
-                        {eventDetails.organizer?.role === "organizer" && (
-                          <Link
-                            to={`/organizer/events/${eventDetails._id}/edit`}
-                            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        {/* Actions */}
+                        <div className="flex items-center gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <a
+                            href={`/events/${eventDetails.slug}/checkout`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-4 py-2 bg-[#4f0f69] text-white rounded-lg hover:bg-[#6b1a8a] transition-colors"
                           >
-                            <Edit className="w-4 h-4" />
-                            Edit Event
-                          </Link>
-                        )}
+                            <ExternalLink className="w-4 h-4" />
+                            View Public Page
+                          </a>
+                          {eventDetails.organizer?.role === "organizer" && (
+                            <Link
+                              to={`/organizer/events/${eventDetails._id}/edit`}
+                              className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                            >
+                              <Edit className="w-4 h-4" />
+                              Edit Event
+                            </Link>
+                          )}
+                        </div>
                       </div>
-                    </div>
                     </>
                   ) : null}
                 </div>
@@ -1020,7 +1234,7 @@ const AdminEvents = () => {
           </>
         )}
       </AnimatePresence>
-    </div>
+    </div >
   );
 };
 

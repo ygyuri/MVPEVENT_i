@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo, useCallback, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -17,6 +17,7 @@ import {
 import EnhancedButton from '../components/EnhancedButton';
 import EventStatusBadge from '../components/organizer/EventStatusBadge';
 import LoadingOverlay from '../components/shared/LoadingOverlay';
+import analyticsAPI from '../utils/analyticsAPI';
 import {
   getEventDetails,
   publishEvent,
@@ -32,6 +33,10 @@ const OrganizerEventPreview = () => {
   const navigate = useNavigate();
   const { eventId } = useParams();
 
+  const [finance, setFinance] = useState(null);
+  const [financeLoading, setFinanceLoading] = useState(false);
+  const [financeError, setFinanceError] = useState(null);
+
   const { currentEvent, loading, error } = useSelector((state) => state.organizer);
 
   useEffect(() => {
@@ -43,6 +48,30 @@ const OrganizerEventPreview = () => {
       dispatch(clearCurrentEvent());
     };
   }, [dispatch, eventId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!eventId) return;
+
+    (async () => {
+      try {
+        setFinanceLoading(true);
+        setFinanceError(null);
+        const response = await analyticsAPI.getEventFinance(eventId);
+        if (cancelled) return;
+        setFinance(response.data?.data || null);
+      } catch (err) {
+        if (cancelled) return;
+        setFinanceError(err?.response?.data?.error || 'Failed to load finance');
+      } finally {
+        if (!cancelled) setFinanceLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
 
   const event = useMemo(() => {
     if (!currentEvent) return null;
@@ -226,6 +255,76 @@ const OrganizerEventPreview = () => {
                       : 'Free'}
                   </span>
                 </div>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/40 dark:bg-gray-900/20 backdrop-blur-sm p-4">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  Revenue (This Event)
+                </h2>
+                <button
+                  onClick={async () => {
+                    if (!eventId) return;
+                    try {
+                      setFinanceLoading(true);
+                      setFinanceError(null);
+                      const response = await analyticsAPI.getEventFinance(eventId);
+                      setFinance(response.data?.data || null);
+                    } catch (err) {
+                      setFinanceError(err?.response?.data?.error || 'Failed to load finance');
+                    } finally {
+                      setFinanceLoading(false);
+                    }
+                  }}
+                  className="text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                  disabled={financeLoading}
+                >
+                  Refresh
+                </button>
+              </div>
+
+              <div className="relative mt-3">
+                {financeLoading && <LoadingOverlay show={true} label="Loading revenue..." />}
+
+                {financeError && !financeLoading && (
+                  <div className="text-sm text-red-700 dark:text-red-300">
+                    {financeError}
+                  </div>
+                )}
+
+                {!financeError && !financeLoading && (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div className="rounded-lg border border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-gray-900/30 p-3">
+                      <div className="text-[11px] text-gray-600 dark:text-gray-400">Tickets sold</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-white">{finance?.ticketsSold || 0}</div>
+                    </div>
+                    <div className="rounded-lg border border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-gray-900/30 p-3">
+                      <div className="text-[11px] text-gray-600 dark:text-gray-400">Gross (subtotal)</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {event?.pricing?.currency || 'KES'} {Math.round(finance?.grossSubtotal || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-gray-900/30 p-3">
+                      <div className="text-[11px] text-gray-600 dark:text-gray-400">Transaction fees</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {event?.pricing?.currency || 'KES'} {Math.round(finance?.transactionFees || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-gray-900/30 p-3">
+                      <div className="text-[11px] text-gray-600 dark:text-gray-400">Commission ({Number(finance?.commissionRate ?? 6)}%)</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {event?.pricing?.currency || 'KES'} {Math.round(finance?.commissionFees || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-gray-900/30 p-3">
+                      <div className="text-[11px] text-gray-600 dark:text-gray-400">Net to you</div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {event?.pricing?.currency || 'KES'} {Math.round(finance?.netToOrganizer || 0).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
