@@ -398,6 +398,8 @@ jobs:
             
             # Deploy with Docker Compose
             cd /root/MVPEVENT_i
+            sudo docker rm -f event_i_mongodb_prod event_i_redis_prod event_i_server_prod event_i_client_prod event_i_nginx_prod 2>/dev/null || true
+            sudo docker network rm mvpevent_i_event_i_network_prod 2>/dev/null || true
             sudo docker compose -f docker-compose.prod.yml down --remove-orphans || true
             echo "🔨 Building Docker images (this may take several minutes)..."
             BUILD_SUCCESS=false
