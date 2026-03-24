@@ -294,33 +294,21 @@ const OrganizerEventPreview = () => {
                 )}
 
                 {!financeError && !financeLoading && (
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="rounded-lg border border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-gray-900/30 p-3">
                       <div className="text-[11px] text-gray-600 dark:text-gray-400">Tickets sold</div>
                       <div className="text-sm font-semibold text-gray-900 dark:text-white">{finance?.ticketsSold || 0}</div>
                     </div>
                     <div className="rounded-lg border border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-gray-900/30 p-3">
-                      <div className="text-[11px] text-gray-600 dark:text-gray-400">Gross (subtotal)</div>
+                      <div className="text-[11px] text-gray-600 dark:text-gray-400">Net to you</div>
                       <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {event?.pricing?.currency || 'KES'} {Math.round(finance?.grossSubtotal || 0).toLocaleString()}
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-gray-900/30 p-3">
-                      <div className="text-[11px] text-gray-600 dark:text-gray-400">Transaction fees</div>
-                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {event?.pricing?.currency || 'KES'} {Math.round(finance?.transactionFees || 0).toLocaleString()}
+                        {event?.pricing?.currency || 'KES'} {Math.round(finance?.netToOrganizer || 0).toLocaleString()}
                       </div>
                     </div>
                     <div className="rounded-lg border border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-gray-900/30 p-3">
                       <div className="text-[11px] text-gray-600 dark:text-gray-400">Commission ({Number(finance?.commissionRate ?? 6)}%)</div>
                       <div className="text-sm font-semibold text-gray-900 dark:text-white">
                         {event?.pricing?.currency || 'KES'} {Math.round(finance?.commissionFees || 0).toLocaleString()}
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-gray-900/30 p-3">
-                      <div className="text-[11px] text-gray-600 dark:text-gray-400">Net to you</div>
-                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {event?.pricing?.currency || 'KES'} {Math.round(finance?.netToOrganizer || 0).toLocaleString()}
                       </div>
                     </div>
                   </div>
