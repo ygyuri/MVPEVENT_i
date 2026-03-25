@@ -564,7 +564,7 @@ router.get('/events/:eventId/summary', verifyToken, requireRole(['organizer', 'a
 
 /**
  * @route GET /api/organizer/analytics/events/:eventId/finance
- * @desc Get per-event finance metrics (gross subtotal, transaction fees, commission, net to organizer)
+ * @desc Get per-event finance metrics. Organizers receive tickets sold, commission, and net only; admins receive full breakdown including gross and transaction fees.
  * @access Private (Organizer/Admin)
  */
 router.get('/events/:eventId/finance', verifyToken, requireRole(['organizer', 'admin']), [
@@ -664,18 +664,24 @@ router.get('/events/:eventId/finance', verifyToken, requireRole(['organizer', 'a
 
     const [agg] = await Order.aggregate(pipeline);
 
+    const data = {
+      eventId: eventId,
+      commissionRate: event.commissionRate ?? 6,
+      ticketsSold: agg?.ticketsSold || 0,
+      ordersCount: agg?.ordersCount || 0,
+      commissionFees: agg?.commissionFees || 0,
+      netToOrganizer: agg?.netToOrganizer || 0
+    };
+
+    // Full fee breakdown is admin-only; organizers see net/commission/tickets for operational clarity.
+    if (req.user.role === 'admin') {
+      data.grossSubtotal = agg?.grossSubtotal || 0;
+      data.transactionFees = agg?.transactionFees || 0;
+    }
+
     res.json({
       success: true,
-      data: {
-        eventId: eventId,
-        commissionRate: event.commissionRate ?? 6,
-        ticketsSold: agg?.ticketsSold || 0,
-        ordersCount: agg?.ordersCount || 0,
-        grossSubtotal: agg?.grossSubtotal || 0,
-        transactionFees: agg?.transactionFees || 0,
-        commissionFees: agg?.commissionFees || 0,
-        netToOrganizer: agg?.netToOrganizer || 0
-      }
+      data
     });
   } catch (error) {
     console.error('Event finance error:', error);
