@@ -564,7 +564,7 @@ router.get('/events/:eventId/summary', verifyToken, requireRole(['organizer', 'a
 
 /**
  * @route GET /api/organizer/analytics/events/:eventId/finance
- * @desc Get per-event finance metrics. Organizers receive tickets sold, commission, and net only; admins receive full breakdown including gross and transaction fees.
+ * @desc Get per-event finance metrics. Organizers receive tickets sold, commission, and net only; admins receive full breakdown including gross and transaction fees (txn fees are buyer-paid at checkout and do not reduce organizer net).
  * @access Private (Organizer/Admin)
  */
 router.get('/events/:eventId/finance', verifyToken, requireRole(['organizer', 'admin']), [
@@ -624,11 +624,7 @@ router.get('/events/:eventId/finance', verifyToken, requireRole(['organizer', 'a
           _itemNetToOrganizer: {
             $subtract: [
               '$_itemSubtotal',
-              {
-                $add: ['$_itemTransactionFee', {
-                  $multiply: ['$_itemSubtotal', { $divide: ['$_commissionRate', 100] }]
-                }]
-              }
+              { $multiply: ['$_itemSubtotal', { $divide: ['$_commissionRate', 100] }] }
             ]
           }
         }
@@ -652,10 +648,7 @@ router.get('/events/:eventId/finance', verifyToken, requireRole(['organizer', 'a
           transactionFees: 1,
           commissionFees: 1,
           netToOrganizer: {
-            $subtract: [
-              '$grossSubtotal',
-              { $add: ['$transactionFees', '$commissionFees'] }
-            ]
+            $subtract: ['$grossSubtotal', '$commissionFees']
           },
           ordersCount: { $size: '$_orderIds' }
         }

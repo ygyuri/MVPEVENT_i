@@ -105,7 +105,9 @@ class ConversionService {
       const price = Number(ticket.price || ticket.pricing?.total || 0);
       const platform_fee = calcPlatformFee(price, cfg);
       const organizer_revenue = Number((price - platform_fee).toFixed(2));
-      const primary_agency_commission = link.agency_id ? pctOrFixed(organizer_revenue, cfg.primary_agency_commission_type, cfg.primary_agency_commission_rate, cfg.primary_agency_commission_fixed) : 0;
+      const primary_agency_commission = link.agency_id
+        ? pctOrFixed(price, cfg.primary_agency_commission_type, cfg.primary_agency_commission_rate, cfg.primary_agency_commission_fixed)
+        : 0;
       let affiliate_base = organizer_revenue;
       if (cfg.affiliate_commission_base === 'ticket_price') affiliate_base = price;
       if (cfg.affiliate_commission_base === 'agency_revenue') affiliate_base = primary_agency_commission;
@@ -119,7 +121,7 @@ class ConversionService {
         ticket_price: price,
         platform_fee_calc: { type: cfg.platform_fee_type, amount: platform_fee },
         organizer_revenue,
-        primary_agency_calc: { base: organizer_revenue, rate: cfg.primary_agency_commission_rate, amount: primary_agency_commission },
+        primary_agency_calc: { base: price, rate: cfg.primary_agency_commission_rate, amount: primary_agency_commission },
         affiliate_calc: { base: affiliate_base, rate: cfg.affiliate_commission_rate, amount: affiliate_commission }
       };
 

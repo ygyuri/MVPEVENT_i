@@ -382,28 +382,8 @@ router.get(
             },
             {
               $addFields: {
-                _orderSubtotal: { $ifNull: ["$pricing.subtotal", 0] },
-                _orderTransactionFee: { $ifNull: ["$pricing.transactionFee", 0] },
                 _itemSubtotal: { $ifNull: ["$items.subtotal", 0] },
                 _commissionRate: { $ifNull: ["$event.commissionRate", 6] },
-              },
-            },
-            {
-              $addFields: {
-                _itemShare: {
-                  $cond: [
-                    { $gt: ["$_orderSubtotal", 0] },
-                    { $divide: ["$_itemSubtotal", "$_orderSubtotal"] },
-                    0,
-                  ],
-                },
-              },
-            },
-            {
-              $addFields: {
-                _itemTransactionFee: {
-                  $multiply: ["$_orderTransactionFee", "$_itemShare"],
-                },
                 _itemCommission: {
                   $multiply: ["$_itemSubtotal", { $divide: ["$_commissionRate", 100] }],
                 },
@@ -414,10 +394,7 @@ router.get(
                 _id: null,
                 total: {
                   $sum: {
-                    $subtract: [
-                      "$_itemSubtotal",
-                      { $add: ["$_itemCommission", "$_itemTransactionFee"] },
-                    ],
+                    $subtract: ["$_itemSubtotal", "$_itemCommission"],
                   },
                 },
               },
@@ -469,28 +446,8 @@ router.get(
               },
               {
                 $addFields: {
-                  _orderSubtotal: { $ifNull: ["$pricing.subtotal", 0] },
-                  _orderTransactionFee: { $ifNull: ["$pricing.transactionFee", 0] },
                   _itemSubtotal: { $ifNull: ["$items.subtotal", 0] },
                   _commissionRate: { $ifNull: ["$event.commissionRate", 6] },
-                },
-              },
-              {
-                $addFields: {
-                  _itemShare: {
-                    $cond: [
-                      { $gt: ["$_orderSubtotal", 0] },
-                      { $divide: ["$_itemSubtotal", "$_orderSubtotal"] },
-                      0,
-                    ],
-                  },
-                },
-              },
-              {
-                $addFields: {
-                  _itemTransactionFee: {
-                    $multiply: ["$_orderTransactionFee", "$_itemShare"],
-                  },
                   _itemCommission: {
                     $multiply: ["$_itemSubtotal", { $divide: ["$_commissionRate", 100] }],
                   },
@@ -501,10 +458,7 @@ router.get(
                   _id: null,
                   total: {
                     $sum: {
-                      $subtract: [
-                        "$_itemSubtotal",
-                        { $add: ["$_itemCommission", "$_itemTransactionFee"] },
-                      ],
+                      $subtract: ["$_itemSubtotal", "$_itemCommission"],
                     },
                   },
                 },
@@ -600,8 +554,9 @@ router.get(
           commissionFee = orderSubtotal * (6 / 100);
         }
 
+        // Transaction/service fees are added on top at checkout (customer pays); do not deduct from organizer ticket revenue.
         const totalFees = serviceFee + transactionFee + commissionFee;
-        pendingPayout += (orderSubtotal - (commissionFee + transactionFee));
+        pendingPayout += orderSubtotal - commissionFee;
         pendingFees += totalFees;
       });
 

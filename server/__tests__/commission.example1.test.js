@@ -48,7 +48,7 @@ describe('Commission Example 1 Breakdown', () => {
     await mongoose.connection.close();
   });
 
-  test('Set config and preview matches $100 -> $5, $95, $38, $19, $38', async () => {
+  test('Set config and preview matches $100 -> $5, $95, $40 agency on gross, $19 affiliate, $36 net', async () => {
     // Set config
     const setRes = await request(app)
       .post(`/api/events/${event._id}/commission-config`)
@@ -73,9 +73,9 @@ describe('Commission Example 1 Breakdown', () => {
     const b = prev.body.breakdown;
     expect(b.platform_fee).toBe(5);
     expect(b.organizer_revenue).toBe(95);
-    expect(b.primary_agency_commission).toBe(38);
+    expect(b.primary_agency_commission).toBe(40);
     expect(b.affiliate_commission).toBe(19);
-    expect(b.organizer_net).toBe(38);
+    expect(b.organizer_net).toBe(36);
   });
 });
 

@@ -79,8 +79,9 @@ class CommissionService {
     const platform_fee = calculatePlatformFee(price, cfg);
     const organizer_revenue = Number((price - platform_fee).toFixed(2));
 
+    // Percentage agency commission applies to gross ticket price; payment/txn fees are on top at checkout, not subtracted here.
     const primary_agency_commission = pctOrFixed(
-      organizer_revenue,
+      price,
       cfg.primary_agency_commission_type,
       cfg.primary_agency_commission_rate,
       cfg.primary_agency_commission_fixed
