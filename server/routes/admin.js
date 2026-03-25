@@ -1142,8 +1142,9 @@ router.post(
         commissionFees += orderCommission;
       });
 
+      // Customer pays transaction/service fees on top at checkout; organizer net is ticket subtotal minus platform commission only.
       const totalFees = serviceFees + transactionFees + commissionFees;
-      const netAmount = totalRevenue - totalFees;
+      const netAmount = totalRevenue - commissionFees;
 
       // Get date range
       const orderDates = orders.map((o) => new Date(o.createdAt));

@@ -67,7 +67,7 @@ export default function OrganizerCommissionSetup() {
     const organizer_revenue = mockPrice - platform_fee;
     const primary_agency = config.primary_agency_id
       ? (config.primary_agency_commission_type === 'percentage'
-        ? organizer_revenue * (config.primary_agency_commission_rate / 100)
+        ? mockPrice * (config.primary_agency_commission_rate / 100)
         : config.primary_agency_commission_fixed)
       : 0;
     let base = organizer_revenue;
