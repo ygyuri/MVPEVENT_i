@@ -6,7 +6,7 @@ import { ArrowLeft, Settings, Users, TrendingUp } from 'lucide-react';
 
 const PollsTest = () => {
   const { user, isAuthenticated } = useSelector(state => state.auth);
-  const [testEventId, setTestEventId] = useState('test-event-123');
+  const [testEventId, setTestEventId] = useState('');
 
   if (!isAuthenticated) {
     return (
@@ -68,10 +68,10 @@ const PollsTest = () => {
                 value={testEventId}
                 onChange={(e) => setTestEventId(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter event ID to test polls"
+                placeholder="Paste MongoDB event _id (24 hex chars)"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Use a real event ID from your database, or keep the default test ID
+                Run <code className="bg-gray-100 px-1 rounded">cd server &amp;&amp; npm run seed:polls</code> — it prints a Polls URL. Or use <strong>Organizer event → Polls</strong> / <strong>Wallet → Polls</strong> in the app.
               </p>
             </div>
           </div>
@@ -110,7 +110,15 @@ const PollsTest = () => {
 
         {/* Polls Component */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <PollList eventId={testEventId} />
+          {testEventId.trim().length >= 24 ? (
+            <div className="p-6">
+              <PollList eventId={testEventId.trim()} />
+            </div>
+          ) : (
+            <div className="p-6 text-sm text-gray-600">
+              Enter a valid event id above to load <code className="bg-gray-100 px-1 rounded">PollList</code>.
+            </div>
+          )}
         </div>
 
         {/* Testing Tips */}
@@ -123,7 +131,8 @@ const PollsTest = () => {
             <p><strong>For Organizers:</strong> You can create, manage, and close polls. Test all poll types and settings.</p>
             <p><strong>For Attendees:</strong> You can vote and see real-time results. Test vote changes and anonymous voting.</p>
             <p><strong>Real-time:</strong> Open multiple browser tabs to see live updates when creating polls or voting.</p>
-            <p><strong>Backend:</strong> Make sure your backend server is running and polls API endpoints are working.</p>
+            <p><strong>Backend:</strong> Server running; list polls uses <code className="bg-yellow-100/80 px-1 rounded">GET /api/events/:eventId/polls</code>.</p>
+            <p><strong>Paid events locally:</strong> In <code className="bg-yellow-100/80 px-1 rounded">server/.env</code> set <code className="bg-yellow-100/80 px-1 rounded">DEV_SKIP_PAYMENT=true</code> (development only) so checkout completes without PayHero. Free (0 KES) checkout completes automatically.</p>
           </div>
         </div>
       </div>

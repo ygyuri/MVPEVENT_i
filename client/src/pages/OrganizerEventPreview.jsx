@@ -12,7 +12,8 @@ import {
   Play,
   Pause,
   X,
-  Trash2
+  Trash2,
+  BarChart3
 } from 'lucide-react';
 import EnhancedButton from '../components/EnhancedButton';
 import EventStatusBadge from '../components/organizer/EventStatusBadge';
@@ -165,7 +166,15 @@ const OrganizerEventPreview = () => {
             Back
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <EnhancedButton
+              variant="secondary"
+              size="sm"
+              icon={BarChart3}
+              onClick={() => navigate(`/events/${eventId}/polls`)}
+            >
+              Polls
+            </EnhancedButton>
             <EnhancedButton
               variant="secondary"
               size="sm"

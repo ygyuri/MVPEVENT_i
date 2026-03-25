@@ -1,4 +1,6 @@
 import React from "react";
+import { Link } from "react-router-dom";
+import { BarChart3 } from "lucide-react";
 import { cn } from "../utils/cn";
 
 export default function TicketCard({ ticket, onOpen, className }) {
@@ -35,7 +37,7 @@ export default function TicketCard({ ticket, onOpen, className }) {
           {new Date(ticket.event?.startDate).toLocaleString()}
         </div>
       </div>
-      <div className="mt-4 flex items-center justify-between">
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-white/70 text-sm">
           Holder:{" "}
           {ticket.holder?.name ||
@@ -43,23 +45,34 @@ export default function TicketCard({ ticket, onOpen, className }) {
               ticket.holder?.lastName || ""
             }`.trim()}
         </div>
-        <button
-          onClick={onOpen}
-          className="px-3 py-2 text-sm rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow hover:opacity-90 disabled:opacity-40"
-          disabled={
-            ticket.status !== "active" ||
-            !ticket.orderPaid ||
-            !ticket.qrAvailable
-          }
-        >
-          {ticket.status === "active" && ticket.orderPaid && ticket.qrAvailable
-            ? "Show QR"
-            : ticket.status !== "active"
-            ? "Used"
-            : !ticket.orderPaid
-            ? "Payment Pending"
-            : "QR Not Available"}
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {ticket.event?.id && ticket.orderPaid && ticket.status === "active" && (
+            <Link
+              to={`/events/${ticket.event.id}/polls`}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-xl border border-white/20 text-white/90 hover:bg-white/10 transition"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Polls
+            </Link>
+          )}
+          <button
+            onClick={onOpen}
+            className="px-3 py-2 text-sm rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow hover:opacity-90 disabled:opacity-40"
+            disabled={
+              ticket.status !== "active" ||
+              !ticket.orderPaid ||
+              !ticket.qrAvailable
+            }
+          >
+            {ticket.status === "active" && ticket.orderPaid && ticket.qrAvailable
+              ? "Show QR"
+              : ticket.status !== "active"
+              ? "Used"
+              : !ticket.orderPaid
+              ? "Payment Pending"
+              : "QR Not Available"}
+          </button>
+        </div>
       </div>
     </div>
   );

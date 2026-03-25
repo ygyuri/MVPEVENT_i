@@ -317,13 +317,21 @@ async function validateTicket(ticket) {
       };
     }
 
-    // Check if order is paid
-    if (ticket.orderId && ticket.orderId.status !== 'paid') {
-      return {
-        isValid: false,
-        error: 'ORDER_NOT_PAID',
-        message: 'Order is not paid'
-      };
+    // Check if order is paid (align with wallet / PayHero: status or paymentStatus)
+    if (ticket.orderId) {
+      const o = ticket.orderId;
+      const orderPaid =
+        o.status === 'paid' ||
+        o.status === 'completed' ||
+        o.paymentStatus === 'paid' ||
+        o.paymentStatus === 'completed';
+      if (!orderPaid) {
+        return {
+          isValid: false,
+          error: 'ORDER_NOT_PAID',
+          message: 'Order is not paid'
+        };
+      }
     }
 
     // Check if order is cancelled

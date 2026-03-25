@@ -444,10 +444,16 @@ const DirectCheckout = () => {
 
       if (response.data.success) {
         setSuccess(true);
+        const d = response.data.data || {};
+        const orderId = d.orderId;
+        const skippedPayment = d.skippedPayment;
 
-        // Redirect to payment status page to show progress
         setTimeout(() => {
-          navigate(`/payment/${response.data.data.orderId}`);
+          if (skippedPayment) {
+            navigate("/wallet");
+            return;
+          }
+          navigate(`/payment/${orderId}`);
         }, 1500);
       }
     } catch (err) {

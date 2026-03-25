@@ -461,68 +461,99 @@ router.post(
         ticketIds: tickets.map((t) => t._id),
       });
 
-      // ========== STEP 7: Initiate PayHero Payment ==========
+      const devSkipPayment =
+        process.env.NODE_ENV === "development" &&
+        process.env.DEV_SKIP_PAYMENT === "true";
+      const zeroTotalPurchase = totalAmount <= 0;
+      const skipPayhero = devSkipPayment || zeroTotalPurchase;
+
+      // ========== STEP 7: Initiate PayHero Payment (or complete without gateway) ==========
       let paymentResponse = null;
       let paymentUrl = null;
 
-      try {
-        // Validate and format phone number
-        const validatedPhone = payheroService.validatePhoneNumber(phone);
-
-        // Generate external reference
-        const externalReference =
-          payheroService.generateExternalReference("TKT");
-
-        // Prepare payment request
-        const paymentData = {
-          amount: totalAmount,
-          phoneNumber: validatedPhone,
-          externalReference,
-          customerName: fullName, // Use the pre-computed full name
-          callbackUrl:
-            process.env.PAYHERO_CALLBACK_URL ||
-            "https://your-domain.com/api/payhero/callback",
-        };
-
-        // Initiate payment
-        paymentResponse = await payheroService.initiatePayment(paymentData);
-
-        // Update order with payment details
-        order.payment.paymentReference = externalReference;
-        order.payment.checkoutRequestId = paymentResponse.checkout_request_id;
-        order.payment.paymentProvider = "payhero";
-        order.payment.paymentData = {
-          amount: totalAmount,
-          phoneNumber: validatedPhone,
-          customerName: fullName, // Use the pre-computed full name
-        };
-        order.payment.status = "processing";
-        order.paymentStatus = "processing";
-
+      if (skipPayhero) {
+        order.status = "paid";
+        order.paymentStatus = "completed";
+        order.completedAt = new Date();
+        order.payment.status = "completed";
+        order.payment.paidAt = new Date();
+        order.payment.method = "payhero";
+        if (devSkipPayment && !zeroTotalPurchase) {
+          order.payment.mpesaReceiptNumber = `DEV-SKIP-${Date.now()}`;
+          console.warn(
+            "⚠️ DEV_SKIP_PAYMENT: order marked paid without gateway (development only)"
+          );
+        } else if (zeroTotalPurchase) {
+          order.payment.mpesaReceiptNumber =
+            order.payment.mpesaReceiptNumber || `FREE-${Date.now()}`;
+        }
         await order.save();
-
-        paymentUrl = paymentResponse.payment_url || null;
-
-        console.log("✅ Payment initiated:", {
-          externalReference,
-          checkoutRequestId: paymentResponse.checkout_request_id,
-        });
-      } catch (paymentError) {
-        console.error("❌ Payment initiation failed:", paymentError);
-
-        // Update order status to failed
-        order.payment.status = "failed";
-        order.paymentStatus = "failed";
-        order.status = "cancelled";
-        await order.save();
-
-        return res.status(500).json({
-          success: false,
-          error: "Payment initiation failed",
-          details: paymentError.message,
+        console.log("✅ Checkout completed without payment gateway:", {
           orderId: order._id,
-          orderNumber: order.orderNumber,
+          devSkipPayment,
+          zeroTotalPurchase,
+          totalAmount,
         });
+      } else {
+        try {
+          // Validate and format phone number
+          const validatedPhone = payheroService.validatePhoneNumber(phone);
+
+          // Generate external reference
+          const externalReference =
+            payheroService.generateExternalReference("TKT");
+
+          // Prepare payment request
+          const paymentData = {
+            amount: totalAmount,
+            phoneNumber: validatedPhone,
+            externalReference,
+            customerName: fullName, // Use the pre-computed full name
+            callbackUrl:
+              process.env.PAYHERO_CALLBACK_URL ||
+              "https://your-domain.com/api/payhero/callback",
+          };
+
+          // Initiate payment
+          paymentResponse = await payheroService.initiatePayment(paymentData);
+
+          // Update order with payment details
+          order.payment.paymentReference = externalReference;
+          order.payment.checkoutRequestId = paymentResponse.checkout_request_id;
+          order.payment.paymentProvider = "payhero";
+          order.payment.paymentData = {
+            amount: totalAmount,
+            phoneNumber: validatedPhone,
+            customerName: fullName, // Use the pre-computed full name
+          };
+          order.payment.status = "processing";
+          order.paymentStatus = "processing";
+
+          await order.save();
+
+          paymentUrl = paymentResponse.payment_url || null;
+
+          console.log("✅ Payment initiated:", {
+            externalReference,
+            checkoutRequestId: paymentResponse.checkout_request_id,
+          });
+        } catch (paymentError) {
+          console.error("❌ Payment initiation failed:", paymentError);
+
+          // Update order status to failed
+          order.payment.status = "failed";
+          order.paymentStatus = "failed";
+          order.status = "cancelled";
+          await order.save();
+
+          return res.status(500).json({
+            success: false,
+            error: "Payment initiation failed",
+            details: paymentError.message,
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+          });
+        }
       }
 
       // ========== STEP 8: Welcome Email ==========
@@ -540,7 +571,9 @@ router.post(
       // ========== STEP 9: Return Success Response ==========
       res.status(201).json({
         success: true,
-        message: "Order created successfully. Please complete payment.",
+        message: skipPayhero
+          ? "Order completed. Your tickets are ready."
+          : "Order created successfully. Please complete payment.",
         data: {
           orderId: order._id,
           orderNumber: order.orderNumber,
@@ -554,6 +587,7 @@ router.post(
           ticketCount: tickets.length,
           status: order.status,
           paymentStatus: order.paymentStatus,
+          skippedPayment: !!skipPayhero,
         },
       });
     } catch (error) {
