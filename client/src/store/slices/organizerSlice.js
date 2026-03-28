@@ -4,6 +4,10 @@ import api from "../../utils/api";
 // Request deduplication cache
 const requestCache = new Map();
 
+// Single-flight map for organizer overview (avoids Strict Mode / concurrent dispatches
+// resolving stale undefined from the old 10s "cache" before the first response lands).
+const overviewInflight = new Map();
+
 // Async thunks for organizer functionality
 export const fetchMyEvents = createAsyncThunk(
   "organizer/fetchMyEvents",
@@ -327,43 +331,19 @@ export const getOrganizerOverview = createAsyncThunk(
         requestKey = `${requestKey}?organizerId=${impersonatingUserId}`;
       }
 
-      const now = Date.now();
-
-      // Check if we have a recent request for the same URL
-      if (requestCache.has(requestKey)) {
-        const lastRequest = requestCache.get(requestKey);
-        if (now - lastRequest < 10000) {
-          // 10 seconds cache for overview
-          // console.log("🚫 [API OVERVIEW] Deduplicating request:", requestKey);
-          return new Promise((resolve) => {
-            // Return cached promise or wait for ongoing request
-            setTimeout(() => {
-              resolve(requestCache.get(requestKey + "_result"));
-            }, 100);
-          });
-        }
+      if (overviewInflight.has(requestKey)) {
+        return await overviewInflight.get(requestKey);
       }
 
-      // Store request timestamp
-      requestCache.set(requestKey, now);
+      const fetchPromise = api
+        .get(requestKey)
+        .then((response) => response.data.overview)
+        .finally(() => {
+          overviewInflight.delete(requestKey);
+        });
 
-      // console.log("🔄 [API OVERVIEW] Request:", {
-      //   url: requestKey,
-      //   timestamp: new Date().toISOString(),
-      // });
-
-      const response = await api.get(requestKey);
-
-      // Store result in cache
-      requestCache.set(requestKey + "_result", response.data.overview);
-
-      // console.log("✅ [API OVERVIEW] Response:", {
-      //   status: response.status,
-      //   data: response.data.overview,
-      //   timestamp: new Date().toISOString(),
-      // });
-
-      return response.data.overview;
+      overviewInflight.set(requestKey, fetchPromise);
+      return await fetchPromise;
     } catch (error) {
       console.error("❌ [API OVERVIEW] Error:", {
         status: error.response?.status,
