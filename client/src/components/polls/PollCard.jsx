@@ -17,7 +17,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-const PollCard = ({ poll, eventId, isOrganizer }) => {
+const PollCard = ({ poll, eventId, isOrganizer, isOrganizerView = false }) => {
   const { isDarkMode } = useTheme();
   
   // Add safety checks for poll data
@@ -134,17 +134,27 @@ const PollCard = ({ poll, eventId, isOrganizer }) => {
     }
   };
 
-  return (
-    <div 
-      className="rounded-lg border shadow-sm hover:shadow-md transition-all duration-300"
-      style={{
-        background: isDarkMode ? 'var(--bg-card)' : 'var(--bg-card)',
-        borderColor: isDarkMode ? 'var(--card-border)' : 'var(--card-border)',
+  const cardSurface = isOrganizerView
+    ? {
+        background: 'rgba(255, 255, 255, 0.05)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        color: '#f9fafb'
+      }
+    : {
+        background: 'var(--bg-card)',
+        borderColor: 'var(--card-border)',
         color: isDarkMode ? 'var(--text-primary)' : 'var(--text-primary)'
-      }}
+      };
+
+  const headerBorder = isOrganizerView ? 'border-white/10' : 'border-gray-100';
+
+  return (
+    <div
+      className={`rounded-lg border shadow-sm transition-all duration-300 hover:shadow-md ${isOrganizerView ? 'backdrop-blur-sm' : ''}`}
+      style={cardSurface}
     >
       {/* Header */}
-      <div className="p-6 border-b border-gray-100">
+      <div className={`border-b p-6 ${headerBorder}`}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
@@ -152,7 +162,9 @@ const PollCard = ({ poll, eventId, isOrganizer }) => {
                 {getStatusIcon()}
                 {poll.status.charAt(0).toUpperCase() + poll.status.slice(1)}
               </span>
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+              <span
+                className={`rounded-full px-2 py-1 text-xs ${isOrganizerView ? 'bg-white/10 text-gray-300' : 'bg-gray-100 text-gray-500'}`}
+              >
                 {getPollTypeLabel(poll.poll_type)}
               </span>
             </div>
@@ -193,7 +205,9 @@ const PollCard = ({ poll, eventId, isOrganizer }) => {
         </div>
 
         {/* Poll Info */}
-        <div className="flex items-center gap-6 text-sm text-gray-500 mt-4">
+        <div
+          className={`mt-4 flex items-center gap-6 text-sm ${isOrganizerView ? 'text-gray-400' : 'text-gray-500'}`}
+        >
           <div className="flex items-center gap-1">
             <Clock className="w-4 h-4" />
             <span>
@@ -245,8 +259,7 @@ const PollCard = ({ poll, eventId, isOrganizer }) => {
               </button>
             </div>
           )
-        ) : showVoteForm ? (
-          /* Show Vote Form */
+        ) : showVoteForm && !isOrganizer ? (
           <VoteForm
             poll={poll}
             onVote={handleVote}
@@ -255,34 +268,59 @@ const PollCard = ({ poll, eventId, isOrganizer }) => {
             error={errors.vote}
           />
         ) : (
-          /* Show Options Preview */
           <div>
-            <div className="space-y-2 mb-4">
+            <div className="mb-4 space-y-2">
               {pollOptions.map((option, index) => (
                 <div
                   key={option.id || index}
-                  className="flex items-center gap-3 p-3 rounded-lg"
+                  className="flex items-center gap-3 rounded-lg p-3"
                   style={{
-                    background: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
+                    background: isOrganizerView
+                      ? 'rgba(255, 255, 255, 0.06)'
+                      : isDarkMode
+                        ? 'rgba(255, 255, 255, 0.05)'
+                        : 'rgba(0, 0, 0, 0.05)'
                   }}
                 >
-                  <div 
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium"
+                  <div
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-sm font-medium"
                     style={{
-                      background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                      color: isDarkMode ? 'var(--text-secondary)' : 'var(--text-secondary)'
+                      background: isOrganizerView
+                        ? 'rgba(255, 255, 255, 0.12)'
+                        : isDarkMode
+                          ? 'rgba(255, 255, 255, 0.1)'
+                          : 'rgba(0, 0, 0, 0.1)',
+                      color: isOrganizerView
+                        ? '#d1d5db'
+                        : isDarkMode
+                          ? 'var(--text-secondary)'
+                          : 'var(--text-secondary)'
                     }}
                   >
                     {index + 1}
                   </div>
                   <div className="flex-1">
-                    <span style={{ color: isDarkMode ? 'var(--text-primary)' : 'var(--text-primary)' }}>
+                    <span
+                      style={{
+                        color: isOrganizerView
+                          ? '#f9fafb'
+                          : isDarkMode
+                            ? 'var(--text-primary)'
+                            : 'var(--text-primary)'
+                      }}
+                    >
                       {option.label}
                     </span>
                     {option.description && (
-                      <p 
-                        className="text-sm mt-1"
-                        style={{ color: isDarkMode ? 'var(--text-secondary)' : 'var(--text-secondary)' }}
+                      <p
+                        className="mt-1 text-sm"
+                        style={{
+                          color: isOrganizerView
+                            ? '#9ca3af'
+                            : isDarkMode
+                              ? 'var(--text-secondary)'
+                              : 'var(--text-secondary)'
+                        }}
                       >
                         {option.description}
                       </p>
@@ -292,20 +330,47 @@ const PollCard = ({ poll, eventId, isOrganizer }) => {
               ))}
             </div>
 
-            <button
-              onClick={() => setShowVoteForm(true)}
-              disabled={isVotingInProgress}
-              className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-            >
-              {isVotingInProgress ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                'Vote Now'
-              )}
-            </button>
+            {isOrganizer && poll.status === 'active' && !hasVoted ? (
+              <div
+                className={`space-y-3 rounded-lg border p-4 text-center ${
+                  isOrganizerView
+                    ? 'border-white/10 bg-white/5'
+                    : 'border-gray-200 bg-gray-50'
+                }`}
+              >
+                <p className={`text-sm ${isOrganizerView ? 'text-gray-300' : 'text-gray-600'}`}>
+                  Ticket holders vote on this poll. Share the attendee polls link so they can participate.
+                </p>
+                <a
+                  href={`/events/${eventId}/polls`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`inline-block text-sm font-medium underline-offset-2 hover:underline ${
+                    isOrganizerView
+                      ? 'text-[#8A4FFF] hover:text-[#b388ff]'
+                      : 'text-[#4f0f69] hover:text-[#6b1a8a]'
+                  }`}
+                >
+                  Preview as attendee
+                </a>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowVoteForm(true)}
+                disabled={isVotingInProgress}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-3 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isVotingInProgress ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Processing...
+                  </>
+                ) : (
+                  'Vote Now'
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>

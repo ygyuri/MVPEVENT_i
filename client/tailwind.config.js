@@ -1,5 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  // Must match ThemeContext: `dark` on <html> toggles `dark:*` utilities.
+  // Without this, Tailwind defaults to `media` (OS preference) and fights app theme → e.g. white text on light BG.
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",

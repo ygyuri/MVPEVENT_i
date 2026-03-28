@@ -28,7 +28,9 @@ export default function TicketWallet() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 md:py-10 text-gray-900 dark:text-white">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl md:text-3xl font-bold">My Tickets</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+          My Tickets
+        </h1>
         <select
           value={statusFilter}
           onChange={e => dispatch(setTicketsStatusFilter(e.target.value))}
@@ -58,7 +60,9 @@ export default function TicketWallet() {
         >
           Prev
         </button>
-        <div>Page {pagination.page} of {pagination.pages}</div>
+        <div className="text-gray-900 dark:text-white/90 tabular-nums">
+          Page {pagination.page} of {pagination.pages}
+        </div>
         <button
           type="button"
           className="px-3 py-1 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white disabled:opacity-40"

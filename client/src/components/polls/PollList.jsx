@@ -2,22 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPolls, clearPolls } from '../../store/slices/pollsSlice';
 import { usePollSocket } from '../../hooks/usePollSocket';
-import { useTheme } from '../../contexts/ThemeContext';
 import PollCard from './PollCard';
 import SimplePollCreator from './SimplePollCreator';
 import { Plus, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 
-const PollList = ({ eventId }) => {
-  const { isDarkMode } = useTheme();
+const PollList = ({ eventId, isOrganizerView = false }) => {
   const dispatch = useDispatch();
   const { polls, activePolls, loading, errors } = useSelector(state => state.polls);
   const { user } = useSelector(state => state.auth);
   const { isConnected, connectionError } = usePollSocket(eventId);
-  
-  const [showCreator, setShowCreator] = useState(false);
-  const [filter, setFilter] = useState('active'); // active, closed, all
 
-  const isOrganizer = user?.role === 'organizer' || user?.events_organized?.includes(eventId);
+  const [showCreator, setShowCreator] = useState(false);
+  const [filter, setFilter] = useState('active');
+
+  const isOrganizer =
+    user?.role === 'organizer' || user?.events_organized?.includes(eventId);
 
   useEffect(() => {
     if (eventId) {
@@ -44,104 +43,131 @@ const PollList = ({ eventId }) => {
 
   const pollsToShow = getPollsToShow();
 
+  const org = isOrganizerView;
+
+  const filterBtn = (active, inactive) =>
+    org
+      ? active
+        ? 'bg-[#4f0f69]/40 text-white border border-[#8A4FFF]/50'
+        : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'
+      : active
+        ? 'bg-blue-100 text-blue-700'
+        : 'bg-gray-100 text-gray-600 hover:bg-gray-200';
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 
-            className="text-2xl font-bold"
-            style={{ color: isDarkMode ? 'var(--text-primary)' : 'var(--text-primary)' }}
-          >
-            Event Polls
-          </h2>
-          <p 
-            className="text-sm"
-            style={{ color: isDarkMode ? 'var(--text-secondary)' : 'var(--text-secondary)' }}
-          >
-            Engage your audience with interactive polls
+      <div
+        className={`flex flex-col gap-4 sm:flex-row sm:items-center ${org ? 'sm:justify-between' : 'sm:justify-end'}`}
+      >
+        {org && (
+          <p className="text-sm text-gray-400">
+            Live connection and filters below. Create a poll to engage ticket holders.
           </p>
-        </div>
+        )}
 
-        {/* Connection Status */}
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             {isConnected ? (
               <>
-                <Wifi className="w-4 h-4 text-green-500" />
-                <span className="text-sm text-green-600">Live</span>
+                <Wifi className={`w-4 h-4 ${org ? 'text-emerald-400' : 'text-green-500'}`} />
+                <span className={`text-sm ${org ? 'text-emerald-300' : 'text-green-600'}`}>
+                  Live
+                </span>
               </>
             ) : (
               <>
-                <WifiOff className="w-4 h-4 text-red-500" />
-                <span className="text-sm text-red-600">Offline</span>
+                <WifiOff className={`w-4 h-4 ${org ? 'text-red-400' : 'text-red-500'}`} />
+                <span className={`text-sm ${org ? 'text-red-300' : 'text-red-600'}`}>
+                  Offline
+                </span>
               </>
             )}
           </div>
 
           {isOrganizer && (
             <button
+              type="button"
               onClick={handleCreatePoll}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className={
+                org
+                  ? 'inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] px-4 py-2 text-sm font-medium text-white shadow-lg shadow-[#4f0f69]/25 transition hover:opacity-95'
+                  : 'flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700'
+              }
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="h-4 w-4" />
               Create Poll
             </button>
           )}
         </div>
       </div>
 
-      {/* Connection Error */}
       {connectionError && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+        <div
+          className={
+            org
+              ? 'flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4'
+              : 'flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4'
+          }
+        >
+          <AlertCircle
+            className={`mt-0.5 h-5 w-5 flex-shrink-0 ${org ? 'text-amber-400' : 'text-yellow-600'}`}
+          />
           <div>
-            <h3 className="text-sm font-medium text-yellow-800">Connection Issue</h3>
-            <p className="text-sm text-yellow-700 mt-1">
+            <h3 className={`text-sm font-medium ${org ? 'text-amber-100' : 'text-yellow-800'}`}>
+              Connection issue
+            </h3>
+            <p className={`mt-1 text-sm ${org ? 'text-amber-200/90' : 'text-yellow-700'}`}>
               Real-time updates may be delayed. {connectionError}
             </p>
           </div>
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {['active', 'closed', 'all'].map(filterType => (
           <button
             key={filterType}
+            type="button"
             onClick={() => setFilter(filterType)}
-            className={`px-3 py-1 text-sm rounded-full transition-colors ${
-              filter === filterType
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            className={`rounded-full px-3 py-1 text-sm transition-colors ${filterBtn(filter === filterType, filter !== filterType)}`}
           >
             {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
           </button>
         ))}
       </div>
 
-      {/* Loading State */}
       {loading.polls && (
         <div className="flex items-center justify-center py-12">
           <div className="flex items-center gap-3">
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-gray-600">Loading polls...</span>
+            <div
+              className={`h-6 w-6 animate-spin rounded-full border-2 border-t-transparent ${org ? 'border-[#8A4FFF]' : 'border-blue-600'}`}
+            />
+            <span className={org ? 'text-gray-300' : 'text-gray-600'}>Loading polls...</span>
           </div>
         </div>
       )}
 
-      {/* Error State */}
       {errors.polls && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div
+          className={
+            org
+              ? 'rounded-lg border border-red-500/30 bg-red-950/40 p-4'
+              : 'rounded-lg border border-red-200 bg-red-50 p-4'
+          }
+        >
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className={`mt-0.5 h-5 w-5 flex-shrink-0 ${org ? 'text-red-400' : 'text-red-600'}`} />
             <div>
-              <h3 className="text-sm font-medium text-red-800">Failed to load polls</h3>
-              <p className="text-sm text-red-700 mt-1">{errors.polls}</p>
+              <h3 className={`text-sm font-medium ${org ? 'text-red-200' : 'text-red-800'}`}>
+                Failed to load polls
+              </h3>
+              <p className={`mt-1 text-sm ${org ? 'text-red-300/90' : 'text-red-700'}`}>{errors.polls}</p>
               <button
-                onClick={() => dispatch(fetchPolls({ eventId, status: filter === 'all' ? undefined : filter }))}
-                className="text-sm text-red-600 hover:text-red-800 underline mt-2"
+                type="button"
+                onClick={() =>
+                  dispatch(fetchPolls({ eventId, status: filter === 'all' ? undefined : filter }))
+                }
+                className={`mt-2 text-sm underline ${org ? 'text-[#8A4FFF] hover:text-white' : 'text-red-600 hover:text-red-800'}`}
               >
                 Try again
               </button>
@@ -150,29 +176,36 @@ const PollList = ({ eventId }) => {
         </div>
       )}
 
-      {/* Polls Grid */}
       {!loading.polls && !errors.polls && (
         <>
           {pollsToShow.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                <Plus className="w-8 h-8 text-gray-400" />
+            <div className="py-12 text-center">
+              <div
+                className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${org ? 'bg-white/10' : 'bg-gray-100'}`}
+              >
+                <Plus className={`h-8 w-8 ${org ? 'text-gray-500' : 'text-gray-400'}`} />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No polls yet</h3>
-              <p className="text-gray-600 mb-4">
-                {filter === 'active' 
-                  ? "No active polls at the moment."
+              <h3 className={`mb-2 text-lg font-medium ${org ? 'text-white' : 'text-gray-900'}`}>
+                No polls yet
+              </h3>
+              <p className={`mb-4 ${org ? 'text-gray-400' : 'text-gray-600'}`}>
+                {filter === 'active'
+                  ? 'No active polls at the moment.'
                   : filter === 'closed'
-                  ? "No closed polls yet."
-                  : "No polls have been created for this event."
-                }
+                    ? 'No closed polls yet.'
+                    : 'No polls have been created for this event.'}
               </p>
               {isOrganizer && filter !== 'active' && (
                 <button
+                  type="button"
                   onClick={handleCreatePoll}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className={
+                    org
+                      ? 'inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] px-4 py-2 text-sm font-medium text-white transition hover:opacity-95'
+                      : 'inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700'
+                  }
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="h-4 w-4" />
                   Create your first poll
                 </button>
               )}
@@ -185,6 +218,7 @@ const PollList = ({ eventId }) => {
                   poll={poll}
                   eventId={eventId}
                   isOrganizer={isOrganizer}
+                  isOrganizerView={isOrganizerView}
                 />
               ))}
             </div>
@@ -192,13 +226,11 @@ const PollList = ({ eventId }) => {
         </>
       )}
 
-      {/* Poll Creator Modal */}
       {showCreator && (
         <SimplePollCreator
           eventId={eventId}
           onClose={handleCloseCreator}
           onSuccess={() => {
-            // Refresh polls after successful creation
             dispatch(fetchPolls({ eventId, status: filter === 'all' ? undefined : filter }));
           }}
         />
