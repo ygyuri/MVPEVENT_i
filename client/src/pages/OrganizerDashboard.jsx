@@ -195,7 +195,7 @@ const OrganizerDashboard = () => {
       bgColor: "bg-purple-50 dark:bg-purple-900/20",
     },
     {
-      label: "Total Revenue",
+      label: "Net revenue (all events)",
       value: `KES ${(overview.totalRevenue || 0).toLocaleString()}`,
       icon: DollarSign,
       color: "text-emerald-600 dark:text-emerald-400",
@@ -226,7 +226,7 @@ const OrganizerDashboard = () => {
       bgColor: "bg-pink-50 dark:bg-pink-900/20",
     },
     {
-      label: "This Month Revenue",
+      label: "Net revenue (this month)",
       value: `KES ${(overview.thisMonthRevenue || 0).toLocaleString()}`,
       icon: TrendingUp,
       color: "text-teal-600 dark:text-teal-400",

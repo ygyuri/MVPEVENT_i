@@ -16,6 +16,7 @@
     "docker:stop": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "docker:status": "docker compose ps",
+    "docker:seed-paid-orders": "docker compose exec server node scripts/seedPaidOrdersForEvent.js",
     "env:setup": "cp env.example .env && echo '✅ .env file created from env.example'",
     "env:dev": "cp env.development.example .env.development && echo '✅ .env.development created'",
     "env:staging": "cp env.staging.example .env.staging && echo '✅ .env.staging created'",

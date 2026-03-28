@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 const rateLimit = require('express-rate-limit');
+const { paidCompletedOrderMatch } = require('../utils/paidOrderFilter');
 
 const router = express.Router();
 
@@ -587,11 +588,9 @@ router.get('/events/:eventId/finance', verifyToken, requireRole(['organizer', 'a
 
     const pipeline = [
       {
-        $match: {
+        $match: paidCompletedOrderMatch({
           'items.eventId': eventObjectId,
-          status: { $in: ['completed', 'paid'] },
-          paymentStatus: { $in: ['paid', 'completed'] }
-        }
+        }),
       },
       { $unwind: '$items' },
       { $match: { 'items.eventId': eventObjectId } },

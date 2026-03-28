@@ -5,6 +5,10 @@ const EventUpdate = require("../models/EventUpdate");
 const EventUpdateReaction = require("../models/EventUpdateReaction");
 const EventUpdateRead = require("../models/EventUpdateRead");
 const mongoose = require("mongoose");
+const {
+  paidCompletedOrderMatch,
+  PAID_ORDER_STATUSES,
+} = require("../utils/paidOrderFilter");
 
 /**
  * Analytics Service for Organizer Dashboard
@@ -208,9 +212,8 @@ class AnalyticsService {
       }
 
       const matchStage = {
-        $match: {
+        $match: paidCompletedOrderMatch({
           "items.eventId": { $in: targetEventIds },
-          status: { $in: ["paid", "confirmed"] },
           ...(startDate &&
             endDate && {
               createdAt: {
@@ -218,7 +221,7 @@ class AnalyticsService {
                 $lte: new Date(endDate),
               },
             }),
-        },
+        }),
       };
 
       const groupStage = this.buildRevenueTrendsGroupStage(period);
@@ -375,20 +378,20 @@ class AnalyticsService {
         this.getTotalTicketsSold(organizerId),
         this.getUpcomingEvents(organizerId),
         this.getRecentSales(organizerId),
-        // Total orders
+        // Total orders (paid + payment completed only; aligns with /api/organizer/overview)
         eventIds.length > 0
-          ? Order.countDocuments({
-              "items.eventId": { $in: eventIds },
-            })
+          ? Order.countDocuments(
+              paidCompletedOrderMatch({ "items.eventId": { $in: eventIds } })
+            )
           : 0,
         // This month's revenue
         eventIds.length > 0
           ? Order.aggregate([
               {
                 $match: {
-                  "items.eventId": { $in: eventIds },
-                  status: "completed",
-                  paymentStatus: { $in: ["paid", "completed"] },
+                  ...paidCompletedOrderMatch({
+                    "items.eventId": { $in: eventIds },
+                  }),
                   createdAt: { $gte: startOfMonth },
                 },
               },
@@ -400,12 +403,33 @@ class AnalyticsService {
               },
             ])
           : Promise.resolve([{ total: 0 }]),
-        // This month's tickets
+        // This month's tickets (same rules as main organizer dashboard)
         eventIds.length > 0
-          ? Ticket.countDocuments({
-              eventId: { $in: eventIds },
-              createdAt: { $gte: startOfMonth },
-            })
+          ? Ticket.aggregate([
+              {
+                $match: {
+                  eventId: { $in: eventIds },
+                  status: { $in: ["active", "used"] },
+                  createdAt: { $gte: startOfMonth },
+                },
+              },
+              {
+                $lookup: {
+                  from: "orders",
+                  localField: "orderId",
+                  foreignField: "_id",
+                  as: "ord",
+                },
+              },
+              { $unwind: "$ord" },
+              {
+                $match: {
+                  "ord.status": { $in: PAID_ORDER_STATUSES },
+                  "ord.payment.status": "completed",
+                },
+              },
+              { $count: "n" },
+            ]).then((r) => r[0]?.n ?? 0)
           : 0,
       ]);
 
@@ -448,23 +472,22 @@ class AnalyticsService {
    * Build match stage for sales queries
    */
   buildSalesMatchStage(eventId, startDate, endDate, ticketType) {
-    const match = {
+    const extra = {
       "items.eventId": new mongoose.Types.ObjectId(eventId),
-      status: { $in: ["paid", "confirmed"] },
     };
 
     if (startDate && endDate) {
-      match.createdAt = {
+      extra.createdAt = {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
       };
     }
 
     if (ticketType) {
-      match["items.ticketType"] = ticketType;
+      extra["items.ticketType"] = ticketType;
     }
 
-    return { $match: match };
+    return { $match: paidCompletedOrderMatch(extra) };
   }
 
   /**
@@ -575,10 +598,9 @@ class AnalyticsService {
   async getRevenueMetrics(eventId) {
     const pipeline = [
       {
-        $match: {
+        $match: paidCompletedOrderMatch({
           "items.eventId": new mongoose.Types.ObjectId(eventId),
-          status: { $in: ["paid", "confirmed"] },
-        },
+        }),
       },
       {
         $group: {
@@ -610,10 +632,9 @@ class AnalyticsService {
   async getPaymentMethodBreakdown(eventId) {
     const pipeline = [
       {
-        $match: {
+        $match: paidCompletedOrderMatch({
           "items.eventId": new mongoose.Types.ObjectId(eventId),
-          status: "paid",
-        },
+        }),
       },
       {
         $group: {
@@ -657,10 +678,9 @@ class AnalyticsService {
   async getTicketTypeRevenue(eventId) {
     const pipeline = [
       {
-        $match: {
+        $match: paidCompletedOrderMatch({
           "items.eventId": new mongoose.Types.ObjectId(eventId),
-          status: { $in: ["paid", "confirmed"] },
-        },
+        }),
       },
       { $unwind: "$items" },
       {
@@ -681,10 +701,9 @@ class AnalyticsService {
   async getDailyRevenue(eventId) {
     const pipeline = [
       {
-        $match: {
+        $match: paidCompletedOrderMatch({
           "items.eventId": new mongoose.Types.ObjectId(eventId),
-          status: { $in: ["paid", "confirmed"] },
-        },
+        }),
       },
       {
         $group: {
@@ -707,10 +726,9 @@ class AnalyticsService {
   async getEventRevenueBreakdown(organizerId, eventIds) {
     const pipeline = [
       {
-        $match: {
+        $match: paidCompletedOrderMatch({
           "items.eventId": { $in: eventIds || [] },
-          status: { $in: ["paid", "confirmed"] },
-        },
+        }),
       },
       { $unwind: "$items" },
       {
@@ -757,10 +775,9 @@ class AnalyticsService {
       },
       { $unwind: "$event" },
       {
-        $match: {
+        $match: paidCompletedOrderMatch({
           "event.organizer": new mongoose.Types.ObjectId(organizerId),
-          status: { $in: ["paid", "confirmed"] },
-        },
+        }),
       },
       {
         $group: {
@@ -778,32 +795,37 @@ class AnalyticsService {
    * Get total tickets sold for organizer
    */
   async getTotalTicketsSold(organizerId) {
-    const pipeline = [
-      {
-        $lookup: {
-          from: "events",
-          localField: "eventId",
-          foreignField: "_id",
-          as: "event",
-        },
-      },
-      { $unwind: "$event" },
+    const organizerEvents = await Event.find({ organizer: organizerId })
+      .select("_id")
+      .lean();
+    const eventIds = organizerEvents.map((e) => e._id);
+    if (eventIds.length === 0) return 0;
+
+    const [result] = await Ticket.aggregate([
       {
         $match: {
-          "event.organizer": new mongoose.Types.ObjectId(organizerId),
-          status: "active",
+          eventId: { $in: eventIds },
+          status: { $in: ["active", "used"] },
         },
       },
       {
-        $group: {
-          _id: null,
-          totalTickets: { $sum: 1 },
+        $lookup: {
+          from: "orders",
+          localField: "orderId",
+          foreignField: "_id",
+          as: "ord",
         },
       },
-    ];
-
-    const [result] = await Ticket.aggregate(pipeline);
-    return result?.totalTickets || 0;
+      { $unwind: "$ord" },
+      {
+        $match: {
+          "ord.status": { $in: PAID_ORDER_STATUSES },
+          "ord.payment.status": "completed",
+        },
+      },
+      { $count: "n" },
+    ]);
+    return result?.n ?? 0;
   }
 
   /**
@@ -836,10 +858,9 @@ class AnalyticsService {
       },
       { $unwind: "$event" },
       {
-        $match: {
+        $match: paidCompletedOrderMatch({
           "event.organizer": new mongoose.Types.ObjectId(organizerId),
-          status: { $in: ["paid", "confirmed"] },
-        },
+        }),
       },
       {
         $sort: { createdAt: -1 },

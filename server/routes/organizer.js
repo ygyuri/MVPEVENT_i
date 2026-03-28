@@ -10,6 +10,15 @@ const Order = require("../models/Order");
 const Ticket = require("../models/Ticket");
 const Payout = require("../models/Payout");
 const emailService = require("../services/emailService");
+const {
+  paidCompletedOrderMatch: buildPaidCompletedOrderMatch,
+  PAID_ORDER_STATUSES,
+} = require("../utils/paidOrderFilter");
+const {
+  sumAggRows,
+  netToOrganizerPipeline,
+  orderItemLineSubtotal,
+} = require("../utils/organizerRevenueAgg");
 
 const router = express.Router();
 
@@ -312,6 +321,41 @@ router.get(
 
       const eventIds = organizerEvents.map((e) => e._id);
 
+      const paidCompletedOrderMatch =
+        eventIds.length > 0
+          ? buildPaidCompletedOrderMatch({ "items.eventId": { $in: eventIds } })
+          : null;
+
+      // Tickets tied to a paid/completed order (exclude refunded/cancelled ticket rows)
+      const ticketsSoldMatch = (extraTicketMatch = {}) =>
+        eventIds.length > 0
+          ? Ticket.aggregate([
+              {
+                $match: {
+                  eventId: { $in: eventIds },
+                  status: { $in: ["active", "used"] },
+                  ...extraTicketMatch,
+                },
+              },
+              {
+                $lookup: {
+                  from: "orders",
+                  localField: "orderId",
+                  foreignField: "_id",
+                  as: "ord",
+                },
+              },
+              { $unwind: "$ord" },
+              {
+                $match: {
+                  "ord.status": { $in: PAID_ORDER_STATUSES },
+                  "ord.payment.status": "completed",
+                },
+              },
+              { $count: "n" },
+            ]).then((r) => r[0]?.n ?? 0)
+          : Promise.resolve(0);
+
       // Calculate insights
       const [
         myEventsCount,
@@ -341,149 +385,55 @@ router.get(
             new Date(e.dates.startDate) > new Date()
         ).length,
 
-        // Total tickets sold (active tickets from paid orders)
-        eventIds.length > 0
-          ? Ticket.countDocuments({
-            eventId: { $in: eventIds },
-            orderId: { $exists: true },
-            status: { $in: ["active", "used"] }, // Count active and used tickets (exclude cancelled/refunded)
-          })
-          : 0,
+        // Total tickets sold: only tickets whose order is paid with payment completed
+        ticketsSoldMatch(),
 
-        // Total revenue from paid orders
+        // Total revenue (net to organizer after commission) — same basis as event finance API
         eventIds.length > 0
-          ? Order.aggregate([
-            {
-              $match: {
-                "items.eventId": { $in: eventIds },
-                status: { $in: ["completed", "paid"] },
-                paymentStatus: { $in: ["paid", "completed"] },
-              },
-            },
-            { $unwind: "$items" },
-            {
-              $match: {
-                "items.eventId": { $in: eventIds },
-              },
-            },
-            {
-              $lookup: {
-                from: "events",
-                localField: "items.eventId",
-                foreignField: "_id",
-                as: "event",
-              },
-            },
-            {
-              $unwind: {
-                path: "$event",
-                preserveNullAndEmptyArrays: true,
-              },
-            },
-            {
-              $addFields: {
-                _itemSubtotal: { $ifNull: ["$items.subtotal", 0] },
-                _commissionRate: { $ifNull: ["$event.commissionRate", 6] },
-                _itemCommission: {
-                  $multiply: ["$_itemSubtotal", { $divide: ["$_commissionRate", 100] }],
-                },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: {
-                  $sum: {
-                    $subtract: ["$_itemSubtotal", "$_itemCommission"],
-                  },
-                },
-              },
-            },
-          ])
+          ? Order.aggregate(
+              netToOrganizerPipeline(paidCompletedOrderMatch, eventIds)
+            )
           : Promise.resolve([{ total: 0 }]),
 
-        // Total orders
-        eventIds.length > 0
-          ? Order.countDocuments({
-            "items.eventId": { $in: eventIds },
-          })
+        // Total orders: only paid + payment completed
+        eventIds.length > 0 && paidCompletedOrderMatch
+          ? Order.countDocuments(paidCompletedOrderMatch)
           : 0,
 
-        // This month's revenue
+        // This month's revenue (when payment settled, else order created — aligns with cash timing)
         eventIds.length > 0
           ? (() => {
             const startOfMonth = new Date();
             startOfMonth.setDate(1);
             startOfMonth.setHours(0, 0, 0, 0);
-            return Order.aggregate([
-              {
-                $match: {
-                  "items.eventId": { $in: eventIds },
-                  status: { $in: ["completed", "paid"] },
-                  paymentStatus: { $in: ["paid", "completed"] },
-                  createdAt: { $gte: startOfMonth },
-                },
+            const monthPaidMatch = {
+              ...paidCompletedOrderMatch,
+              $expr: {
+                $gte: [
+                  { $ifNull: ["$payment.paidAt", "$createdAt"] },
+                  startOfMonth,
+                ],
               },
-              { $unwind: "$items" },
-              {
-                $match: {
-                  "items.eventId": { $in: eventIds },
-                },
-              },
-              {
-                $lookup: {
-                  from: "events",
-                  localField: "items.eventId",
-                  foreignField: "_id",
-                  as: "event",
-                },
-              },
-              {
-                $unwind: {
-                  path: "$event",
-                  preserveNullAndEmptyArrays: true,
-                },
-              },
-              {
-                $addFields: {
-                  _itemSubtotal: { $ifNull: ["$items.subtotal", 0] },
-                  _commissionRate: { $ifNull: ["$event.commissionRate", 6] },
-                  _itemCommission: {
-                    $multiply: ["$_itemSubtotal", { $divide: ["$_commissionRate", 100] }],
-                  },
-                },
-              },
-              {
-                $group: {
-                  _id: null,
-                  total: {
-                    $sum: {
-                      $subtract: ["$_itemSubtotal", "$_itemCommission"],
-                    },
-                  },
-                },
-              },
-            ]);
+            };
+            return Order.aggregate(
+              netToOrganizerPipeline(monthPaidMatch, eventIds)
+            );
           })()
           : Promise.resolve([{ total: 0 }]),
 
-        // This month's tickets sold
-        eventIds.length > 0
-          ? (() => {
-            const startOfMonth = new Date();
-            startOfMonth.setDate(1);
-            startOfMonth.setHours(0, 0, 0, 0);
-            return Ticket.countDocuments({
-              eventId: { $in: eventIds },
-              status: { $in: ["active", "used"] }, // Count active and used tickets (exclude cancelled/refunded)
-              createdAt: { $gte: startOfMonth },
-            });
-          })()
-          : 0,
+        // This month's tickets sold (same paid-order rule as total)
+        (() => {
+          const startOfMonth = new Date();
+          startOfMonth.setDate(1);
+          startOfMonth.setHours(0, 0, 0, 0);
+          return ticketsSoldMatch({ createdAt: { $gte: startOfMonth } });
+        })(),
       ]);
 
-      const totalRevenueAmount = totalRevenue[0]?.total || 0;
-      const thisMonthRevenueAmount = thisMonthRevenue[0]?.total || 0;
+      const totalRevenueAmount = Math.round(sumAggRows(totalRevenue, "total"));
+      const thisMonthRevenueAmount = Math.round(
+        sumAggRows(thisMonthRevenue, "total")
+      );
 
       // Get payout information
       const completedPayouts = await Payout.find({
@@ -518,14 +468,8 @@ router.get(
       });
 
       // Calculate pending payouts (paid orders that haven't been paid to organizer yet)
-      const allPaidOrders = eventIds.length > 0
-        ? await Order.find({
-          "items.eventId": { $in: eventIds },
-          $or: [
-            { status: "paid", paymentStatus: "paid" },
-            { status: "completed", paymentStatus: "paid" },
-          ],
-        })
+      const allPaidOrders = eventIds.length > 0 && paidCompletedOrderMatch
+        ? await Order.find(paidCompletedOrderMatch)
           .select("_id pricing totalAmount items")
           .populate("items.eventId", "commissionRate")
           .lean()
@@ -537,26 +481,28 @@ router.get(
 
       let pendingPayout = 0;
       let pendingFees = 0;
-      unpaidOrders.forEach(order => {
+      unpaidOrders.forEach((order) => {
         const orderSubtotal = order.pricing?.subtotal || 0;
         const transactionFee = order.pricing?.transactionFee || 0;
         const serviceFee = order.pricing?.serviceFee || 0;
 
-        // Commission is applied per-item (per event), default 6%.
         let commissionFee = 0;
-        if (Array.isArray(order.items)) {
+        let netTicketLines = 0;
+        if (Array.isArray(order.items) && order.items.length > 0) {
           order.items.forEach((item) => {
-            const itemSubtotal = item?.subtotal || 0;
+            const line = orderItemLineSubtotal(item);
             const rate = item?.eventId?.commissionRate ?? 6;
-            commissionFee += itemSubtotal * (rate / 100);
+            const comm = line * (rate / 100);
+            commissionFee += comm;
+            netTicketLines += line - comm;
           });
         } else {
           commissionFee = orderSubtotal * (6 / 100);
+          netTicketLines = orderSubtotal - commissionFee;
         }
 
-        // Transaction/service fees are added on top at checkout (customer pays); do not deduct from organizer ticket revenue.
         const totalFees = serviceFee + transactionFee + commissionFee;
-        pendingPayout += orderSubtotal - commissionFee;
+        pendingPayout += netTicketLines;
         pendingFees += totalFees;
       });
 
