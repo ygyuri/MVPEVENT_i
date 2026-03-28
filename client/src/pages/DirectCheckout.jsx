@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -29,6 +30,7 @@ const DirectCheckout = () => {
   const [searchParams] = useSearchParams();
   const { isDarkMode } = useTheme();
   const referralCode = searchParams.get("ref") || "";
+  const { user: authUser, isAuthenticated } = useSelector((s) => s.auth);
 
   // State
   const [event, setEvent] = useState(null);
@@ -274,6 +276,31 @@ const DirectCheckout = () => {
 
     fetchEventData();
   }, [slug, referralCode]);
+
+  // Pre-fill checkout from logged-in profile so tickets attach to the same account as Wallet
+  useEffect(() => {
+    if (!isAuthenticated || !authUser) return;
+    setFormData((prev) => {
+      const next = { ...prev };
+      if (!prev.email?.trim() && authUser.email) {
+        next.email = authUser.email;
+      }
+      if (!prev.fullName?.trim()) {
+        const fromParts = [authUser.firstName, authUser.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+        const fromName =
+          authUser.name?.trim() || fromParts || "";
+        if (fromName) next.fullName = fromName;
+      }
+      const profilePhone = authUser.profile?.phone?.replace(/\D/g, "") || "";
+      if (!prev.phone?.replace(/\D/g, "") && profilePhone) {
+        next.phone = profilePhone;
+      }
+      return next;
+    });
+  }, [isAuthenticated, authUser]);
 
   // Handle form input changes with validation
   const handleInputChange = (e) => {

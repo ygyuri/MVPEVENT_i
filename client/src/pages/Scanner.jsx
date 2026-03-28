@@ -545,13 +545,13 @@ export default function Scanner() {
   const role = auth?.user?.role;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 md:py-10 text-white">
+    <div className="max-w-3xl mx-auto px-4 py-6 md:py-10 text-gray-900 dark:text-white">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl md:text-3xl font-bold">Scanner</h1>
         <select
           value={location}
           onChange={(e) => setLocation(e.target.value)}
-          className="bg-white/10 rounded-xl px-3 py-2"
+          className="rounded-xl px-3 py-2 bg-gray-100 border border-gray-200 text-gray-900 dark:bg-white/10 dark:border-transparent dark:text-white"
         >
           <option>Gate A</option>
           <option>Gate B</option>
@@ -560,36 +560,39 @@ export default function Scanner() {
       </div>
       <div className="mt-3 flex gap-2">
         <button
-          className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15"
+          type="button"
+          className="px-3 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white"
           onClick={() => setPreferBackCamera((p) => !p)}
         >
           Camera: {preferBackCamera ? "Rear" : "Front"}
         </button>
         <button
-          className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15"
+          type="button"
+          className="px-3 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white"
           onClick={() => setTorchOn((t) => !t)}
         >
           Torch: {torchOn ? "On" : "Off"}
         </button>
       </div>
       <div className="mt-4 flex items-center justify-between">
-        <div className="text-white/60 text-sm">
+        <div className="text-gray-600 dark:text-white/60 text-sm">
           Role: {role || "unknown"} · {scanning ? "Camera on" : "Idle"}
           {!navigator.onLine && (
-            <span className="ml-2 text-yellow-400">⚠ Offline</span>
+            <span className="ml-2 text-yellow-600 dark:text-yellow-400">⚠ Offline</span>
           )}
         </div>
         {error && (
           <button
+            type="button"
             onClick={() => dispatch(clearScan())}
-            className="text-white/60 hover:text-white text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors"
+            className="text-gray-600 hover:text-gray-900 text-xs px-2 py-1 rounded hover:bg-gray-200 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/10 transition-colors"
             title="Clear error"
           >
             Clear Error
           </button>
         )}
       </div>
-      <div className="mt-4 rounded-2xl overflow-hidden border border-white/10 relative">
+      <div className="mt-4 rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 relative">
         <video
           ref={setVideoRef}
           className="w-full aspect-[3/4] object-cover bg-black"
@@ -641,14 +644,14 @@ export default function Scanner() {
       <div className="mt-4 space-y-3">
         {/* Main Status Card */}
         <div
-          className={`rounded-xl px-4 py-3 ${statusInfo.color} shadow-lg border border-white/10 animate-[pulse_1s_ease-in-out_2]`}
+          className={`rounded-xl px-4 py-3 ${statusInfo.color} text-white shadow-lg border border-gray-200/80 dark:border-white/10 animate-[pulse_1s_ease-in-out_2]`}
         >
           <div className="flex items-center gap-2">
             <span className="text-lg">{statusInfo.icon}</span>
             <div className="flex-1">
-              <div className="font-semibold text-sm">{statusInfo.title}</div>
+              <div className="font-semibold text-sm text-white">{statusInfo.title}</div>
               {statusInfo.message && (
-                <div className="text-xs opacity-90 mt-0.5">{statusInfo.message}</div>
+                <div className="text-xs text-white/90 mt-0.5">{statusInfo.message}</div>
               )}
             </div>
           </div>
@@ -734,14 +737,15 @@ export default function Scanner() {
         )}
       </div>
       {/* Recently Scanned Tickets List - From Database */}
-      <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
+      <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-black/30 p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-white/90">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white/90">
             Recently Scanned {recentScans.pagination.total > 0 && `(${recentScans.pagination.total})`}
           </h3>
           <button
+            type="button"
             onClick={() => dispatch(fetchRecentScans({ page: 1, limit: 20 }))}
-            className="text-xs text-white/60 hover:text-white/80 px-2 py-1 rounded hover:bg-white/10 transition-colors"
+            className="text-xs text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-200 dark:text-white/60 dark:hover:text-white/80 dark:hover:bg-white/10 transition-colors"
             disabled={recentScans.loading}
           >
             {recentScans.loading ? "Loading..." : "Refresh"}
@@ -749,9 +753,9 @@ export default function Scanner() {
         </div>
         
         {recentScans.loading && recentScans.scans.length === 0 ? (
-          <div className="text-center py-4 text-white/60 text-sm">Loading scans...</div>
+          <div className="text-center py-4 text-gray-600 dark:text-white/60 text-sm">Loading scans...</div>
         ) : recentScans.scans.length === 0 ? (
-          <div className="text-center py-4 text-white/60 text-sm">No scans yet</div>
+          <div className="text-center py-4 text-gray-600 dark:text-white/60 text-sm">No scans yet</div>
         ) : (
           <>
             <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -765,16 +769,16 @@ export default function Scanner() {
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium text-white/90 truncate">
+                    <div className="text-xs font-medium text-gray-900 dark:text-white/90 truncate">
                       {item.eventTitle || "Event"}
                     </div>
-                    <div className="text-xs text-white/60 truncate">
+                    <div className="text-xs text-gray-600 dark:text-white/60 truncate">
                       Ticket: {item.ticketNumber || "N/A"}
                     </div>
-                    <div className="text-xs text-white/60 truncate">
+                    <div className="text-xs text-gray-600 dark:text-white/60 truncate">
                       {item.holderName || "Unknown"}
                     </div>
-                    <div className="text-xs text-white/50 mt-1">
+                    <div className="text-xs text-gray-500 dark:text-white/50 mt-1">
                       {new Date(item.scannedAt).toLocaleString()}
                       {item.location && ` · ${item.location}`}
                     </div>
@@ -785,7 +789,7 @@ export default function Scanner() {
                     ) : (
                       <span className="text-red-400 text-lg">✗</span>
                     )}
-                    <span className="text-xs text-white/50 mt-1">
+                    <span className="text-xs text-gray-500 dark:text-white/50 mt-1">
                       {item.result === "success" ? "Valid" : item.result.replace("_", " ")}
                     </span>
                   </div>
@@ -795,29 +799,31 @@ export default function Scanner() {
             
             {/* Pagination Controls */}
             {recentScans.pagination.pages > 1 && (
-              <div className="mt-4 flex items-center justify-between pt-3 border-t border-white/10">
+              <div className="mt-4 flex items-center justify-between pt-3 border-t border-gray-200 dark:border-white/10">
                 <button
+                  type="button"
                   onClick={() => {
                     const newPage = currentPage - 1;
                     setCurrentPage(newPage);
                     dispatch(fetchRecentScans({ page: newPage, limit: 20 }));
                   }}
                   disabled={!recentScans.pagination.hasPrev || recentScans.loading}
-                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-white/90"
+                  className="px-3 py-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-gray-900 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white/90"
                 >
                   ← Previous
                 </button>
-                <span className="text-xs text-white/60">
+                <span className="text-xs text-gray-600 dark:text-white/60">
                   Page {recentScans.pagination.page} of {recentScans.pagination.pages}
                 </span>
                 <button
+                  type="button"
                   onClick={() => {
                     const newPage = currentPage + 1;
                     setCurrentPage(newPage);
                     dispatch(fetchRecentScans({ page: newPage, limit: 20 }));
                   }}
                   disabled={!recentScans.pagination.hasNext || recentScans.loading}
-                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-white/90"
+                  className="px-3 py-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-gray-900 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white/90"
                 >
                   Next →
                 </button>
@@ -829,7 +835,8 @@ export default function Scanner() {
 
       <div className="mt-4 flex gap-2">
         <button
-          className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15"
+          type="button"
+          className="px-3 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white"
           onClick={() => {
             dispatch(clearScan());
           }}
@@ -837,7 +844,8 @@ export default function Scanner() {
           Clear Result
         </button>
         <button
-          className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15"
+          type="button"
+          className="px-3 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white"
           onClick={() => dispatch(flushOfflineQueue())}
         >
           Flush Offline ({useSelector((s) => s.scanner.offlineCount) || 0})

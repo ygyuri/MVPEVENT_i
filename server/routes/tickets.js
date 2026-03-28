@@ -294,6 +294,22 @@ router.post(
         console.log("✅ Existing user found:", { userId: user._id, email });
       }
 
+      // Wallet lists tickets by JWT user. If checkout used a different email than the
+      // logged-in account, tickets were previously attached to the form-email user — so
+      // "My Tickets" looked empty. Always attribute ownership to the session user when present.
+      if (req.user) {
+        const authEmail = (req.user.email || "").toLowerCase().trim();
+        if (authEmail !== emailLower) {
+          console.log(
+            "🎫 direct-purchase: attributing order/tickets to logged-in user (form email differed)",
+            { formEmail: emailLower, authUserId: req.user._id, authEmail }
+          );
+        }
+        user = req.user;
+        isNewUser = false;
+        tempPassword = null;
+      }
+
       // ========== STEP 3: Handle Affiliate Tracking ==========
       let affiliateData = {
         referralCode: null,
@@ -362,7 +378,7 @@ router.post(
       const order = new Order({
         customer: {
           userId: user._id,
-          email: user.email,
+          email: emailLower,
           firstName: firstName, // Use form data, not database value
           lastName: lastName,   // Use form data, not database value
           name: fullName, // Add full name field
@@ -439,7 +455,7 @@ router.post(
             firstName: holderFirstName,
             lastName: holderLastName,
             name: fullName, // Add full name field
-            email: user.email,
+            email: emailLower,
             phone,
           },
           ticketType: ticketType,
@@ -663,7 +679,7 @@ router.get("/my", verifyToken, async (req, res) => {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          pages: Math.ceil(total / parseInt(limit)),
+          pages: Math.max(1, Math.ceil(total / parseInt(limit)) || 1),
         },
       },
     });
