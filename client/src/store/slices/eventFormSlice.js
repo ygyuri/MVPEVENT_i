@@ -3,7 +3,7 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
   // Form structure
   currentStep: 1,
-  totalSteps: 7,
+  totalSteps: 8,
   isDirty: false,
   
   // Auto-save on blur tracking
@@ -225,7 +225,8 @@ const eventFormSlice = createSlice({
         salesStart: null,
         salesEnd: null,
         minPerOrder: 1,
-        maxPerOrder: null
+        maxPerOrder: null,
+        voucherAmount: null
       };
       state.formData.ticketTypes.push(newTicketType);
       state.isDirty = true;
@@ -369,27 +370,32 @@ const eventFormSlice = createSlice({
         lastCompletedStep = 4;
       }
       
-      // Step 5: Recurrence Rules
-      if (event.recurrence && event.recurrence.enabled) {
+      // Step 5: Vouchers (optional)
+      if (lastCompletedStep >= 4) {
         lastCompletedStep = 5;
       }
       
-      // Step 6: Media & Assets
-      if (event.media?.coverImageUrl || (event.media?.galleryUrls && event.media.galleryUrls.length > 0)) {
+      // Step 6: Recurrence Rules
+      if (event.recurrence && event.recurrence.enabled) {
         lastCompletedStep = 6;
       }
       
-      // Step 7: Preview (always the last step if we have basic data)
-      if (event.title && event.description && event.dates?.startDate) {
+      // Step 7: Media & Assets
+      if (event.media?.coverImageUrl || (event.media?.galleryUrls && event.media.galleryUrls.length > 0)) {
         lastCompletedStep = 7;
       }
       
+      // Step 8: Preview (always the last step if we have basic data)
+      if (event.title && event.description && event.dates?.startDate) {
+        lastCompletedStep = 8;
+      }
+      
       // Set current step to the next incomplete step, or the last completed step if all are done
-      state.currentStep = Math.min(lastCompletedStep + 1, 7);
+      state.currentStep = Math.min(lastCompletedStep + 1, 8);
       
       // If we have a stored currentStep in metadata, use that instead
       if (event.metadata?.currentStep) {
-        state.currentStep = Math.min(event.metadata.currentStep, 7);
+        state.currentStep = Math.min(event.metadata.currentStep, 8);
         // console.log('🔄 [LOAD EVENT] Restored step from metadata:', event.metadata.currentStep);
       }
       

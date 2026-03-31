@@ -54,6 +54,7 @@ const orderRoutes = require("./routes/orders");
 const testRoutes = require("./routes/test");
 const payheroRoutes = require("./routes/payhero");
 const ticketRoutes = require("./routes/tickets");
+const voucherRoutes = require("./routes/vouchers");
 const pollsSimpleRoutes = require("./routes/polls-simple");
 
 const passport = require("passport");
@@ -465,6 +466,8 @@ app.use("/api/payhero", payheroRoutes);
 
 // Ticket routes
 app.use("/api/tickets", ticketRoutes);
+// Voucher routes
+app.use("/api/vouchers", voucherRoutes);
 
 // Reminder routes
 const reminderRoutes = require("./routes/reminders");
