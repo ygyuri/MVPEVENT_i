@@ -380,10 +380,10 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="flex items-center justify-between pt-4 border-t border-gray-200/50 dark:border-gray-700/50"
+          className="flex items-center justify-between gap-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50"
         >
           {/* Premium Pricing */}
-          <div className="flex flex-col">
+          <div className="flex min-w-0 flex-1 flex-col pr-1">
             {(() => {
               // Helper to safely convert price to number
               const toNumber = (val) => {
@@ -466,18 +466,19 @@ const EventCard = ({ event, onFavorite, onView, index = 0 }) => {
             })()}
           </div>
 
-          {/* Premium Action Button */}
+          {/* Compact CTA — clear label, doesn’t crowd pricing */}
           <motion.button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/events/${event.slug}/checkout`);
             }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] hover:from-[#6b1a8a] hover:to-[#8A4FFF] rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] px-3 py-1.5 text-xs font-semibold text-white shadow-md transition-all duration-200 hover:from-[#6b1a8a] hover:to-[#8A4FFF] hover:shadow-lg"
           >
-            <Eye className="w-4 h-4" />
-            <span>View Details</span>
+            <Eye className="h-3.5 w-3.5 shrink-0 opacity-95" aria-hidden />
+            <span>View details</span>
           </motion.button>
         </motion.div>
       </div>

@@ -1,31 +1,32 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPolls, clearPolls } from '../../store/slices/pollsSlice';
-import { usePollSocket } from '../../hooks/usePollSocket';
 import PollCard from './PollCard';
 import SimplePollCreator from './SimplePollCreator';
-import { Plus, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import { Plus, AlertCircle } from 'lucide-react';
 
 const PollList = ({ eventId, isOrganizerView = false }) => {
   const dispatch = useDispatch();
-  const { polls, activePolls, loading, errors } = useSelector(state => state.polls);
+  const { polls, loading, errors } = useSelector(state => state.polls);
   const { user } = useSelector(state => state.auth);
-  const { isConnected, connectionError } = usePollSocket(eventId);
-
-  const [showCreator, setShowCreator] = useState(false);
   const [filter, setFilter] = useState('active');
+  const [showCreator, setShowCreator] = useState(false);
+  const prevEventIdRef = useRef(null);
 
   const isOrganizer =
     user?.role === 'organizer' || user?.events_organized?.includes(eventId);
 
   useEffect(() => {
-    if (eventId) {
-      dispatch(fetchPolls({ eventId, status: filter === 'all' ? undefined : filter }));
-    }
-
-    return () => {
+    if (prevEventIdRef.current && prevEventIdRef.current !== eventId) {
       dispatch(clearPolls());
-    };
+    }
+    prevEventIdRef.current = eventId;
+  }, [eventId, dispatch]);
+
+  useEffect(() => {
+    if (eventId) {
+      dispatch(fetchPolls({ eventId, status: filter === 'all' ? 'all' : filter }));
+    }
   }, [eventId, filter, dispatch]);
 
   const handleCreatePoll = () => {
@@ -37,8 +38,11 @@ const PollList = ({ eventId, isOrganizerView = false }) => {
   };
 
   const getPollsToShow = () => {
-    const pollIds = filter === 'all' ? Object.keys(polls) : activePolls;
-    return pollIds.map(id => polls[id]).filter(Boolean);
+    const list = Object.values(polls).filter(Boolean);
+    if (filter === 'all') return list;
+    if (filter === 'active') return list.filter((p) => p.status === 'active');
+    if (filter === 'closed') return list.filter((p) => p.status === 'closed');
+    return list;
   };
 
   const pollsToShow = getPollsToShow();
@@ -57,33 +61,9 @@ const PollList = ({ eventId, isOrganizerView = false }) => {
   return (
     <div className="space-y-6">
       <div
-        className={`flex flex-col gap-4 sm:flex-row sm:items-center ${org ? 'sm:justify-between' : 'sm:justify-end'}`}
+        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end"
       >
-        {org && (
-          <p className="text-sm text-gray-400">
-            Live connection and filters below. Create a poll to engage ticket holders.
-          </p>
-        )}
-
         <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            {isConnected ? (
-              <>
-                <Wifi className={`w-4 h-4 ${org ? 'text-emerald-400' : 'text-green-500'}`} />
-                <span className={`text-sm ${org ? 'text-emerald-300' : 'text-green-600'}`}>
-                  Live
-                </span>
-              </>
-            ) : (
-              <>
-                <WifiOff className={`w-4 h-4 ${org ? 'text-red-400' : 'text-red-500'}`} />
-                <span className={`text-sm ${org ? 'text-red-300' : 'text-red-600'}`}>
-                  Offline
-                </span>
-              </>
-            )}
-          </div>
-
           {isOrganizer && (
             <button
               type="button"
@@ -100,28 +80,6 @@ const PollList = ({ eventId, isOrganizerView = false }) => {
           )}
         </div>
       </div>
-
-      {connectionError && (
-        <div
-          className={
-            org
-              ? 'flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4'
-              : 'flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4'
-          }
-        >
-          <AlertCircle
-            className={`mt-0.5 h-5 w-5 flex-shrink-0 ${org ? 'text-amber-400' : 'text-yellow-600'}`}
-          />
-          <div>
-            <h3 className={`text-sm font-medium ${org ? 'text-amber-100' : 'text-yellow-800'}`}>
-              Connection issue
-            </h3>
-            <p className={`mt-1 text-sm ${org ? 'text-amber-200/90' : 'text-yellow-700'}`}>
-              Real-time updates may be delayed. {connectionError}
-            </p>
-          </div>
-        </div>
-      )}
 
       <div className="flex flex-wrap gap-2">
         {['active', 'closed', 'all'].map(filterType => (
@@ -165,7 +123,7 @@ const PollList = ({ eventId, isOrganizerView = false }) => {
               <button
                 type="button"
                 onClick={() =>
-                  dispatch(fetchPolls({ eventId, status: filter === 'all' ? undefined : filter }))
+                  dispatch(fetchPolls({ eventId, status: filter === 'all' ? 'all' : filter }))
                 }
                 className={`mt-2 text-sm underline ${org ? 'text-[#8A4FFF] hover:text-white' : 'text-red-600 hover:text-red-800'}`}
               >
@@ -231,7 +189,7 @@ const PollList = ({ eventId, isOrganizerView = false }) => {
           eventId={eventId}
           onClose={handleCloseCreator}
           onSuccess={() => {
-            dispatch(fetchPolls({ eventId, status: filter === 'all' ? undefined : filter }));
+            dispatch(fetchPolls({ eventId, status: filter === 'all' ? 'all' : filter }));
           }}
         />
       )}

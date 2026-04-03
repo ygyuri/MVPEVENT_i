@@ -27,28 +27,15 @@ const PollsPage = () => {
               </Link>
             </div>
 
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-white mb-2">Event Polls</h1>
-                <p className="text-gray-300 max-w-xl">
-                  Create and manage interactive polls for your event
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-6 text-sm text-gray-400">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-[#8A4FFF]" />
-                  <span>Live Results</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-[#8A4FFF]" />
-                  <span>Real-time Updates</span>
-                </div>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-2">Event Polls</h1>
+              <p className="text-gray-300 max-w-xl">
+                Create and manage interactive polls for your event
+              </p>
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 md:p-6">
+          <div className="rounded-xl border border-white/10 bg-slate-900/35 p-4 shadow-sm backdrop-blur-sm md:p-6">
             <PollList eventId={eventId} isOrganizerView />
           </div>
 
@@ -59,7 +46,7 @@ const PollsPage = () => {
               </h3>
               <ul className="text-sm text-gray-300 space-y-2">
                 <li>• Create polls for your event (up to 5 active)</li>
-                <li>• Real-time results as ticket holders vote</li>
+                <li>• View vote tallies on each poll&apos;s results page</li>
                 <li>• Close polls early when you are ready</li>
                 <li>• Share the polls URL with attendees who have tickets</li>
               </ul>

@@ -58,6 +58,8 @@ services:
     container_name: event_i_server
     environment:
       NODE_ENV: development
+      # Mark orders paid without PayHero (local Docker only; never in production)
+      DEV_SKIP_PAYMENT: "true"
       MONGODB_URI: mongodb://admin:password123@mongodb:27017/event_i?authSource=admin
       REDIS_URL: redis://redis:6379
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
@@ -101,6 +103,8 @@ services:
     container_name: event_i_client
     environment:
       VITE_API_URL: http://localhost:${SERVER_PORT:-5001}
+      # Vite proxy for same-origin /api (e.g. poll <img src="/api/...">) from inside this container
+      VITE_DEV_API_PROXY: http://server:5001
     ports:
       - "${CLIENT_PORT:-3001}:3000"
     depends_on:

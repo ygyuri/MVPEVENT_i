@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { getPollOptionImageUrl, resolveMediaUrl } from '../../utils/resolveMediaUrl';
 import { useDispatch, useSelector } from 'react-redux';
 import { createPoll } from '../../store/slices/pollsSlice';
-import { Plus, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, X, AlertCircle, CheckCircle, ImagePlus, Link2, Trash2 } from 'lucide-react';
 
 const POLL_TYPES = [
   { value: 'general', label: 'General Poll', icon: '📊' },
@@ -24,8 +25,8 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
     description: '',
     poll_type: 'general',
     options: [
-      { label: '', description: '' },
-      { label: '', description: '' }
+      { label: '', description: '', image_url: '' },
+      { label: '', description: '', image_url: '' }
     ],
     max_votes: 1,
     allow_vote_changes: true,
@@ -134,7 +135,7 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
     
     setFormData(prev => ({
       ...prev,
-      options: [...prev.options, { label: '', description: '' }]
+      options: [...prev.options, { label: '', description: '', image_url: '' }]
     }));
   };
 
@@ -170,7 +171,9 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
           description: opt.description?.trim() || '',
           ...(opt.artist_name && { artist_name: opt.artist_name.trim() }),
           ...(opt.artist_genre && { artist_genre: opt.artist_genre.trim() }),
-          ...(opt.image_url && { image_url: opt.image_url.trim() })
+          ...(typeof opt.image_url === 'string' && opt.image_url.trim()
+            ? { image_url: opt.image_url.trim() }
+            : {})
         }));
 
       const pollData = {
@@ -443,7 +446,43 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
   );
 };
 
+const MAX_OPTION_IMAGE_BYTES = 5 * 1024 * 1024;
+
 const OptionInput = ({ index, option, pollType, onChange, onRemove, canRemove }) => {
+  const fileInputRef = useRef(null);
+  const inputId = `poll-option-image-${index}`;
+
+  const handleImageFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_OPTION_IMAGE_BYTES) {
+      window.alert('Image must be 5 MB or smaller.');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => onChange(index, 'image_url', reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    onChange(index, 'image_url', '');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const rawImg = getPollOptionImageUrl(option);
+  const isDataImage = rawImg.startsWith('data:image/');
+  const urlFieldValue = isDataImage ? '' : rawImg;
+  const previewSrc = rawImg
+    ? isDataImage
+      ? rawImg
+      : resolveMediaUrl(rawImg)
+    : '';
+
   return (
     <div className="rounded-lg border border-white/10 bg-white/5 p-4">
       <div className="mb-3 flex items-start justify-between">
@@ -503,6 +542,58 @@ const OptionInput = ({ index, option, pollType, onChange, onRemove, canRemove })
           rows={2}
           className={inputClass}
         />
+
+        <div className="rounded-lg border border-dashed border-white/15 bg-black/20 p-3">
+          <p className="mb-2 flex items-center gap-2 text-xs font-medium text-gray-400">
+            <ImagePlus className="h-3.5 w-3.5 text-[#8A4FFF]" />
+            Photo for this option (optional — e.g. artist headshot)
+          </p>
+          {previewSrc ? (
+            <div className="relative mb-3 overflow-hidden rounded-lg border border-white/10">
+              <img
+                src={previewSrc}
+                alt=""
+                className="h-36 w-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-lg bg-black/70 px-2 py-1 text-xs text-white backdrop-blur-sm hover:bg-black/90"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Remove
+              </button>
+            </div>
+          ) : null}
+          <input
+            ref={fileInputRef}
+            id={inputId}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            className="sr-only"
+            onChange={handleImageFile}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <label
+              htmlFor={inputId}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#8A4FFF]/40 bg-[#4f0f69]/30 px-3 py-2 text-xs font-medium text-white transition hover:bg-[#4f0f69]/50"
+            >
+              <ImagePlus className="h-4 w-4" />
+              Upload image
+            </label>
+          </div>
+          <div className="mt-2 flex items-start gap-2">
+            <Link2 className="mt-2 h-3.5 w-3.5 shrink-0 text-gray-500" />
+            <input
+              type="url"
+              value={urlFieldValue}
+              onChange={(e) => onChange(index, 'image_url', e.target.value)}
+              placeholder="Or paste image URL (https://…)"
+              className={inputClass}
+            />
+          </div>
+          <p className="mt-1.5 text-[11px] text-gray-500">JPG, PNG, GIF or WebP, max 5 MB.</p>
+        </div>
       </div>
     </div>
   );

@@ -33,16 +33,17 @@ class PollService {
 
   async listPolls(eventId, userId, status = 'active') {
     try {
-      const polls = await Poll.find({
-        event: eventId,
-        status,
-        deletedAt: null
-      }).sort({ createdAt: -1 });
+      const query = { event: eventId, deletedAt: null };
+      if (status && status !== 'all') {
+        query.status = status;
+      }
+      const polls = await Poll.find(query).sort({ createdAt: -1 });
 
       const results = [];
       for (const poll of polls) {
         const vote = await PollVote.findOne({ poll: poll._id, user: userId });
-        
+        const totalVotes = await PollVote.countDocuments({ poll: poll._id });
+
         // Convert to Phase 2 format
         results.push({
           poll_id: poll._id.toString(),
@@ -59,7 +60,8 @@ class PollService {
           status: poll.status,
           created_at: poll.createdAt,
           has_voted: !!vote,
-          user_vote: vote ? vote.optionIds : null
+          user_vote: vote ? vote.optionIds : null,
+          total_votes: totalVotes
         });
       }
       return results;
@@ -68,12 +70,28 @@ class PollService {
     }
   }
 
-  async verifyTicket(userId, eventId) {
+  async verifyTicket(userId, eventId, userEmail = null) {
     try {
-      const ticket = await Ticket.findOne({ eventId, ownerUserId: userId }).populate('orderId');
+      let ticket = await Ticket.findOne({ eventId, ownerUserId: userId }).populate('orderId');
+      if (!ticket && userEmail) {
+        ticket = await Ticket.findOne({
+          eventId,
+          'holder.email': String(userEmail).toLowerCase().trim(),
+          status: 'active'
+        }).populate('orderId');
+      }
       if (!ticket) return false;
       if (ticket.status !== 'active') return false;
-      if (ticket.orderId && ticket.orderId.status !== 'paid') return false;
+      const o = ticket.orderId;
+      if (o) {
+        const paid =
+          o.status === 'paid' ||
+          o.status === 'completed' ||
+          o.paymentStatus === 'paid' ||
+          o.paymentStatus === 'completed';
+        if (!paid) return false;
+        if (o.status === 'cancelled' || o.status === 'refunded') return false;
+      }
       return true;
     } catch (error) {
       throw new Error(`Failed to verify ticket: ${error.message}`);
@@ -286,20 +304,32 @@ class PollService {
       } = voteData;
 
       if (existingVote) {
-        // Update existing vote
-        existingVote.optionIds = option_ids;
-        existingVote.ipAddress = ip_address;
-        existingVote.userAgent = user_agent;
-        await existingVote.save();
-        
+        // getUserVote() returns a plain object; load the document to update
+        const doc =
+          typeof existingVote.save === 'function'
+            ? existingVote
+            : await PollVote.findById(existingVote.vote_id);
+        if (!doc) {
+          throw new Error('Existing vote record not found');
+        }
+        doc.optionIds = option_ids;
+        doc.ipAddress = ip_address;
+        doc.userAgent = user_agent;
+        if (user_id) {
+          doc.user = user_id;
+          doc.isAnonymous = false;
+          doc.anonymousTokenHash = null;
+        }
+        await doc.save();
+
         return {
-          vote_id: existingVote._id.toString(),
-          poll_id: existingVote.poll.toString(),
-          user_id: existingVote.user ? existingVote.user.toString() : null,
-          option_ids: existingVote.optionIds,
-          is_anonymous: existingVote.isAnonymous,
-          created_at: existingVote.createdAt,
-          updated_at: existingVote.updatedAt
+          vote_id: doc._id.toString(),
+          poll_id: doc.poll.toString(),
+          user_id: doc.user ? doc.user.toString() : null,
+          option_ids: doc.optionIds,
+          is_anonymous: doc.isAnonymous,
+          created_at: doc.createdAt,
+          updated_at: doc.updatedAt
         };
       } else {
         // Create new vote

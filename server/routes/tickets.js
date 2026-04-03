@@ -477,11 +477,31 @@ router.post(
         ticketIds: tickets.map((t) => t._id),
       });
 
-      const devSkipPayment =
-        process.env.NODE_ENV === "development" &&
-        process.env.DEV_SKIP_PAYMENT === "true";
+      // Local / Docker: skip PayHero when explicitly enabled and not production.
+      // Do not require NODE_ENV===development — many local runs omit NODE_ENV, which broke SKIP_PAYMENT.
+      const nodeEnv = (process.env.NODE_ENV || "").trim().toLowerCase();
+      const isProduction =
+        nodeEnv === "production" || nodeEnv === "prod";
+      const truthyEnv = (v) => {
+        if (v == null || v === "") return false;
+        const s = String(v).trim().toLowerCase();
+        return s === "true" || s === "1" || s === "yes";
+      };
+      const skipPaymentRequested =
+        truthyEnv(process.env.DEV_SKIP_PAYMENT) ||
+        truthyEnv(process.env.SKIP_PAYMENT);
+      const devSkipPayment = !isProduction && skipPaymentRequested;
       const zeroTotalPurchase = totalAmount <= 0;
       const skipPayhero = devSkipPayment || zeroTotalPurchase;
+
+      console.log("[direct-purchase] payment path:", {
+        nodeEnv: process.env.NODE_ENV || "(unset)",
+        skipPaymentRequested,
+        devSkipPayment,
+        zeroTotalPurchase,
+        skipPayhero,
+        totalAmount,
+      });
 
       // ========== STEP 7: Initiate PayHero Payment (or complete without gateway) ==========
       let paymentResponse = null;

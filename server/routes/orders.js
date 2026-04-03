@@ -405,6 +405,8 @@ router.get('/:orderId/status', async (req, res) => {
     // Get ticket count
     const Ticket = require('../models/Ticket');
     const ticketCount = await Ticket.countDocuments({ orderId: order._id });
+    const firstEv = order.items?.[0]?.eventId;
+    const primaryEventId = firstEv ? String(firstEv) : undefined;
 
     // Return order status with clean data
     res.json({
@@ -416,6 +418,7 @@ router.get('/:orderId/status', async (req, res) => {
       totalAmount: order.totalAmount || order.pricing?.total,
       currency: order.pricing?.currency || 'KES',
       ticketCount,
+      primaryEventId,
       customer: {
         email: order.customer?.email,
         firstName: order.customer?.firstName,
@@ -493,29 +496,36 @@ router.get('/:orderId/wait', async (req, res) => {
     const ticketCount = await Ticket.countDocuments({ orderId: order._id });
 
     // Build response data
-    const buildResponse = (orderData) => ({
-      success: true,
-      orderId: orderData._id || orderId,
-      orderNumber: orderData.orderNumber,
-      status: orderData.status,
-      paymentStatus: orderData.paymentStatus,
-      totalAmount: orderData.totalAmount || orderData.pricing?.total,
-      currency: orderData.pricing?.currency || orderData.currency || 'KES',
-      ticketCount: orderData.ticketCount || ticketCount,
-      customer: {
-        email: orderData.customer?.email,
-        firstName: orderData.customer?.firstName,
-        lastName: orderData.customer?.lastName
-      },
-      payment: {
-        method: orderData.payment?.method || 'payhero',
-        status: orderData.payment?.status,
-        paymentReference: orderData.payment?.paymentReference,
-        checkoutRequestId: orderData.payment?.checkoutRequestId
-      },
-      createdAt: orderData.createdAt,
-      updatedAt: orderData.updatedAt
-    });
+    const buildResponse = (orderData) => {
+      const firstEvent = orderData.items?.[0]?.eventId;
+      const primaryEventId = firstEvent
+        ? String(firstEvent._id || firstEvent)
+        : undefined;
+      return {
+        success: true,
+        orderId: orderData._id || orderId,
+        orderNumber: orderData.orderNumber,
+        status: orderData.status,
+        paymentStatus: orderData.paymentStatus,
+        totalAmount: orderData.totalAmount || orderData.pricing?.total,
+        currency: orderData.pricing?.currency || orderData.currency || 'KES',
+        ticketCount: orderData.ticketCount || ticketCount,
+        primaryEventId,
+        customer: {
+          email: orderData.customer?.email,
+          firstName: orderData.customer?.firstName,
+          lastName: orderData.customer?.lastName
+        },
+        payment: {
+          method: orderData.payment?.method || 'payhero',
+          status: orderData.payment?.status,
+          paymentReference: orderData.payment?.paymentReference,
+          checkoutRequestId: orderData.payment?.checkoutRequestId
+        },
+        createdAt: orderData.createdAt,
+        updatedAt: orderData.updatedAt
+      };
+    };
 
     // If already completed, return immediately
     if (order.paymentStatus === 'completed' || 

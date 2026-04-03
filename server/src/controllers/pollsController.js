@@ -1,7 +1,6 @@
 const pollService = require('../../services/pollService');
 const { broadcastUpdate } = require('../../realtime/socketInstance');
 const TicketVerification = require('../middleware/ticketVerification');
-const crypto = require('crypto');
 
 /**
  * Polls Controller
@@ -22,7 +21,6 @@ class PollsController {
         url: req.originalUrl,
         method: req.method,
         userId: String(organizerId),
-        hasIo: !!req.io
       });
 
       // Validate input
@@ -69,14 +67,6 @@ class PollsController {
         ...value
       });
 
-      // Broadcast to attendees via WebSocket
-      req.io.to(`event:${eventId}`).emit('new_poll', {
-        poll_id: poll.poll_id,
-        question: poll.question,
-        poll_type: poll.poll_type,
-        closes_at: poll.closes_at
-      });
-
       res.status(201).json({
         poll_id: poll.poll_id,
         question: poll.question,
@@ -108,7 +98,8 @@ class PollsController {
     try {
       const { eventId } = req.params;
       const userId = req.user._id;
-      const { status = 'active' } = req.query;
+      const raw = req.query.status;
+      const status = raw === 'all' ? 'all' : raw || 'active';
 
       // Check if user has poll access (organizer or ticket holder)
       if (!req.hasPollAccess) {
@@ -128,12 +119,14 @@ class PollsController {
           description: poll.description,
           poll_type: poll.poll_type,
           options: poll.options_json,
+          options_json: poll.options_json,
           max_votes: poll.max_votes,
           allow_vote_changes: poll.allow_vote_changes,
           closes_at: poll.closes_at,
           status: poll.status,
           has_voted: poll.has_voted,
           user_vote: poll.user_vote, // only if has_voted = true
+          total_votes: poll.total_votes,
           time_remaining: Math.max(0, new Date(poll.closes_at) - Date.now())
         }))
       });
@@ -225,8 +218,11 @@ class PollsController {
         return res.status(400).json({ error: 'Poll has expired' });
       }
 
-      // Verify user has ticket
-      const hasTicket = await pollService.verifyTicket(userId, poll.event_id);
+      const hasTicket = await pollService.verifyTicket(
+        userId,
+        poll.event_id,
+        req.user?.email
+      );
       if (!hasTicket) {
         return res.status(403).json({ error: 'Valid ticket required to vote' });
       }
@@ -257,39 +253,20 @@ class PollsController {
         });
       }
 
-      // Generate anonymous token if needed
-      let anonymousTokenHash = null;
-      if (poll.allow_anonymous) {
-        const token = crypto.randomBytes(32).toString('hex');
-        anonymousTokenHash = crypto
-          .createHash('sha256')
-          .update(token + userId)
-          .digest('hex');
-      }
-
-      // Submit or update vote
+      // Authenticated ticket holders always vote as identified. `allowAnonymous` on the poll only
+      // means anonymous voting may be offered via a separate token-based flow — not that every
+      // logged-in vote is anonymous.
       const vote = await pollService.submitVote({
         poll_id: pollId,
-        user_id: poll.allow_anonymous ? null : userId,
-        anonymous_token_hash: anonymousTokenHash,
+        user_id: userId,
+        anonymous_token_hash: null,
         option_ids,
-        is_anonymous: poll.allow_anonymous,
+        is_anonymous: false,
         ip_address: req.ip,
         user_agent: req.headers['user-agent']
       }, existingVote);
 
-      // Refresh materialized view
       await pollService.refreshResults(pollId);
-
-      // Get updated results
-      const results = await pollService.getResults(pollId);
-
-      // Broadcast vote update via WebSocket (throttled)
-      req.io.to(`poll:${pollId}`).emit('vote_update', {
-        poll_id: pollId,
-        total_votes: results.total_votes,
-        // Don't send full results yet (privacy)
-      });
 
       res.json({
         message: 'Vote submitted successfully',
@@ -384,10 +361,11 @@ class PollsController {
         return res.status(404).json({ error: 'Poll not found' });
       }
 
-      // Check if user has voted (required to see results for active polls)
+      // Check if user has voted (required for active polls unless organizer / admin)
       const userVote = await pollService.getUserVote(pollId, userId);
+      const asOrganizer = req.viewPollResultsAsOrganizer === true;
 
-      if (poll.status === 'active' && !userVote) {
+      if (poll.status === 'active' && !userVote && !asOrganizer) {
         return res.status(403).json({ 
           error: 'You must vote to see results',
           message: 'Submit your vote first to view live results'
@@ -453,13 +431,6 @@ class PollsController {
 
       // Get final results
       const results = await pollService.getResults(pollId);
-
-      // Broadcast poll closure to all attendees
-      req.io.to(`event:${poll.event_id}`).emit('poll_closed', {
-        poll_id: pollId,
-        final_results: results.results,
-        total_votes: results.total_votes
-      });
 
       res.json({
         message: 'Poll closed successfully',

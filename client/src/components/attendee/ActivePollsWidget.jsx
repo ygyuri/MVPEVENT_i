@@ -1,66 +1,43 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Loader, AlertCircle } from 'lucide-react';
 import PollCard from './PollCard';
-import { usePollSocket } from '../../hooks/usePollSocket';
-import { fetchPolls, handleNewPoll, handleVoteUpdate, handlePollClosed } from '../../store/slices/pollsSlice';
+import { fetchPolls } from '../../store/slices/pollsSlice';
 
 const ActivePollsWidget = ({ eventId }) => {
   const dispatch = useDispatch();
-  const { polls, activePolls, loading, errors } = useSelector(state => state.polls);
-  const { isConnected, socket } = usePollSocket(eventId);
+  const { polls, activePolls, loading, errors } = useSelector((state) => state.polls);
   const [newPollIds, setNewPollIds] = useState(() => new Set());
+  const prevActiveIdsRef = useRef(null);
 
-  // Derived list of poll entities for rendering
   const activePollEntities = useMemo(() => {
-    return activePolls
-      .map(id => polls[id])
-      .filter(Boolean);
+    return activePolls.map((id) => polls[id]).filter(Boolean);
   }, [activePolls, polls]);
 
-  // Fetch polls on mount / when event changes
   useEffect(() => {
     if (!eventId) return;
     dispatch(fetchPolls({ eventId, status: 'active' }));
   }, [dispatch, eventId]);
 
-  // Subscribe to real-time poll events
   useEffect(() => {
-    if (!socket || !eventId) return;
-
-    const unsubCreated = socket.on('poll:created', (poll) => {
-      dispatch(handleNewPoll(poll));
-      setNewPollIds(prev => {
-        const updated = new Set(prev);
-        if (poll?.poll_id) updated.add(poll.poll_id);
-        return updated;
-      });
-      // Remove badge after 10s
-      if (poll?.poll_id) {
-        setTimeout(() => {
-          setNewPollIds(prev => {
-            const updated = new Set(prev);
-            updated.delete(poll.poll_id);
-            return updated;
-          });
-        }, 10000);
+    if (loading?.polls || !eventId) return;
+    const prev = prevActiveIdsRef.current;
+    if (prev !== null) {
+      for (const id of activePolls) {
+        if (!prev.has(id)) {
+          setNewPollIds((s) => new Set(s).add(id));
+          setTimeout(() => {
+            setNewPollIds((s) => {
+              const n = new Set(s);
+              n.delete(id);
+              return n;
+            });
+          }, 10000);
+        }
       }
-    });
-
-    const unsubVote = socket.on('poll:vote_update', (data) => {
-      dispatch(handleVoteUpdate(data));
-    });
-
-    const unsubClosed = socket.on('poll:closed', (data) => {
-      dispatch(handlePollClosed(data));
-    });
-
-    return () => {
-      if (typeof unsubCreated === 'function') unsubCreated();
-      if (typeof unsubVote === 'function') unsubVote();
-      if (typeof unsubClosed === 'function') unsubClosed();
-    };
-  }, [socket, eventId, dispatch]);
+    }
+    prevActiveIdsRef.current = new Set(activePolls);
+  }, [activePolls, loading?.polls, eventId]);
 
   if (loading?.polls) {
     return (
@@ -91,15 +68,10 @@ const ActivePollsWidget = ({ eventId }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Active Polls</h3>
-        <div className={`flex items-center gap-2 text-xs ${isConnected ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-          <span className={`inline-block w-2 h-2 rounded-full ${isConnected ? 'bg-green-600' : 'bg-gray-400'}`} />
-          {isConnected ? 'Live' : 'Connecting...'}
-        </div>
       </div>
 
-      {/* Responsive grid: 1 col on mobile, 2 on md+ */}
       <div className="grid gap-4 sm:gap-5 md:grid-cols-2">
         {activePollEntities.map((poll) => (
           <div key={poll.poll_id} className="relative">

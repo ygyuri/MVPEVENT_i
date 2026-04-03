@@ -10,8 +10,6 @@ const EventCategory = require("../models/EventCategory");
 const Ticket = require("../models/Ticket");
 const User = require("../models/User");
 const { cache } = require("../config/database");
-const path = require("path");
-const fs = require("fs");
 
 const router = express.Router();
 const isProd = process.env.NODE_ENV === "production";
@@ -819,6 +817,7 @@ router.post(
 );
 
 // ===== IMPORTANT: All routes with /:slug/* MUST be defined before the generic /:slug route =====
+// Poll/event images: see eventImageRoutes (mounted first on /api/events)
 
 // Direct checkout endpoint with affiliate tracking
 router.get("/:slug/checkout", optionalAuth, async (req, res) => {
@@ -1165,46 +1164,6 @@ router.post(
       res
         .status(500)
         .json({ success: false, error: "Failed to update QR settings" });
-    }
-  }
-);
-
-// Serve event images publicly (no auth required for published events)
-router.get(
-  "/events/:id/images/:filename",
-  [param("id").isMongoId(), param("filename").isString()],
-  async (req, res) => {
-    try {
-      // Validate inputs
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
-
-      // Verify event exists and is published (security check)
-      const event = await Event.findById(req.params.id).select("status").lean();
-      if (!event || event.status !== "published") {
-        return res
-          .status(404)
-          .json({ error: "Event not found or not published" });
-      }
-
-      const imagePath = path.join(
-        __dirname,
-        "../uploads/events",
-        req.params.filename
-      );
-
-      if (!fs.existsSync(imagePath)) {
-        return res.status(404).json({ error: "Image not found" });
-      }
-
-      // Set proper caching headers for images
-      res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year
-      res.sendFile(path.resolve(imagePath));
-    } catch (error) {
-      console.error("Image serve error:", error);
-      res.status(500).json({ error: "Failed to serve image" });
     }
   }
 );
