@@ -292,6 +292,10 @@ const EventManagement = () => {
           navigate(`/organizer/events/${eventId}`);
           break;
 
+        case 'polls':
+          navigate(`/events/${eventId}/polls`);
+          break;
+
         case 'bulk-resend':
           setBulkResendEventId(eventId);
           setShowBulkResendModal(true);

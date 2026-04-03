@@ -13,7 +13,8 @@ import {
   Calendar,
   Users,
   BarChart3,
-  Mail
+  Mail,
+  Vote
 } from 'lucide-react';
 import EnhancedButton from '../EnhancedButton';
 
@@ -59,6 +60,16 @@ const EventActions = ({
         icon: Edit,
         variant: 'secondary',
         className: 'text-green-600 hover:text-green-700'
+      });
+    }
+
+    if (['draft', 'published', 'cancelled'].includes(event.status)) {
+      actions.push({
+        key: 'polls',
+        label: 'Event polls',
+        icon: Vote,
+        variant: 'secondary',
+        className: 'text-[#8A4FFF] hover:text-[#b794f6] dark:text-[#c4b5fd] dark:hover:text-white'
       });
     }
     
