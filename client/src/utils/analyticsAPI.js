@@ -63,6 +63,15 @@ const analyticsAPI = {
     return api.get(`/api/organizer/analytics/events/${eventId}/finance${params}`);
   },
 
+  /** PDF sales report (admin: full fees; organizer: summary without txn/service columns) */
+  downloadEventSalesReportPdf: (eventId, organizerId = null) => {
+    const params = organizerId ? `?organizerId=${organizerId}` : '';
+    return api.get(
+      `/api/organizer/analytics/events/${eventId}/reports/sales-summary.pdf${params}`,
+      { responseType: 'blob' }
+    );
+  },
+
   // Export job status
   getExportStatus: (jobId) =>
     api.get(`/api/organizer/analytics/export-status/${jobId}`),

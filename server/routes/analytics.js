@@ -10,6 +10,8 @@ const path = require('path');
 const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const { paidCompletedOrderMatch } = require('../utils/paidOrderFilter');
+const eventSalesReportService = require('../services/eventSalesReportService');
+const { streamSalesReportPdf } = require('../services/eventSalesReportPdf');
 
 const router = express.Router();
 
@@ -699,6 +701,65 @@ router.get('/events/:eventId/finance', verifyToken, requireRole(['organizer', 'a
       success: false,
       error: 'Failed to load event finance'
     });
+  }
+});
+
+/**
+ * @route GET /api/organizer/analytics/events/:eventId/reports/sales-summary.pdf
+ * @desc Download per-event sales report PDF (admin: full fees; organizer: no transaction/service fee columns)
+ * @access Private (Organizer/Admin)
+ */
+router.get('/events/:eventId/reports/sales-summary.pdf', exportRateLimit, verifyToken, requireRole(['organizer', 'admin']), [
+  param('eventId').isMongoId().withMessage('Invalid event ID')
+], async (req, res) => {
+  try {
+    if (!handleValidation(req, res)) return;
+
+    const { eventId } = req.params;
+
+    const impersonatedOrganizerId = req.user.role === 'admin' && req.query.organizerId
+      ? req.query.organizerId
+      : null;
+
+    const event = await validateEventOwnership(eventId, req.user._id, req.user.role, impersonatedOrganizerId);
+
+    const report = await eventSalesReportService.getEventSalesReport(event);
+    const isAdmin = req.user.role === 'admin';
+
+    const safeSlug = String(event.slug || 'event').replace(/[^a-z0-9-_]/gi, '_').substring(0, 80);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const filename = `sales-report-${safeSlug}-${dateStr}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    await streamSalesReportPdf(res, report, { isAdmin });
+  } catch (error) {
+    console.error('Event sales report PDF error:', error);
+
+    if (error.message === 'Event not found') {
+      return res.status(404).json({
+        success: false,
+        error: 'Event not found'
+      });
+    }
+
+    if (
+      error.message === 'Access denied - not event owner' ||
+      error.message === 'Access denied - event does not belong to impersonated organizer'
+    ) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to generate sales report'
+      });
+    }
   }
 });
 

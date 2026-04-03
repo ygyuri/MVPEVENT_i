@@ -364,6 +364,42 @@ describe('Analytics API', () => {
     });
   });
 
+  describe('GET /api/organizer/analytics/events/:eventId/reports/sales-summary.pdf', () => {
+    it('should return a PDF for organizer', async () => {
+      const response = await request(app)
+        .get(`/api/organizer/analytics/events/${testEvent._id}/reports/sales-summary.pdf`)
+        .set('Authorization', `Bearer ${organizerToken}`)
+        .buffer(true)
+        .parse((res, callback) => {
+          const chunks = [];
+          res.on('data', (chunk) => chunks.push(chunk));
+          res.on('end', () => callback(null, Buffer.concat(chunks)));
+        })
+        .expect(200);
+
+      expect(response.headers['content-type']).toMatch(/application\/pdf/);
+      expect(response.headers['content-disposition']).toMatch(/attachment/);
+      expect(Buffer.isBuffer(response.body)).toBe(true);
+      expect(response.body.slice(0, 4).toString()).toBe('%PDF');
+    });
+
+    it('should return a PDF for admin', async () => {
+      const response = await request(app)
+        .get(`/api/organizer/analytics/events/${testEvent._id}/reports/sales-summary.pdf`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .buffer(true)
+        .parse((res, callback) => {
+          const chunks = [];
+          res.on('data', (chunk) => chunks.push(chunk));
+          res.on('end', () => callback(null, Buffer.concat(chunks)));
+        })
+        .expect(200);
+
+      expect(response.headers['content-type']).toMatch(/application\/pdf/);
+      expect(response.body.length).toBeGreaterThan(100);
+    });
+  });
+
   describe('Error Handling', () => {
     it('should handle invalid event ID format', async () => {
       await request(app)
