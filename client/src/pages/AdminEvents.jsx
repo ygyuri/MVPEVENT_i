@@ -29,6 +29,7 @@ import {
   Tag,
   Image as ImageIcon,
   ExternalLink,
+  FileDown,
 } from "lucide-react";
 import api from "../utils/api";
 import analyticsAPI from "../utils/analyticsAPI";
@@ -53,6 +54,7 @@ const AdminEvents = () => {
   const [financeDetails, setFinanceDetails] = useState(null);
   const [financeLoading, setFinanceLoading] = useState(false);
   const [financeError, setFinanceError] = useState(null);
+  const [salesPdfLoading, setSalesPdfLoading] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState({});
   const [showCommissionModal, setShowCommissionModal] = useState(false);
@@ -164,7 +166,7 @@ const AdminEvents = () => {
         fetchEvents();
         setShowStatusMenu({ ...showStatusMenu, [eventId]: false });
         // Update event details if modal is open
-        if (eventDetails && eventDetails._id === eventId) {
+        if (eventDetails && eventDetailId(eventDetails) === String(eventId)) {
           setEventDetails({ ...eventDetails, status });
         }
       }
@@ -215,6 +217,59 @@ const AdminEvents = () => {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount || 0);
+  };
+
+  /** Organizer GET /events/:id returns Mongoose toJSON — `id` is set, `_id` is removed */
+  const eventDetailId = (details) => {
+    if (!details) return null;
+    const raw = details.id ?? details._id;
+    return raw != null ? String(raw) : null;
+  };
+
+  const handleDownloadSalesReportPdf = async (eventIdForPdf) => {
+    if (!eventIdForPdf) return;
+    try {
+      setSalesPdfLoading(true);
+      const res = await analyticsAPI.downloadEventSalesReportPdf(eventIdForPdf);
+      const ct = (res.headers["content-type"] || "").toLowerCase();
+      if (!ct.includes("application/pdf")) {
+        let msg = "Could not download report";
+        if (res.data instanceof Blob) {
+          const text = await res.data.text();
+          try {
+            const j = JSON.parse(text);
+            if (j.error) msg = j.error;
+          } catch {
+            /* ignore */
+          }
+        }
+        toast.error(msg);
+        return;
+      }
+      const blob =
+        res.data instanceof Blob
+          ? res.data
+          : new Blob([res.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cd = res.headers["content-disposition"] || "";
+      let fname = "sales-report.pdf";
+      const m = cd.match(/filename="?([^";\n]+)"?/i);
+      if (m) fname = m[1];
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Sales report downloaded");
+    } catch (err) {
+      const raw =
+        err?.response?.data?.error || err?.message || "Failed to download report";
+      toast.error(typeof raw === "string" ? raw : "Failed to download report");
+    } finally {
+      setSalesPdfLoading(false);
+    }
   };
 
   const statusColors = {
@@ -839,33 +894,48 @@ const AdminEvents = () => {
                         )}
 
                         <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                          <div className="flex items-center justify-between gap-3 mb-3">
+                          <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                             <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
                               Revenue (This Event)
                             </h4>
-                            <button
-                              onClick={async () => {
-                                if (!eventDetails?._id) return;
-                                try {
-                                  setFinanceLoading(true);
-                                  setFinanceError(null);
-                                  const financeResponse = await analyticsAPI.getEventFinance(
-                                    eventDetails._id
-                                  );
-                                  setFinanceDetails(financeResponse.data?.data || null);
-                                } catch (err) {
-                                  setFinanceError(
-                                    err?.response?.data?.error || "Failed to load finance"
-                                  );
-                                } finally {
-                                  setFinanceLoading(false);
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDownloadSalesReportPdf(eventDetailId(eventDetails))
                                 }
-                              }}
-                              disabled={financeLoading}
-                              className="text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-60"
-                            >
-                              Refresh
-                            </button>
+                                disabled={salesPdfLoading || !eventDetailId(eventDetails)}
+                                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-60"
+                              >
+                                <FileDown className="w-3.5 h-3.5" />
+                                {salesPdfLoading ? "Preparing…" : "Sales report (PDF)"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const eid = eventDetailId(eventDetails);
+                                  if (!eid) return;
+                                  try {
+                                    setFinanceLoading(true);
+                                    setFinanceError(null);
+                                    const financeResponse = await analyticsAPI.getEventFinance(
+                                      eid
+                                    );
+                                    setFinanceDetails(financeResponse.data?.data || null);
+                                  } catch (err) {
+                                    setFinanceError(
+                                      err?.response?.data?.error || "Failed to load finance"
+                                    );
+                                  } finally {
+                                    setFinanceLoading(false);
+                                  }
+                                }}
+                                disabled={financeLoading}
+                                className="text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-60"
+                              >
+                                Refresh
+                              </button>
+                            </div>
                           </div>
 
                           <div className="relative">
@@ -1217,7 +1287,7 @@ const AdminEvents = () => {
                           </a>
                           {eventDetails.organizer?.role === "organizer" && (
                             <Link
-                              to={`/organizer/events/${eventDetails._id}/edit`}
+                              to={`/organizer/events/${eventDetailId(eventDetails)}/edit`}
                               className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                             >
                               <Edit className="w-4 h-4" />

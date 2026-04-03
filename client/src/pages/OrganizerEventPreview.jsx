@@ -13,7 +13,8 @@ import {
   Pause,
   X,
   Trash2,
-  BarChart3
+  BarChart3,
+  FileDown
 } from 'lucide-react';
 import EnhancedButton from '../components/EnhancedButton';
 import EventStatusBadge from '../components/organizer/EventStatusBadge';
@@ -37,6 +38,7 @@ const OrganizerEventPreview = () => {
   const [finance, setFinance] = useState(null);
   const [financeLoading, setFinanceLoading] = useState(false);
   const [financeError, setFinanceError] = useState(null);
+  const [salesPdfLoading, setSalesPdfLoading] = useState(false);
 
   const { currentEvent, loading, error } = useSelector((state) => state.organizer);
 
@@ -79,6 +81,52 @@ const OrganizerEventPreview = () => {
     if (currentEvent._id === eventId) return currentEvent;
     return currentEvent;
   }, [currentEvent, eventId]);
+
+  const handleDownloadSalesReportPdf = useCallback(async () => {
+    if (!eventId) return;
+    try {
+      setSalesPdfLoading(true);
+      const res = await analyticsAPI.downloadEventSalesReportPdf(eventId);
+      const ct = (res.headers['content-type'] || '').toLowerCase();
+      if (!ct.includes('application/pdf')) {
+        let msg = 'Could not download report';
+        if (res.data instanceof Blob) {
+          const text = await res.data.text();
+          try {
+            const j = JSON.parse(text);
+            if (j.error) msg = j.error;
+          } catch {
+            /* ignore */
+          }
+        }
+        toast.error(msg);
+        return;
+      }
+      const blob =
+        res.data instanceof Blob
+          ? res.data
+          : new Blob([res.data], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cd = res.headers['content-disposition'] || '';
+      let fname = 'sales-report.pdf';
+      const m = cd.match(/filename="?([^";\n]+)"?/i);
+      if (m) fname = m[1];
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Sales report downloaded');
+    } catch (err) {
+      const raw =
+        err?.response?.data?.error || err?.message || 'Failed to download report';
+      toast.error(typeof raw === 'string' ? raw : 'Failed to download report');
+    } finally {
+      setSalesPdfLoading(false);
+    }
+  }, [eventId]);
 
   const handleAction = useCallback(
     async (action) => {
@@ -268,29 +316,41 @@ const OrganizerEventPreview = () => {
             </div>
 
             <div className="mt-6 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/40 dark:bg-gray-900/20 backdrop-blur-sm p-4">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
                 <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
                   Revenue (This Event)
                 </h2>
-                <button
-                  onClick={async () => {
-                    if (!eventId) return;
-                    try {
-                      setFinanceLoading(true);
-                      setFinanceError(null);
-                      const response = await analyticsAPI.getEventFinance(eventId);
-                      setFinance(response.data?.data || null);
-                    } catch (err) {
-                      setFinanceError(err?.response?.data?.error || 'Failed to load finance');
-                    } finally {
-                      setFinanceLoading(false);
-                    }
-                  }}
-                  className="text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                  disabled={financeLoading}
-                >
-                  Refresh
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDownloadSalesReportPdf}
+                    disabled={salesPdfLoading || !eventId}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-60"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                    {salesPdfLoading ? 'Preparing…' : 'Sales report (PDF)'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!eventId) return;
+                      try {
+                        setFinanceLoading(true);
+                        setFinanceError(null);
+                        const response = await analyticsAPI.getEventFinance(eventId);
+                        setFinance(response.data?.data || null);
+                      } catch (err) {
+                        setFinanceError(err?.response?.data?.error || 'Failed to load finance');
+                      } finally {
+                        setFinanceLoading(false);
+                      }
+                    }}
+                    className="text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                    disabled={financeLoading}
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
 
               <div className="relative mt-3">
