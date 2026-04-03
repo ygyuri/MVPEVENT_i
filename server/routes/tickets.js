@@ -294,6 +294,22 @@ router.post(
         console.log("✅ Existing user found:", { userId: user._id, email });
       }
 
+      // Wallet lists tickets by JWT user. If checkout used a different email than the
+      // logged-in account, tickets were previously attached to the form-email user — so
+      // "My Tickets" looked empty. Always attribute ownership to the session user when present.
+      if (req.user) {
+        const authEmail = (req.user.email || "").toLowerCase().trim();
+        if (authEmail !== emailLower) {
+          console.log(
+            "🎫 direct-purchase: attributing order/tickets to logged-in user (form email differed)",
+            { formEmail: emailLower, authUserId: req.user._id, authEmail }
+          );
+        }
+        user = req.user;
+        isNewUser = false;
+        tempPassword = null;
+      }
+
       // ========== STEP 3: Handle Affiliate Tracking ==========
       let affiliateData = {
         referralCode: null,
@@ -362,7 +378,7 @@ router.post(
       const order = new Order({
         customer: {
           userId: user._id,
-          email: user.email,
+          email: emailLower,
           firstName: firstName, // Use form data, not database value
           lastName: lastName,   // Use form data, not database value
           name: fullName, // Add full name field
@@ -439,7 +455,7 @@ router.post(
             firstName: holderFirstName,
             lastName: holderLastName,
             name: fullName, // Add full name field
-            email: user.email,
+            email: emailLower,
             phone,
           },
           ticketType: ticketType,
@@ -461,68 +477,119 @@ router.post(
         ticketIds: tickets.map((t) => t._id),
       });
 
-      // ========== STEP 7: Initiate PayHero Payment ==========
+      // Local / Docker: skip PayHero when explicitly enabled and not production.
+      // Do not require NODE_ENV===development — many local runs omit NODE_ENV, which broke SKIP_PAYMENT.
+      const nodeEnv = (process.env.NODE_ENV || "").trim().toLowerCase();
+      const isProduction =
+        nodeEnv === "production" || nodeEnv === "prod";
+      const truthyEnv = (v) => {
+        if (v == null || v === "") return false;
+        const s = String(v).trim().toLowerCase();
+        return s === "true" || s === "1" || s === "yes";
+      };
+      const skipPaymentRequested =
+        truthyEnv(process.env.DEV_SKIP_PAYMENT) ||
+        truthyEnv(process.env.SKIP_PAYMENT);
+      const devSkipPayment = !isProduction && skipPaymentRequested;
+      const zeroTotalPurchase = totalAmount <= 0;
+      const skipPayhero = devSkipPayment || zeroTotalPurchase;
+
+      console.log("[direct-purchase] payment path:", {
+        nodeEnv: process.env.NODE_ENV || "(unset)",
+        skipPaymentRequested,
+        devSkipPayment,
+        zeroTotalPurchase,
+        skipPayhero,
+        totalAmount,
+      });
+
+      // ========== STEP 7: Initiate PayHero Payment (or complete without gateway) ==========
       let paymentResponse = null;
       let paymentUrl = null;
 
-      try {
-        // Validate and format phone number
-        const validatedPhone = payheroService.validatePhoneNumber(phone);
-
-        // Generate external reference
-        const externalReference =
-          payheroService.generateExternalReference("TKT");
-
-        // Prepare payment request
-        const paymentData = {
-          amount: totalAmount,
-          phoneNumber: validatedPhone,
-          externalReference,
-          customerName: fullName, // Use the pre-computed full name
-          callbackUrl:
-            process.env.PAYHERO_CALLBACK_URL ||
-            "https://your-domain.com/api/payhero/callback",
-        };
-
-        // Initiate payment
-        paymentResponse = await payheroService.initiatePayment(paymentData);
-
-        // Update order with payment details
-        order.payment.paymentReference = externalReference;
-        order.payment.checkoutRequestId = paymentResponse.checkout_request_id;
-        order.payment.paymentProvider = "payhero";
-        order.payment.paymentData = {
-          amount: totalAmount,
-          phoneNumber: validatedPhone,
-          customerName: fullName, // Use the pre-computed full name
-        };
-        order.payment.status = "processing";
-        order.paymentStatus = "processing";
-
+      if (skipPayhero) {
+        order.status = "paid";
+        order.paymentStatus = "completed";
+        order.completedAt = new Date();
+        order.payment.status = "completed";
+        order.payment.paidAt = new Date();
+        order.payment.method = "payhero";
+        if (devSkipPayment && !zeroTotalPurchase) {
+          order.payment.mpesaReceiptNumber = `DEV-SKIP-${Date.now()}`;
+          console.warn(
+            "⚠️ DEV_SKIP_PAYMENT: order marked paid without gateway (development only)"
+          );
+        } else if (zeroTotalPurchase) {
+          order.payment.mpesaReceiptNumber =
+            order.payment.mpesaReceiptNumber || `FREE-${Date.now()}`;
+        }
         await order.save();
-
-        paymentUrl = paymentResponse.payment_url || null;
-
-        console.log("✅ Payment initiated:", {
-          externalReference,
-          checkoutRequestId: paymentResponse.checkout_request_id,
-        });
-      } catch (paymentError) {
-        console.error("❌ Payment initiation failed:", paymentError);
-
-        // Update order status to failed
-        order.payment.status = "failed";
-        order.paymentStatus = "failed";
-        order.status = "cancelled";
-        await order.save();
-
-        return res.status(500).json({
-          success: false,
-          error: "Payment initiation failed",
-          details: paymentError.message,
+        console.log("✅ Checkout completed without payment gateway:", {
           orderId: order._id,
-          orderNumber: order.orderNumber,
+          devSkipPayment,
+          zeroTotalPurchase,
+          totalAmount,
         });
+      } else {
+        try {
+          // Validate and format phone number
+          const validatedPhone = payheroService.validatePhoneNumber(phone);
+
+          // Generate external reference
+          const externalReference =
+            payheroService.generateExternalReference("TKT");
+
+          // Prepare payment request
+          const paymentData = {
+            amount: totalAmount,
+            phoneNumber: validatedPhone,
+            externalReference,
+            customerName: fullName, // Use the pre-computed full name
+            callbackUrl:
+              process.env.PAYHERO_CALLBACK_URL ||
+              "https://your-domain.com/api/payhero/callback",
+          };
+
+          // Initiate payment
+          paymentResponse = await payheroService.initiatePayment(paymentData);
+
+          // Update order with payment details
+          order.payment.paymentReference = externalReference;
+          order.payment.checkoutRequestId = paymentResponse.checkout_request_id;
+          order.payment.paymentProvider = "payhero";
+          order.payment.paymentData = {
+            amount: totalAmount,
+            phoneNumber: validatedPhone,
+            customerName: fullName, // Use the pre-computed full name
+          };
+          order.payment.status = "processing";
+          order.paymentStatus = "processing";
+
+          await order.save();
+
+          paymentUrl = paymentResponse.payment_url || null;
+
+          console.log("✅ Payment initiated:", {
+            externalReference,
+            checkoutRequestId: paymentResponse.checkout_request_id,
+          });
+        } catch (paymentError) {
+          console.error("❌ Payment initiation failed:", paymentError);
+
+          // Update order status to failed
+          order.payment.status = "failed";
+          order.paymentStatus = "failed";
+          order.status = "cancelled";
+          await order.save();
+
+          return res.status(500).json({
+            success: false,
+            error: "Payment initiation failed",
+            details: paymentError.message,
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+          });
+        }
       }
 
       // ========== STEP 8: Welcome Email ==========
@@ -540,7 +607,9 @@ router.post(
       // ========== STEP 9: Return Success Response ==========
       res.status(201).json({
         success: true,
-        message: "Order created successfully. Please complete payment.",
+        message: skipPayhero
+          ? "Order completed. Your tickets are ready."
+          : "Order created successfully. Please complete payment.",
         data: {
           orderId: order._id,
           orderNumber: order.orderNumber,
@@ -554,6 +623,7 @@ router.post(
           ticketCount: tickets.length,
           status: order.status,
           paymentStatus: order.paymentStatus,
+          skippedPayment: !!skipPayhero,
         },
       });
     } catch (error) {
@@ -629,7 +699,7 @@ router.get("/my", verifyToken, async (req, res) => {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          pages: Math.ceil(total / parseInt(limit)),
+          pages: Math.max(1, Math.ceil(total / parseInt(limit)) || 1),
         },
       },
     });

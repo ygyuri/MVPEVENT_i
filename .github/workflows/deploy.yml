@@ -585,6 +585,31 @@ jobs:
     if: always() && needs.health-check.result == 'success'
     steps:
       - uses: actions/checkout@v4
+
+      - name: Build deploy email context (commit summary for test emails)
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          DEPLOY_GIT_REF: ${{ github.ref_name }}
+          DEPLOY_REPOSITORY: ${{ github.repository }}
+          DEPLOY_RUN_ID: ${{ github.run_id }}
+          DEPLOY_WORKFLOW: ${{ github.workflow }}
+          DEPLOY_ACTOR: ${{ github.actor }}
+          DEPLOY_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node server/scripts/write-deploy-email-context.js
+
+      - name: Upload deploy context to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT || 22 }}
+          source: deploy-email-context.json
+          target: /tmp/
+          timeout: 120s
+          command_timeout: 5m
+          debug: true
+
       - name: SSH email check on VM
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -598,6 +623,25 @@ jobs:
           script: |
             set -e
             echo "📧 Starting email configuration check..."
+
+            if [ -f /tmp/deploy-email-context.json ]; then
+              echo "📦 Copying deploy context into server container (for commit summary in test emails)..."
+              cd /root/MVPEVENT_i
+              if sudo docker compose -f docker-compose.prod.yml cp /tmp/deploy-email-context.json server:/tmp/deploy-email-context.json 2>/dev/null; then
+                echo "✅ deploy-email-context.json copied via compose cp"
+              else
+                CID=$(sudo docker compose -f docker-compose.prod.yml ps -q server 2>/dev/null || true)
+                if [ -n "$CID" ]; then
+                  sudo docker cp /tmp/deploy-email-context.json "${CID}:/tmp/deploy-email-context.json" && echo "✅ deploy-email-context.json copied via docker cp"
+                else
+                  echo "⚠️ Could not resolve server container; test emails will omit deploy summary"
+                fi
+              fi
+              cd - >/dev/null || true
+            else
+              echo "⚠️ /tmp/deploy-email-context.json missing on VM; test emails will omit deploy summary"
+            fi
+            echo ""
             
             # Get SMTP configuration from environment
             SMTP_HOST=$(sudo grep SMTP_HOST /root/MVPEVENT_i/.env | cut -d'=' -f2)

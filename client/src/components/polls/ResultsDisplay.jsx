@@ -1,19 +1,37 @@
 import React from 'react';
-import { TrendingUp, Users, Eye, Download } from 'lucide-react';
+import { TrendingUp, Users, Eye, Download, Loader2 } from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
+import { cn } from '../../utils/cn';
+import { getPollOptionImageUrl, resolveMediaUrl } from '../../utils/resolveMediaUrl';
 
-const ResultsDisplay = ({ poll, results, userVote }) => {
-  if (!results) {
+const ResultsDisplay = ({ poll, results, userVote, isLoading, isOrganizerView = false }) => {
+  const { isDarkMode } = useTheme();
+  const opts = poll.options_json || poll.options || [];
+
+  if (isLoading || (!results && poll.status === 'closed')) {
     return (
-      <div className="text-center py-8">
-        <div className="w-12 h-12 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-          <TrendingUp className="w-6 h-6 text-gray-400" />
-        </div>
-        <p className="text-gray-600">Results are being calculated...</p>
+      <div className="flex flex-col items-center justify-center py-12">
+        <Loader2
+          className={cn('mb-4 h-10 w-10 animate-spin', isDarkMode ? 'text-[#8A4FFF]' : 'text-[#4f0f69]')}
+        />
+        <p className={cn('text-sm', isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
+          Loading final results…
+        </p>
       </div>
     );
   }
 
-  const getOptionIcon = (option) => {
+  if (!results || !results.results) {
+    return (
+      <div className="py-8 text-center">
+        <p className={cn('text-sm', isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
+          Results are not available yet.
+        </p>
+      </div>
+    );
+  }
+
+  const getOptionIcon = () => {
     switch (poll.poll_type) {
       case 'artist_selection':
         return '🎵';
@@ -26,12 +44,15 @@ const ResultsDisplay = ({ poll, results, userVote }) => {
     }
   };
 
+  const icon = getOptionIcon();
+
   const getTotalVotes = () => {
-    return results.analytics?.total_votes || 0;
+    return results.analytics?.total_votes ?? results.total_votes ?? 0;
   };
 
   const getParticipationRate = () => {
-    return results.analytics?.participation_rate || 0;
+    const p = results.analytics?.participation_rate;
+    return typeof p === 'number' && !Number.isNaN(p) ? p : 0;
   };
 
   const getResultsForOption = (optionId) => {
@@ -39,142 +60,139 @@ const ResultsDisplay = ({ poll, results, userVote }) => {
     return result || { votes: 0, percentage: 0 };
   };
 
-  const sortedOptions = poll.options_json
-    .map(option => ({
+  const sortedOptions = opts
+    .map((option) => ({
       ...option,
       ...getResultsForOption(option.id)
     }))
     .sort((a, b) => b.votes - a.votes);
 
-  const isUserVote = (optionId) => {
-    return userVote && userVote.includes(optionId);
-  };
+  const isUserVote = (optionId) => userVote && userVote.includes(optionId);
 
   return (
     <div className="space-y-6">
-      {/* Results Header */}
       <div className="text-center">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          {poll.status === 'closed' ? 'Final Results' : 'Live Results'}
+        <h3
+          className={cn(
+            'mb-2 text-lg font-semibold',
+            isDarkMode ? 'text-white' : 'text-gray-900'
+          )}
+        >
+          {poll.status === 'closed'
+            ? 'Final results'
+            : isOrganizerView
+              ? 'Current tally'
+              : 'Results'}
         </h3>
-        
-        <div className="flex items-center justify-center gap-6 text-sm text-gray-600">
+
+        <div
+          className={cn(
+            'flex flex-wrap items-center justify-center gap-6 text-sm',
+            isDarkMode ? 'text-gray-400' : 'text-gray-600'
+          )}
+        >
           <div className="flex items-center gap-1">
-            <Users className="w-4 h-4" />
+            <Users className="h-4 w-4" />
             <span>{getTotalVotes()} votes</span>
           </div>
           <div className="flex items-center gap-1">
-            <TrendingUp className="w-4 h-4" />
+            <TrendingUp className="h-4 w-4" />
             <span>{getParticipationRate()}% participation</span>
           </div>
         </div>
       </div>
 
-      {/* Results */}
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {sortedOptions.map((option, index) => {
           const isUserSelected = isUserVote(option.id);
           const isWinner = index === 0 && option.votes > 0;
-          
+          const pct = Number(option.percentage) || 0;
+          const optionImage = getPollOptionImageUrl(option);
+
           return (
             <div
               key={option.id}
-              className={`relative p-4 rounded-lg border transition-all duration-200 ${
-                isWinner 
-                  ? 'bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-200' 
-                  : isUserSelected
-                  ? 'bg-blue-50 border-blue-200'
-                  : 'bg-gray-50 border-gray-200'
-              }`}
+              className={cn(
+                'relative overflow-hidden rounded-2xl border backdrop-blur-md transition-shadow',
+                isDarkMode
+                  ? 'border-white/10 bg-white/[0.06]'
+                  : 'border-gray-200/80 bg-white/80 shadow-md',
+                isWinner && (isDarkMode ? 'ring-1 ring-amber-400/40' : 'ring-2 ring-amber-200'),
+                isUserSelected && !isWinner && (isDarkMode ? 'ring-1 ring-[#8A4FFF]/40' : 'ring-2 ring-indigo-200')
+              )}
             >
-              {/* Winner Badge */}
               {isWinner && (
-                <div className="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                  🏆 Winner
+                <div className="absolute right-2 top-2 z-10 rounded-lg bg-amber-500 px-2 py-0.5 text-xs font-medium text-white shadow-md">
+                  Leading
                 </div>
               )}
-
-              {/* User Vote Badge */}
               {isUserSelected && !isWinner && (
-                <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                  Your Vote
+                <div className="absolute right-2 top-2 z-10 rounded-lg bg-[#4f0f69] px-2 py-0.5 text-xs font-medium text-white shadow-md">
+                  Your vote
                 </div>
               )}
 
-              <div className="flex items-center gap-4">
-                {/* Rank */}
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  index === 0 && option.votes > 0
-                    ? 'bg-yellow-500 text-white'
-                    : index === 1 && option.votes > 0
-                    ? 'bg-gray-400 text-white'
-                    : index === 2 && option.votes > 0
-                    ? 'bg-orange-500 text-white'
-                    : 'bg-gray-200 text-gray-600'
-                }`}>
+              {optionImage && (
+                <div className="border-b border-black/5 dark:border-white/10">
+                  <img
+                    src={resolveMediaUrl(optionImage)}
+                    alt={option.label}
+                    className="aspect-[16/10] w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              )}
+
+              <div className="flex items-start gap-3 p-4">
+                <div
+                  className={cn(
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold',
+                    index === 0 && option.votes > 0
+                      ? 'bg-amber-500 text-white'
+                      : isDarkMode
+                        ? 'bg-white/10 text-gray-300'
+                        : 'bg-gray-200 text-gray-700'
+                  )}
+                >
                   {index + 1}
                 </div>
-
-                {/* Option Content */}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    {getOptionIcon(option) && (
-                      <span className="text-lg">{getOptionIcon(option)}</span>
-                    )}
-                    <span className="font-medium text-gray-900">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex items-center gap-2">
+                    {icon && <span className="text-lg">{icon}</span>}
+                    <span className={cn('font-medium', isDarkMode ? 'text-white' : 'text-gray-900')}>
                       {option.label}
                     </span>
                   </div>
-                  
                   {option.description && (
-                    <p className="text-sm text-gray-600">
+                    <p className={cn('text-sm', isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
                       {option.description}
                     </p>
                   )}
-
-                  {/* Special fields for different poll types */}
-                  {option.artist_name && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Artist: {option.artist_name}
-                    </p>
-                  )}
-                  
-                  {option.artist_genre && (
-                    <p className="text-xs text-gray-500">
-                      Genre: {option.artist_genre}
-                    </p>
-                  )}
-                  
-                  {option.feature_cost && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Cost: ${option.feature_cost}
-                    </p>
-                  )}
                 </div>
-
-                {/* Vote Count and Percentage */}
                 <div className="text-right">
-                  <div className="text-lg font-bold text-gray-900">
+                  <div className={cn('text-lg font-bold', isDarkMode ? 'text-white' : 'text-gray-900')}>
                     {option.votes}
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {option.percentage.toFixed(1)}%
+                  <div className={cn('text-sm', isDarkMode ? 'text-gray-400' : 'text-gray-600')}>
+                    {pct.toFixed(1)}%
                   </div>
                 </div>
               </div>
 
-              {/* Progress Bar */}
-              <div className="mt-3">
-                <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="px-4 pb-4">
+                <div className={cn('h-2 w-full overflow-hidden rounded-full', isDarkMode ? 'bg-white/10' : 'bg-gray-200')}>
                   <div
-                    className={`h-2 rounded-full transition-all duration-500 ${
+                    className={cn(
+                      'h-2 rounded-full transition-all duration-500',
                       isWinner
-                        ? 'bg-gradient-to-r from-yellow-400 to-yellow-500'
+                        ? 'bg-gradient-to-r from-amber-400 to-amber-600'
                         : isUserSelected
-                        ? 'bg-blue-500'
-                        : 'bg-gray-400'
-                    }`}
-                    style={{ width: `${option.percentage}%` }}
+                          ? 'bg-gradient-to-r from-[#4f0f69] to-[#8A4FFF]'
+                          : isDarkMode
+                            ? 'bg-gray-500'
+                            : 'bg-gray-400'
+                    )}
+                    style={{ width: `${Math.min(100, pct)}%` }}
                   />
                 </div>
               </div>
@@ -183,51 +201,53 @@ const ResultsDisplay = ({ poll, results, userVote }) => {
         })}
       </div>
 
-      {/* Analytics Summary */}
       {results.analytics && (
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-            <Eye className="w-4 h-4" />
-            Analytics Summary
+        <div
+          className={cn(
+            'rounded-xl border p-4',
+            isDarkMode ? 'border-white/10 bg-white/[0.04]' : 'border-gray-200 bg-gray-50/80'
+          )}
+        >
+          <h4
+            className={cn(
+              'mb-3 flex items-center gap-2 font-medium',
+              isDarkMode ? 'text-gray-200' : 'text-gray-900'
+            )}
+          >
+            <Eye className="h-4 w-4" />
+            Summary
           </h4>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-900">
-                {results.analytics.total_votes}
+
+          <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+            {[
+              ['Total votes', results.analytics.total_votes],
+              ['Participation', `${getParticipationRate()}%`],
+              ['Identified', results.analytics.identified_votes ?? 0],
+              ['Anonymous', results.analytics.anonymous_votes ?? 0]
+            ].map(([label, val]) => (
+              <div key={label} className="text-center">
+                <div className={cn('text-lg font-bold', isDarkMode ? 'text-white' : 'text-gray-900')}>
+                  {val}
+                </div>
+                <div className={cn(isDarkMode ? 'text-gray-500' : 'text-gray-600')}>{label}</div>
               </div>
-              <div className="text-gray-600">Total Votes</div>
-            </div>
-            
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-900">
-                {results.analytics.participation_rate}%
-              </div>
-              <div className="text-gray-600">Participation</div>
-            </div>
-            
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-900">
-                {results.analytics.identified_votes || 0}
-              </div>
-              <div className="text-gray-600">Identified</div>
-            </div>
-            
-            <div className="text-center">
-              <div className="text-lg font-bold text-gray-900">
-                {results.analytics.anonymous_votes || 0}
-              </div>
-              <div className="text-gray-600">Anonymous</div>
-            </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Export Button (for organizers) */}
       <div className="text-center">
-        <button className="inline-flex items-center gap-2 px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-          <Download className="w-4 h-4" />
-          Export Results
+        <button
+          type="button"
+          className={cn(
+            'inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm transition-colors',
+            isDarkMode
+              ? 'border-white/15 text-gray-300 hover:bg-white/10'
+              : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+          )}
+        >
+          <Download className="h-4 w-4" />
+          Export results
         </button>
       </div>
     </div>

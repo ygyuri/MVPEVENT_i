@@ -67,8 +67,12 @@ if (process.env.NODE_ENV !== "production") {
   app.set("etag", false);
 }
 
-// Middleware
-app.use(helmet());
+// Middleware — allow SPA (other port / domain) to load images & assets from this API
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 app.use(passport.initialize());
 
 // Trust proxy for rate limiting behind nginx
@@ -497,6 +501,10 @@ if (process.env.NODE_ENV !== "production") {
 
 // Test routes
 app.use("/api/test", testRoutes);
+
+// Event images (poll options, uploads) — mount before main /api/events router
+const eventImageRoutes = require("./routes/eventImageRoutes");
+app.use("/api/events", eventImageRoutes);
 
 // Event routes
 app.use("/api/events", eventRoutes);

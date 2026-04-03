@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { CheckCircle } from 'lucide-react';
 import { submitVote, fetchResults } from '../../store/slices/pollsSlice';
+import { getPollOptionImageUrl, resolveMediaUrl } from '../../utils/resolveMediaUrl';
 
 const VoteInterface = ({ poll, onVoteSuccess }) => {
   const dispatch = useDispatch();
@@ -82,6 +83,7 @@ const VoteInterface = ({ poll, onVoteSuccess }) => {
 };
 
 const VoteOption = ({ option, isSelected, isSingleChoice, onClick }) => {
+  const optionImage = getPollOptionImageUrl(option);
   return (
     <button
       onClick={onClick}
@@ -111,8 +113,13 @@ const VoteOption = ({ option, isSelected, isSingleChoice, onClick }) => {
         </div>
 
         <div className="flex-1">
-          {option.image_url && (
-            <img src={option.image_url} alt={option.label} className="w-full h-32 object-cover rounded-lg mb-2" />
+          {optionImage && (
+            <img
+              src={resolveMediaUrl(optionImage)}
+              alt={option.label}
+              className="mb-2 h-32 w-full rounded-lg object-cover"
+              loading="lazy"
+            />
           )}
           <h5 className="font-semibold text-gray-900 dark:text-white">{option.label}</h5>
           {option.artist_genre && (

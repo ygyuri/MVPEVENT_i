@@ -4,6 +4,7 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 const Poll = require('../models/Poll');
 const Event = require('../models/Event');
 const Ticket = require('../models/Ticket');
+const { saveDataUrlImage } = require('../utils/saveDataUrlImage');
 const router = express.Router();
 
 // Simple validation middleware
@@ -146,17 +147,49 @@ router.post(
         }
       }
 
-      // Transform options with unique IDs
-      const transformedOptions = validOptions.map((opt, index) => ({
-        id: `opt_${Date.now()}_${index}`,
-        label: opt.label.trim(),
-        description: opt.description?.trim() || '',
-        image_url: opt.image_url?.trim() || '',
-        ...(opt.artist_name && { artist_name: opt.artist_name.trim() }),
-        ...(opt.artist_genre && { artist_genre: opt.artist_genre.trim() }),
-        ...(opt.theme_color_hex && { theme_color_hex: opt.theme_color_hex.trim() }),
-        ...(opt.feature_cost && { feature_cost: parseFloat(opt.feature_cost) })
-      }));
+      // Transform options with unique IDs; persist data-URL images to disk
+      const ts = Date.now();
+      const transformedOptions = [];
+      for (let index = 0; index < validOptions.length; index++) {
+        const opt = validOptions[index];
+        let imageUrl = (opt.image_url && String(opt.image_url).trim()) || '';
+
+        if (imageUrl.startsWith('data:image/')) {
+          try {
+            imageUrl = saveDataUrlImage(imageUrl, eventId, `${ts}-${index}`);
+          } catch (imgErr) {
+            console.error('[POLLS] Option image save failed:', imgErr);
+            return res.status(400).json({
+              success: false,
+              error: imgErr.message || `Failed to save image for option ${index + 1}`
+            });
+          }
+        } else if (imageUrl) {
+          if (!/^https?:\/\//i.test(imageUrl)) {
+            return res.status(400).json({
+              success: false,
+              error: `Option ${index + 1}: image must be a valid http(s) URL or an uploaded photo`
+            });
+          }
+          if (imageUrl.length > 2048) {
+            return res.status(400).json({
+              success: false,
+              error: 'Image URL is too long (max 2048 characters)'
+            });
+          }
+        }
+
+        transformedOptions.push({
+          id: `opt_${ts}_${index}_${Math.random().toString(36).slice(2, 10)}`,
+          label: opt.label.trim(),
+          description: opt.description?.trim() || '',
+          ...(imageUrl ? { image_url: imageUrl } : {}),
+          ...(opt.artist_name && { artist_name: opt.artist_name.trim() }),
+          ...(opt.artist_genre && { artist_genre: opt.artist_genre.trim() }),
+          ...(opt.theme_color_hex && { theme_color_hex: opt.theme_color_hex.trim() }),
+          ...(opt.feature_cost && { feature_cost: parseFloat(opt.feature_cost) })
+        });
+      }
 
       // Create poll
       const poll = new Poll({

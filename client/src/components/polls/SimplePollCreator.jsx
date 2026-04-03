@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { getPollOptionImageUrl, resolveMediaUrl } from '../../utils/resolveMediaUrl';
 import { useDispatch, useSelector } from 'react-redux';
 import { createPoll } from '../../store/slices/pollsSlice';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Plus, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, X, AlertCircle, CheckCircle, ImagePlus, Link2, Trash2 } from 'lucide-react';
 
 const POLL_TYPES = [
   { value: 'general', label: 'General Poll', icon: '📊' },
@@ -11,8 +11,10 @@ const POLL_TYPES = [
   { value: 'feature_selection', label: 'Feature Selection', icon: '⚡' }
 ];
 
+const inputClass =
+  'w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-gray-100 placeholder:text-gray-500 focus:border-[#8A4FFF]/50 focus:outline-none focus:ring-2 focus:ring-[#8A4FFF]/40 focus:ring-offset-0';
+
 const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
-  const { isDarkMode } = useTheme();
   const dispatch = useDispatch();
   const { isCreatingPoll, errors } = useSelector(state => state.polls);
   const { user } = useSelector(state => state.auth);
@@ -23,8 +25,8 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
     description: '',
     poll_type: 'general',
     options: [
-      { label: '', description: '' },
-      { label: '', description: '' }
+      { label: '', description: '', image_url: '' },
+      { label: '', description: '', image_url: '' }
     ],
     max_votes: 1,
     allow_vote_changes: true,
@@ -133,7 +135,7 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
     
     setFormData(prev => ({
       ...prev,
-      options: [...prev.options, { label: '', description: '' }]
+      options: [...prev.options, { label: '', description: '', image_url: '' }]
     }));
   };
 
@@ -169,7 +171,9 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
           description: opt.description?.trim() || '',
           ...(opt.artist_name && { artist_name: opt.artist_name.trim() }),
           ...(opt.artist_genre && { artist_genre: opt.artist_genre.trim() }),
-          ...(opt.image_url && { image_url: opt.image_url.trim() })
+          ...(typeof opt.image_url === 'string' && opt.image_url.trim()
+            ? { image_url: opt.image_url.trim() }
+            : {})
         }));
 
       const pollData = {
@@ -209,111 +213,102 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div 
-        className="rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-        style={{
-          background: isDarkMode ? 'var(--bg-card)' : 'var(--bg-card)',
-          color: isDarkMode ? 'var(--text-primary)' : 'var(--text-primary)'
-        }}
+    <div
+      role="presentation"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="poll-creator-title"
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-white/10 bg-slate-900/95 shadow-2xl"
+        onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 
-            className="text-2xl font-bold"
-            style={{ color: isDarkMode ? 'var(--text-primary)' : 'var(--text-primary)' }}
-          >
+        <div className="flex items-center justify-between border-b border-white/10 p-6">
+          <h2 id="poll-creator-title" className="text-2xl font-bold text-white">
             Create New Poll
           </h2>
           <button
+            type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 transition-colors hover:text-white"
+            aria-label="Close"
           >
-            <X className="w-6 h-6" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Poll Type Selection */}
+        <form onSubmit={handleSubmit} className="space-y-6 p-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Poll Type
-            </label>
+            <label className="mb-3 block text-sm font-medium text-gray-200">Poll Type</label>
             <div className="grid grid-cols-2 gap-3">
               {POLL_TYPES.map(type => (
                 <button
                   key={type.value}
                   type="button"
                   onClick={() => handleFieldChange('poll_type', type.value)}
-                  className={`p-4 rounded-lg border-2 transition-all ${
+                  className={`rounded-lg border-2 p-4 text-left transition-all ${
                     formData.poll_type === type.value
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      ? 'border-[#8A4FFF] bg-[#4f0f69]/20 text-gray-100'
+                      : 'border-white/10 text-gray-300 hover:border-white/20'
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{type.icon}</span>
-                    <span className="font-medium text-sm">{type.label}</span>
+                    <span className="text-sm font-medium">{type.label}</span>
                   </div>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Question */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Question <span className="text-red-500">*</span>
+            <label className="mb-2 block text-sm font-medium text-gray-200">
+              Question <span className="text-red-400">*</span>
             </label>
             <textarea
               value={formData.question}
-              onChange={(e) => handleFieldChange('question', e.target.value)}
+              onChange={e => handleFieldChange('question', e.target.value)}
               placeholder="e.g., What is your favorite music genre?"
               rows={3}
               maxLength={300}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                validationErrors.question ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`${inputClass} ${validationErrors.question ? 'border-red-500' : ''}`}
             />
-            <div className="flex justify-between mt-1">
+            <div className="mt-1 flex justify-between">
               {validationErrors.question && (
-                <span className="text-sm text-red-600">{validationErrors.question}</span>
+                <span className="text-sm text-red-400">{validationErrors.question}</span>
               )}
-              <span className="text-sm text-gray-500">
-                {formData.question.length}/300
-              </span>
+              <span className="text-sm text-gray-500">{formData.question.length}/300</span>
             </div>
           </div>
 
-          {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description (Optional)
+            <label className="mb-2 block text-sm font-medium text-gray-200">
+              Description (optional)
             </label>
             <textarea
               value={formData.description}
-              onChange={(e) => handleFieldChange('description', e.target.value)}
+              onChange={e => handleFieldChange('description', e.target.value)}
               placeholder="Provide additional context for voters..."
               rows={2}
               maxLength={500}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className={inputClass}
             />
           </div>
 
-          {/* Options */}
           <div>
-            <div className="flex justify-between items-center mb-3">
-              <label className="block text-sm font-medium text-gray-700">
-                Options <span className="text-red-500">*</span>
+            <div className="mb-3 flex items-center justify-between">
+              <label className="block text-sm font-medium text-gray-200">
+                Options <span className="text-red-400">*</span>
               </label>
               <button
                 type="button"
                 onClick={addOption}
                 disabled={formData.options.length >= 10}
-                className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                className="flex items-center gap-1 px-3 py-1 text-sm text-[#8A4FFF] hover:text-[#b388ff] disabled:cursor-not-allowed disabled:text-gray-600"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="h-4 w-4" />
                 Add Option
               </button>
             </div>
@@ -333,117 +328,113 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
             </div>
 
             {validationErrors.options && (
-              <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" />
+              <p className="mt-2 flex items-center gap-1 text-sm text-red-400">
+                <AlertCircle className="h-4 w-4" />
                 {validationErrors.options}
               </p>
             )}
           </div>
 
-          {/* Voting Settings */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Maximum Votes per Person
+              <label className="mb-2 block text-sm font-medium text-gray-200">
+                Maximum votes per person
               </label>
               <select
                 value={formData.max_votes}
-                onChange={(e) => handleFieldChange('max_votes', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onChange={e => handleFieldChange('max_votes', parseInt(e.target.value, 10))}
+                className={inputClass}
               >
                 {[1, 2, 3, 4, 5].map(num => (
-                  <option key={num} value={num}>{num}</option>
+                  <option key={num} value={num} className="bg-slate-900 text-gray-100">
+                    {num}
+                  </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Poll Closes At <span className="text-red-500">*</span>
+              <label className="mb-2 block text-sm font-medium text-gray-200">
+                Poll closes at <span className="text-red-400">*</span>
               </label>
               <input
                 type="datetime-local"
                 value={formData.closes_at}
-                onChange={(e) => handleFieldChange('closes_at', e.target.value)}
+                onChange={e => handleFieldChange('closes_at', e.target.value)}
                 min={new Date().toISOString().slice(0, 16)}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  validationErrors.closes_at ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`${inputClass} ${validationErrors.closes_at ? 'border-red-500' : ''}`}
               />
               {validationErrors.closes_at && (
-                <p className="text-sm text-red-600 mt-1">{validationErrors.closes_at}</p>
+                <p className="mt-1 text-sm text-red-400">{validationErrors.closes_at}</p>
               )}
             </div>
           </div>
 
-          {/* Toggles */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-4">
               <div>
-                <p className="font-medium text-gray-900">Allow Vote Changes</p>
-                <p className="text-sm text-gray-600">Attendees can change their vote before poll closes</p>
+                <p className="font-medium text-gray-100">Allow vote changes</p>
+                <p className="text-sm text-gray-400">Attendees can change their vote before the poll closes</p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
+              <label className="relative inline-flex cursor-pointer items-center">
                 <input
                   type="checkbox"
                   checked={formData.allow_vote_changes}
-                  onChange={(e) => handleFieldChange('allow_vote_changes', e.target.checked)}
-                  className="sr-only peer"
+                  onChange={e => handleFieldChange('allow_vote_changes', e.target.checked)}
+                  className="peer sr-only"
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="relative h-6 w-11 rounded-full bg-white/10 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-white/10 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#4f0f69] peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8A4FFF]/40" />
               </label>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-4">
               <div>
-                <p className="font-medium text-gray-900">Anonymous Voting</p>
-                <p className="text-sm text-gray-600">Hide voter identities in results</p>
+                <p className="font-medium text-gray-100">Anonymous voting</p>
+                <p className="text-sm text-gray-400">Hide voter identities in results</p>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
+              <label className="relative inline-flex cursor-pointer items-center">
                 <input
                   type="checkbox"
                   checked={formData.allow_anonymous}
-                  onChange={(e) => handleFieldChange('allow_anonymous', e.target.checked)}
-                  className="sr-only peer"
+                  onChange={e => handleFieldChange('allow_anonymous', e.target.checked)}
+                  className="peer sr-only"
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="relative h-6 w-11 rounded-full bg-white/10 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-white/10 after:bg-white after:transition-all after:content-[''] peer-checked:bg-[#4f0f69] peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#8A4FFF]/40" />
               </label>
             </div>
           </div>
 
-          {/* Error Display */}
           {errors.polls && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 rounded-lg border border-red-500/30 bg-red-950/40 p-4">
+              <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
               <div>
-                <h3 className="text-sm font-medium text-red-800">Failed to create poll</h3>
-                <p className="text-sm text-red-700 mt-1">{errors.polls}</p>
+                <h3 className="text-sm font-medium text-red-200">Failed to create poll</h3>
+                <p className="mt-1 text-sm text-red-300/90">{errors.polls}</p>
               </div>
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 border-t border-white/10 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="rounded-lg px-4 py-2 text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || isCreatingPoll}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] px-4 py-2 font-medium text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting || isCreatingPoll ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   Creating...
                 </>
               ) : (
                 <>
-                  <CheckCircle className="w-4 h-4" />
+                  <CheckCircle className="h-4 w-4" />
                   Create Poll
                 </>
               )}
@@ -455,19 +446,54 @@ const SimplePollCreator = ({ eventId, onClose, onSuccess }) => {
   );
 };
 
-// Option Input Component
+const MAX_OPTION_IMAGE_BYTES = 5 * 1024 * 1024;
+
 const OptionInput = ({ index, option, pollType, onChange, onRemove, canRemove }) => {
+  const fileInputRef = useRef(null);
+  const inputId = `poll-option-image-${index}`;
+
+  const handleImageFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_OPTION_IMAGE_BYTES) {
+      window.alert('Image must be 5 MB or smaller.');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => onChange(index, 'image_url', reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    onChange(index, 'image_url', '');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const rawImg = getPollOptionImageUrl(option);
+  const isDataImage = rawImg.startsWith('data:image/');
+  const urlFieldValue = isDataImage ? '' : rawImg;
+  const previewSrc = rawImg
+    ? isDataImage
+      ? rawImg
+      : resolveMediaUrl(rawImg)
+    : '';
+
   return (
-    <div className="border border-gray-200 rounded-lg p-4">
-      <div className="flex justify-between items-start mb-3">
-        <span className="text-sm font-medium text-gray-700">Option {index + 1}</span>
+    <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+      <div className="mb-3 flex items-start justify-between">
+        <span className="text-sm font-medium text-gray-200">Option {index + 1}</span>
         {canRemove && (
           <button
             type="button"
             onClick={() => onRemove(index)}
-            className="text-red-500 hover:text-red-700 transition-colors"
+            className="text-red-400 transition-colors hover:text-red-300"
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </button>
         )}
       </div>
@@ -476,15 +502,18 @@ const OptionInput = ({ index, option, pollType, onChange, onRemove, canRemove })
         <input
           type="text"
           value={option.label}
-          onChange={(e) => onChange(index, 'label', e.target.value)}
+          onChange={e => onChange(index, 'label', e.target.value)}
           placeholder={
-            pollType === 'artist_selection' ? 'Artist name (e.g., Drake)' :
-            pollType === 'theme_selection' ? 'Theme name (e.g., Neon Nights)' :
-            pollType === 'feature_selection' ? 'Feature name (e.g., VIP Lounge)' :
-            'Option label'
+            pollType === 'artist_selection'
+              ? 'Artist name (e.g., Drake)'
+              : pollType === 'theme_selection'
+                ? 'Theme name (e.g., Neon Nights)'
+                : pollType === 'feature_selection'
+                  ? 'Feature name (e.g., VIP Lounge)'
+                  : 'Option label'
           }
           required
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className={inputClass}
         />
 
         {pollType === 'artist_selection' && (
@@ -492,27 +521,79 @@ const OptionInput = ({ index, option, pollType, onChange, onRemove, canRemove })
             <input
               type="text"
               value={option.artist_name || ''}
-              onChange={(e) => onChange(index, 'artist_name', e.target.value)}
+              onChange={e => onChange(index, 'artist_name', e.target.value)}
               placeholder="Full artist name (required)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className={inputClass}
             />
             <input
               type="text"
               value={option.artist_genre || ''}
-              onChange={(e) => onChange(index, 'artist_genre', e.target.value)}
+              onChange={e => onChange(index, 'artist_genre', e.target.value)}
               placeholder="Genre (e.g., Hip-hop, Electronic)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className={inputClass}
             />
           </>
         )}
 
         <textarea
           value={option.description || ''}
-          onChange={(e) => onChange(index, 'description', e.target.value)}
+          onChange={e => onChange(index, 'description', e.target.value)}
           placeholder="Brief description (optional)"
           rows={2}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className={inputClass}
         />
+
+        <div className="rounded-lg border border-dashed border-white/15 bg-black/20 p-3">
+          <p className="mb-2 flex items-center gap-2 text-xs font-medium text-gray-400">
+            <ImagePlus className="h-3.5 w-3.5 text-[#8A4FFF]" />
+            Photo for this option (optional — e.g. artist headshot)
+          </p>
+          {previewSrc ? (
+            <div className="relative mb-3 overflow-hidden rounded-lg border border-white/10">
+              <img
+                src={previewSrc}
+                alt=""
+                className="h-36 w-full object-cover"
+              />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-lg bg-black/70 px-2 py-1 text-xs text-white backdrop-blur-sm hover:bg-black/90"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Remove
+              </button>
+            </div>
+          ) : null}
+          <input
+            ref={fileInputRef}
+            id={inputId}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            className="sr-only"
+            onChange={handleImageFile}
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <label
+              htmlFor={inputId}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#8A4FFF]/40 bg-[#4f0f69]/30 px-3 py-2 text-xs font-medium text-white transition hover:bg-[#4f0f69]/50"
+            >
+              <ImagePlus className="h-4 w-4" />
+              Upload image
+            </label>
+          </div>
+          <div className="mt-2 flex items-start gap-2">
+            <Link2 className="mt-2 h-3.5 w-3.5 shrink-0 text-gray-500" />
+            <input
+              type="url"
+              value={urlFieldValue}
+              onChange={(e) => onChange(index, 'image_url', e.target.value)}
+              placeholder="Or paste image URL (https://…)"
+              className={inputClass}
+            />
+          </div>
+          <p className="mt-1.5 text-[11px] text-gray-500">JPG, PNG, GIF or WebP, max 5 MB.</p>
+        </div>
       </div>
     </div>
   );

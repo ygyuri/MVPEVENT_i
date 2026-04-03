@@ -32,6 +32,7 @@ import ReferralLinksManager from "./pages/ReferralLinksManager";
 import UserPreferences from "./pages/UserPreferences";
 import ReminderHistory from "./pages/ReminderHistory";
 import PollsPage from "./pages/PollsPage";
+import OrganizerPollResultsPage from "./pages/OrganizerPollResultsPage";
 import PollsTest from "./pages/PollsTest";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
@@ -137,6 +138,10 @@ function App() {
                   <Route
                     path="/events/:eventId/polls"
                     element={<PollsPage />}
+                  />
+                  <Route
+                    path="/organizer/events/:eventId/polls/:pollId/results"
+                    element={<OrganizerPollResultsPage />}
                   />
                   <Route path="/polls-test" element={<PollsTest />} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />

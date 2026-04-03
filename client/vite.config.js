@@ -43,14 +43,14 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        // Use server container name in Docker (works from within Docker network)
-        // For local dev outside Docker, this will be overridden by axios baseURL
-        target: 'http://server:5001',
+        // Browser <img src="/api/..."> uses this proxy. Default localhost for host dev;
+        // in Docker set VITE_DEV_API_PROXY=http://server:5001 (or the API service URL).
+        target: process.env.VITE_DEV_API_PROXY || 'http://127.0.0.1:5001',
         changeOrigin: true,
         secure: false
       },
       '/socket.io': {
-        target: 'http://server:5001',
+        target: process.env.VITE_DEV_API_PROXY || 'http://127.0.0.1:5001',
         ws: true,
         changeOrigin: true
       }

@@ -66,29 +66,18 @@ async function verifyTicketHolder(req, res, next) {
       });
     }
 
-    // Check if user has valid ticket
-    const ticket = await Ticket.findOne({
-      eventId: event._id,
-      ownerUserId: userId
-    }).populate('orderId');
-
+    const { ticket, deny } = await findPollEligibleTicket(
+      event._id,
+      userId,
+      req.user?.email
+    );
     if (!ticket) {
       return res.status(403).json({
-        error: 'TICKET_REQUIRED',
-        message: 'Valid ticket required to access poll functionality'
+        error: deny.error || 'TICKET_REQUIRED',
+        message: deny.message || 'Valid ticket required to access poll functionality'
       });
     }
 
-    // Verify ticket status
-    const ticketValidation = await validateTicket(ticket);
-    if (!ticketValidation.isValid) {
-      return res.status(403).json({
-        error: ticketValidation.error,
-        message: ticketValidation.message
-      });
-    }
-
-    // Attach ticket and event to request
     req.ticket = ticket;
     req.event = event;
     next();
@@ -160,25 +149,15 @@ async function verifyVotingAccess(req, res, next) {
       });
     }
 
-    // Check if user has valid ticket
-    const ticket = await Ticket.findOne({
-      eventId: event._id,
-      ownerUserId: userId
-    }).populate('orderId');
-
+    const { ticket, deny } = await findPollEligibleTicket(
+      event._id,
+      userId,
+      req.user?.email
+    );
     if (!ticket) {
       return res.status(403).json({
-        error: 'TICKET_REQUIRED',
-        message: 'Valid ticket required to vote on polls'
-      });
-    }
-
-    // Verify ticket status
-    const ticketValidation = await validateTicket(ticket);
-    if (!ticketValidation.isValid) {
-      return res.status(403).json({
-        error: ticketValidation.error,
-        message: ticketValidation.message
+        error: deny.error || 'TICKET_REQUIRED',
+        message: deny.message || 'Valid ticket required to vote on polls'
       });
     }
 
@@ -239,25 +218,15 @@ async function verifyResultsAccess(req, res, next) {
       });
     }
 
-    // Check if user has valid ticket
-    const ticket = await Ticket.findOne({
-      eventId: event._id,
-      ownerUserId: userId
-    }).populate('orderId');
-
+    const { ticket, deny } = await findPollEligibleTicket(
+      event._id,
+      userId,
+      req.user?.email
+    );
     if (!ticket) {
       return res.status(403).json({
-        error: 'TICKET_REQUIRED',
-        message: 'Valid ticket required to view poll results'
-      });
-    }
-
-    // Verify ticket status
-    const ticketValidation = await validateTicket(ticket);
-    if (!ticketValidation.isValid) {
-      return res.status(403).json({
-        error: ticketValidation.error,
-        message: ticketValidation.message
+        error: deny.error || 'TICKET_REQUIRED',
+        message: deny.message || 'Valid ticket required to view poll results'
       });
     }
 
@@ -269,6 +238,82 @@ async function verifyResultsAccess(req, res, next) {
 
   } catch (error) {
     console.error('Results access verification middleware error:', error);
+    res.status(500).json({
+      error: 'RESULTS_ACCESS_VERIFICATION_FAILED',
+      message: 'Failed to verify results access'
+    });
+  }
+}
+
+/**
+ * Poll results: event or poll organizer / admin may view tallies without a ticket or vote.
+ * Otherwise same ticket check as verifyResultsAccess.
+ */
+async function verifyPollResultsAccess(req, res, next) {
+  try {
+    const { pollId } = req.params;
+    const userId = req.user._id;
+
+    if (!pollId) {
+      return res.status(400).json({
+        error: 'POLL_ID_REQUIRED',
+        message: 'Poll ID is required'
+      });
+    }
+
+    const poll = await Poll.findById(pollId).select('event organizer');
+    if (!poll) {
+      return res.status(404).json({
+        error: 'POLL_NOT_FOUND',
+        message: 'Poll not found'
+      });
+    }
+
+    const event = await Event.findById(poll.event).select('_id status organizer');
+    if (!event) {
+      return res.status(404).json({
+        error: 'EVENT_NOT_FOUND',
+        message: 'Associated event not found'
+      });
+    }
+
+    if (event.status === 'cancelled') {
+      return res.status(403).json({
+        error: 'EVENT_CANCELLED',
+        message: 'Event has been cancelled'
+      });
+    }
+
+    const isPollOrganizer = String(poll.organizer) === String(userId);
+    const isEventOrganizer = event.organizer && String(event.organizer) === String(userId);
+    const isAdmin = req.user.role === 'admin';
+
+    if (isPollOrganizer || isEventOrganizer || isAdmin) {
+      req.poll = poll;
+      req.event = event;
+      req.viewPollResultsAsOrganizer = true;
+      return next();
+    }
+
+    const { ticket, deny } = await findPollEligibleTicket(
+      event._id,
+      userId,
+      req.user?.email
+    );
+    if (!ticket) {
+      return res.status(403).json({
+        error: deny.error || 'TICKET_REQUIRED',
+        message: deny.message || 'Valid ticket required to view poll results'
+      });
+    }
+
+    req.poll = poll;
+    req.ticket = ticket;
+    req.event = event;
+    req.viewPollResultsAsOrganizer = false;
+    next();
+  } catch (error) {
+    console.error('Poll results access verification error:', error);
     res.status(500).json({
       error: 'RESULTS_ACCESS_VERIFICATION_FAILED',
       message: 'Failed to verify results access'
@@ -317,13 +362,21 @@ async function validateTicket(ticket) {
       };
     }
 
-    // Check if order is paid
-    if (ticket.orderId && ticket.orderId.status !== 'paid') {
-      return {
-        isValid: false,
-        error: 'ORDER_NOT_PAID',
-        message: 'Order is not paid'
-      };
+    // Check if order is paid (align with wallet / PayHero: status or paymentStatus)
+    if (ticket.orderId) {
+      const o = ticket.orderId;
+      const orderPaid =
+        o.status === 'paid' ||
+        o.status === 'completed' ||
+        o.paymentStatus === 'paid' ||
+        o.paymentStatus === 'completed';
+      if (!orderPaid) {
+        return {
+          isValid: false,
+          error: 'ORDER_NOT_PAID',
+          message: 'Order is not paid'
+        };
+      }
     }
 
     // Check if order is cancelled
@@ -354,6 +407,43 @@ async function validateTicket(ticket) {
       message: 'Failed to validate ticket'
     };
   }
+}
+
+/**
+ * Paid active ticket for this event: by ownerUserId first, then holder email (legacy / mismatched owner rows).
+ */
+async function findPollEligibleTicket(eventMongoId, userId, userEmail) {
+  let ticket = await Ticket.findOne({
+    eventId: eventMongoId,
+    ownerUserId: userId
+  }).populate('orderId');
+
+  if (ticket) {
+    const v = await validateTicket(ticket);
+    if (v.isValid) return { ticket };
+    return { deny: v };
+  }
+
+  if (userEmail) {
+    const email = String(userEmail).toLowerCase().trim();
+    ticket = await Ticket.findOne({
+      eventId: eventMongoId,
+      'holder.email': email,
+      status: 'active'
+    }).populate('orderId');
+    if (ticket) {
+      const v = await validateTicket(ticket);
+      if (v.isValid) return { ticket };
+      return { deny: v };
+    }
+  }
+
+  return {
+    deny: {
+      error: 'TICKET_REQUIRED',
+      message: 'Valid ticket required to access poll functionality'
+    }
+  };
 }
 
 /**
@@ -396,24 +486,16 @@ async function checkPollAccess(req, res, next) {
         return next();
       }
 
-      // Check if user has valid ticket
-      const ticket = await Ticket.findOne({
-        eventId: event._id,
-        ownerUserId: userId
-      }).populate('orderId');
-
+      const { ticket } = await findPollEligibleTicket(
+        event._id,
+        userId,
+        req.user?.email
+      );
       if (ticket) {
-        // Validate ticket
-        const ticketValidation = await validateTicket(ticket);
-        if (ticketValidation.isValid) {
-          req.hasPollAccess = true;
-          req.ticket = ticket;
-          req.event = event;
-          req.isOrganizer = false;
-        } else {
-          req.hasPollAccess = false;
-          req.ticketError = ticketValidation;
-        }
+        req.hasPollAccess = true;
+        req.ticket = ticket;
+        req.event = event;
+        req.isOrganizer = false;
       } else {
         req.hasPollAccess = false;
       }
@@ -434,6 +516,7 @@ module.exports = {
   verifyTicketHolder,
   verifyVotingAccess,
   verifyResultsAccess,
+  verifyPollResultsAccess,
   checkPollAccess,
   validateTicket
 };

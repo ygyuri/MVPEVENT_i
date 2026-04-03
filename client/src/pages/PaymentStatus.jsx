@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CheckCircle,
@@ -592,8 +592,31 @@ const PaymentStatus = () => {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
+        {orderStatus?.primaryEventId && (
+          <Link
+            to={`/events/${orderStatus.primaryEventId}/polls`}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all shadow-lg text-center ${
+              isDarkMode
+                ? "bg-[#4f0f69] hover:opacity-95 text-white border border-[#8A4FFF]/40"
+                : "bg-gradient-to-r from-[#4f0f69] to-[#6b1a8a] text-white hover:opacity-95"
+            }`}
+          >
+            Event polls
+          </Link>
+        )}
+        <Link
+          to="/wallet"
+          className={`px-6 py-3 rounded-lg font-semibold transition-all shadow-lg text-center ${
+            isDarkMode
+              ? "bg-gray-800 hover:bg-gray-700 text-white border border-gray-600"
+              : "bg-white hover:bg-gray-50 text-gray-900 border border-gray-300"
+          }`}
+        >
+          My tickets
+        </Link>
         <button
+          type="button"
           onClick={() => navigate("/events")}
           className={`px-6 py-3 rounded-lg font-semibold transition-all shadow-lg ${
             isDarkMode

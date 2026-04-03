@@ -7,14 +7,6 @@ import { vi } from 'vitest';
 import pollsReducer from '../store/slices/pollsSlice';
 import ActivePollsWidget from '../components/attendee/ActivePollsWidget';
 
-// Mock the usePollSocket hook
-vi.mock('../hooks/usePollSocket', () => ({
-  usePollSocket: vi.fn(() => ({
-    isConnected: false,
-    socket: null
-  }))
-}));
-
 const authReducer = (state = { isAuthenticated: false, user: null, token: null }, action) => state;
 
 const renderWithStore = (ui, { preloadedState } = {}) => {

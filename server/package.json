@@ -7,6 +7,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "seed": "node scripts/seed.js",
+    "seed:polls": "node scripts/seedPollsTestData.js",
+    "check:tickets": "node scripts/checkUserTickets.js",
     "cleanup-seeded": "node scripts/cleanup-seeded-data.js",
     "test": "jest --runInBand"
   },

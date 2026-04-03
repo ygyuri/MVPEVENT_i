@@ -6,6 +6,10 @@
 
 require("dotenv").config();
 const nodemailer = require("nodemailer");
+const {
+  loadDeployContext,
+  buildDeployContextHtmlBlock,
+} = require("./deployEmailContextLib");
 
 async function testEmailConnection() {
   try {
@@ -51,6 +55,9 @@ async function testEmailConnection() {
     // Send test email
     console.log("📨 Sending test email...");
 
+    const deployCtx = loadDeployContext();
+    const deploySection = buildDeployContextHtmlBlock(deployCtx);
+
     // Generate security headers
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
     const supportEmail = process.env.SMTP_USER || "noreply@event-i.com";
@@ -71,11 +78,14 @@ async function testEmailConnection() {
 
     const testEmail = await transporter.sendMail({
       from: `"Event-i Test" <${process.env.SMTP_USER}>`,
-      to: "jeffomondi.eng@gmail.com, gideonyuri15@gmail.com",
-      subject: "Test Email from Event-i",
+      to: "ochiengemmanuel242@gmail.com, rndonjimusandu@gmail.com, gideonyuri15@gmail.com",
+      subject: deployCtx
+        ? `Test Email from Event-i (deploy ${deployCtx.shortSha || deployCtx.sha?.slice(0, 7) || ""})`
+        : "Test Email from Event-i",
       html: `
         <h1>✅ SMTP Test Successful!</h1>
-        <p>This is a test email from Event-i platform.</p>
+        <p>This is a test email from the Event-i platform after a production deploy health check.</p>
+        ${deploySection}
         <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
       `,
       headers: securityHeaders

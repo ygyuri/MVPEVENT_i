@@ -3,7 +3,7 @@ const { body, param, query, validationResult } = require('express-validator');
 const { verifyToken, requireRole, optionalAuth } = require('../middleware/auth');
 const pollsController = require('../src/controllers/pollsController');
 const { verifyOrganizer, verifyPollOrganizer, canCreatePoll } = require('../src/middleware/verifyOrganizer');
-const { verifyTicketHolder, verifyVotingAccess, verifyResultsAccess, checkPollAccess } = require('../src/middleware/verifyTicketHolder');
+const { verifyTicketHolder, verifyVotingAccess, verifyPollResultsAccess, checkPollAccess } = require('../src/middleware/verifyTicketHolder');
 const { 
   pollCreationLimiter, 
   votingLimiter, 
@@ -16,6 +16,17 @@ const {
 } = require('../src/middleware/rateLimitPoll');
 
 const router = express.Router();
+
+const rejectValidation = (req, res, next) => {
+  const err = validationResult(req);
+  if (!err.isEmpty()) {
+    return res.status(400).json({
+      error: err.array()[0]?.msg || 'Validation failed',
+      details: err.array()
+    });
+  }
+  next();
+};
 
 // Validation middleware
 const validatePollCreation = [
@@ -40,9 +51,21 @@ const validatePollUpdate = [
   body('closesAt').optional().isISO8601().withMessage('Valid closing date is required')
 ];
 
+// Client sends option_ids (snake_case); accept optionIds too
 const validateVote = [
-  body('optionIds').isArray({ min: 1 }).withMessage('At least one option must be selected'),
-  body('optionIds.*').isString().withMessage('Option IDs must be strings'),
+  body().custom((_, { req }) => {
+    const raw = req.body.option_ids ?? req.body.optionIds;
+    if (!Array.isArray(raw) || raw.length < 1) {
+      throw new Error('At least one option must be selected');
+    }
+    for (const id of raw) {
+      if (id === undefined || id === null || String(id).trim() === '') {
+        throw new Error('Option IDs must be non-empty strings');
+      }
+    }
+    req.body.option_ids = raw.map((id) => String(id));
+    return true;
+  }),
   body('anonymousToken').optional().isString().withMessage('Anonymous token must be string')
 ];
 
@@ -80,14 +103,15 @@ router.post(
   rateLimitVoting,
   rateLimitAnonymousVoting,
   validateVote,
+  rejectValidation,
   pollsController.submitVote
 );
 
-// Get poll results (only after voting or if poll closed) - Phase 2 compatible
+// Get poll results (organizers: anytime; ticket holders: after vote or when closed)
 router.get(
   '/polls/:pollId/results',
   verifyToken,
-  verifyResultsAccess,
+  verifyPollResultsAccess,
   resultsLimiter,
   pollsController.getResults
 );

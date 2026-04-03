@@ -32,7 +32,7 @@ const getApiBaseUrl = () => {
   return '';
 };
 
-const API_BASE_URL = getApiBaseUrl();
+export const API_BASE_URL = getApiBaseUrl();
 
 // Console log for debugging API configuration
 // console.log('🔧 API Configuration:', {
@@ -121,10 +121,10 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // If session is invalid/expired, redirect to root to avoid hanging UI.
-    // We do this before refresh attempts for non-refreshable sessions (cookie-only, missing refresh token, etc.).
+    // 401 = bad/expired session → refresh or logout.
+    // 403 = forbidden while still authenticated (e.g. polls without a ticket) → never clear tokens;
+    // clearing on 403 was logging users out when opening /events/:id/polls.
     const status = error.response.status;
-    const isUnauthorized = status === 401 || status === 403;
 
     // If unauthorized, try one refresh attempt
     if (status === 401 && !originalRequest._retry) {
@@ -162,7 +162,7 @@ api.interceptors.response.use(
       }
     }
 
-    if (isUnauthorized) {
+    if (status === 401) {
       localStorage.removeItem('authToken');
       localStorage.removeItem('refreshToken');
       delete api.defaults.headers.common?.Authorization;

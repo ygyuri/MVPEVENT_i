@@ -2,6 +2,13 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { pollApi } from '../../services/api/pollApi';
 
 // Async thunks
+function apiErrorMessage(error, fallback) {
+  const d = error?.response?.data;
+  const msg = d?.error || d?.message;
+  if (typeof msg === 'string' && msg.trim()) return msg;
+  return error?.message || fallback;
+}
+
 export const fetchPolls = createAsyncThunk(
   'polls/fetchPolls',
   async ({ eventId, status = 'active' }, { rejectWithValue }) => {
@@ -9,7 +16,7 @@ export const fetchPolls = createAsyncThunk(
       const data = await pollApi.listPolls(eventId, status);
       return data.polls;
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to fetch polls');
+      return rejectWithValue(apiErrorMessage(error, 'Failed to fetch polls'));
     }
   }
 );
@@ -33,7 +40,7 @@ export const submitVote = createAsyncThunk(
       const data = await pollApi.submitVote(pollId, optionIds);
       return { pollId, ...data };
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to submit vote');
+      return rejectWithValue(apiErrorMessage(error, 'Failed to submit vote'));
     }
   }
 );
@@ -45,7 +52,7 @@ export const fetchResults = createAsyncThunk(
       const data = await pollApi.getResults(pollId);
       return { pollId, ...data };
     } catch (error) {
-      return rejectWithValue(error.message || 'Failed to fetch results');
+      return rejectWithValue(apiErrorMessage(error, 'Failed to fetch results'));
     }
   }
 );
@@ -174,21 +181,20 @@ const pollsSlice = createSlice({
       .addCase(fetchPolls.fulfilled, (state, action) => {
         state.loading.polls = false;
         const pollsById = {};
-        const activePollIds = [];
-        const userVotes = {};
-        
-        action.payload.forEach(poll => {
+        const userVotes = { ...state.userVotes };
+
+        action.payload.forEach((poll) => {
           pollsById[poll.poll_id] = poll;
-          activePollIds.push(poll.poll_id);
-          
           if (poll.has_voted) {
             userVotes[poll.poll_id] = poll.user_vote;
           }
         });
-        
+
         state.polls = { ...state.polls, ...pollsById };
-        state.activePolls = activePollIds;
-        state.userVotes = { ...state.userVotes, ...userVotes };
+        state.activePolls = Object.values(state.polls)
+          .filter((p) => p && p.status === 'active')
+          .map((p) => p.poll_id);
+        state.userVotes = userVotes;
       })
       .addCase(fetchPolls.rejected, (state, action) => {
         state.loading.polls = false;
@@ -219,13 +225,14 @@ const pollsSlice = createSlice({
         state.errors.vote = null;
       })
       .addCase(submitVote.fulfilled, (state, action) => {
-        const { pollId, optionIds } = action.payload;
+        const pollId = action.payload.pollId ?? action.meta.arg.pollId;
+        const selected = action.meta.arg.optionIds;
         state.isVoting[pollId] = false;
-        state.userVotes[pollId] = optionIds;
-        
+        state.userVotes[pollId] = selected;
+
         if (state.polls[pollId]) {
           state.polls[pollId].has_voted = true;
-          state.polls[pollId].user_vote = optionIds;
+          state.polls[pollId].user_vote = selected;
         }
       })
       .addCase(submitVote.rejected, (state, action) => {

@@ -2,6 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { findEventForImageRoute } = require("../utils/resolveEventForImageRoute");
 const { body, param, query, validationResult } = require("express-validator");
 const { verifyToken, requireRole } = require("../middleware/auth");
 const Event = require("../models/Event");
@@ -1261,7 +1262,10 @@ router.post(
 // This ensures both old (/api/organizer/events/) and new (/api/events/) URLs work
 router.get(
   "/events/:id/images/:filename",
-  [param("id").isMongoId(), param("filename").isString()],
+  [
+    param("id").isString().trim().isLength({ min: 1, max: 128 }),
+    param("filename").isString().trim().isLength({ min: 1, max: 256 }),
+  ],
   async (req, res) => {
     try {
       // Validate inputs
@@ -1270,13 +1274,19 @@ router.get(
         return res.status(400).json({ errors: errors.array() });
       }
 
-      // Security: Only serve images for published events
-      const event = await Event.findById(req.params.id).select("status").lean();
+      const filename = path.basename(req.params.filename);
+      if (filename !== req.params.filename) {
+        return res.status(400).json({ error: "Invalid filename" });
+      }
+
+      const event = await findEventForImageRoute(req.params.id);
       if (!event) {
         return res.status(404).json({ error: "Event not found" });
       }
 
-      if (event.status !== "published") {
+      const isPollOptionUpload =
+        typeof filename === "string" && filename.startsWith("poll-opt-");
+      if (!isPollOptionUpload && event.status !== "published") {
         return res
           .status(404)
           .json({ error: "Event not found or not published" });
@@ -1285,14 +1295,14 @@ router.get(
       const imagePath = path.join(
         __dirname,
         "../uploads/events",
-        req.params.filename
+        filename
       );
 
       if (!fs.existsSync(imagePath)) {
         return res.status(404).json({ error: "Image not found" });
       }
 
-      // Set proper caching headers for images
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
       res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year
       res.sendFile(path.resolve(imagePath));
     } catch (error) {
