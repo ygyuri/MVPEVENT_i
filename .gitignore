@@ -6,6 +6,9 @@ yarn-error.log*
 package-lock.json
 yarn.lock
 
+# CI-generated (deploy test email context; do not commit)
+deploy-email-context.json
+
 # Environment variables
 .env
 .env.*

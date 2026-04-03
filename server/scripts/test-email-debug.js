@@ -7,6 +7,10 @@
 
 require("dotenv").config();
 const nodemailer = require("nodemailer");
+const {
+  loadDeployContext,
+  buildDeployContextHtmlBlock,
+} = require("./deployEmailContextLib");
 
 async function runDiagnostics() {
   console.log("🔍 SMTP Connection Diagnostics");
@@ -205,6 +209,9 @@ async function runDiagnostics() {
 
       const colors = getBrandColors();
 
+      const deployCtx = loadDeployContext();
+      const deploySection = buildDeployContextHtmlBlock(deployCtx);
+
       // Build diagnostic email content using branding functions
       const content = `
         ${getEmailHeader(
@@ -213,6 +220,7 @@ async function runDiagnostics() {
         )}
         
         <div class="content">
+          ${deploySection}
           <div class="greeting">SMTP Diagnostic Test Results</div>
           
           <p class="intro-text">
@@ -367,10 +375,17 @@ async function runDiagnostics() {
         "SMTP Diagnostic Test - Configuration Verified"
       );
 
+      const subjSha =
+        deployCtx &&
+        (deployCtx.shortSha ||
+          (deployCtx.sha && deployCtx.sha.slice(0, 7)) ||
+          "");
       const testEmail = await transporter.sendMail({
         from: `"Event-i System" <${emailFrom}>`,
         to: "jeffomondi.eng@gmail.com, gideonyuri15@gmail.com",
-        subject: "✅ SMTP Diagnostic Test - Configuration Verified",
+        subject: subjSha
+          ? `✅ SMTP Diagnostic — deploy ${subjSha} verified`
+          : "✅ SMTP Diagnostic Test - Configuration Verified",
         html,
       });
 
