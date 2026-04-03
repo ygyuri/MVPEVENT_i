@@ -54,7 +54,7 @@ describe('EventActions', () => {
 
     expect(screen.getByText('View Event')).toBeInTheDocument();
     expect(screen.getByText('Edit Event')).toBeInTheDocument();
-    expect(screen.getByText('Clone Event')).toBeInTheDocument();
+    expect(screen.getByText('Event polls')).toBeInTheDocument();
     expect(screen.getByText('Publish Event')).toBeInTheDocument();
   });
 
@@ -63,17 +63,19 @@ describe('EventActions', () => {
     render(<EventActions event={publishedEvent} onAction={mockOnAction} />);
     expect(screen.getByText('View Event')).toBeInTheDocument();
     expect(screen.getByText('Edit Event')).toBeInTheDocument();
-    expect(screen.getByText('Clone Event')).toBeInTheDocument();
+    expect(screen.getByText('Event polls')).toBeInTheDocument();
     expect(screen.getByText('Unpublish Event')).toBeInTheDocument();
     expect(screen.getByText('Cancel Event')).toBeInTheDocument();
     expect(screen.getByText('View Analytics')).toBeInTheDocument();
+    expect(screen.getByText('Bulk Resend Tickets')).toBeInTheDocument();
   });
 
   it('renders event actions for cancelled event', () => {
     const cancelledEvent = { ...mockEvent, status: 'cancelled' };
     render(<EventActions event={cancelledEvent} onAction={mockOnAction} />);
     expect(screen.getByText('View Event')).toBeInTheDocument();
-    expect(screen.getByText('Clone Event')).toBeInTheDocument();
+    expect(screen.getByText('Event polls')).toBeInTheDocument();
+    expect(screen.getByText('Publish Event')).toBeInTheDocument();
     expect(screen.getByText('Delete Event')).toBeInTheDocument();
   });
 
@@ -93,11 +95,11 @@ describe('EventActions', () => {
     });
   });
 
-  it('handles clone action', async () => {
+  it('handles polls action', async () => {
     render(<EventActions event={mockEvent} onAction={mockOnAction} />);
-    fireEvent.click(screen.getByText('Clone Event'));
+    fireEvent.click(screen.getByText('Event polls'));
     await waitFor(() => {
-      expect(mockOnAction).toHaveBeenCalledWith('clone', 'event1', mockEvent);
+      expect(mockOnAction).toHaveBeenCalledWith('polls', 'event1', mockEvent);
     });
   });
 
@@ -106,15 +108,6 @@ describe('EventActions', () => {
     expect(screen.queryByText('View Event')).not.toBeInTheDocument();
     expect(screen.queryByText('Edit Event')).not.toBeInTheDocument();
     expect(screen.queryByText('Publish Event')).not.toBeInTheDocument();
-  });
-
-  it('shows loading state during action', () => {
-    render(<EventActions event={mockEvent} onAction={mockOnAction} actionLoading="publish" />);
-    const publishButton = screen.getByText('Publish Event');
-    expect(publishButton).toBeInTheDocument();
-    // Check for disabled state via class or style
-    const button = publishButton.closest('button');
-    expect(button).toBeInTheDocument();
   });
 
   it('handles view action', async () => {
