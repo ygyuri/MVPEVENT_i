@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Star,
   Shield,
+  Gift,
 } from "lucide-react";
 import { ThemeToggle, useTheme } from "../contexts/ThemeContext";
 import CurrencySelector from "./CurrencySelector";
@@ -501,6 +502,18 @@ const Navbar = ({ onOpenAuthModal }) => {
                             >
                               <Shield className="w-4 h-4 mr-3 flex-shrink-0 group-hover:scale-110 transition-transform" />
                               <span>QR Scanner</span>
+                            </Link>
+                            <Link
+                              to="/organizer/vouchers"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className={`flex items-center px-4 py-3 mx-1 my-0.5 text-sm font-medium rounded-xl transition-all duration-200 group ${
+                                isDarkMode
+                                  ? "text-gray-300 hover:bg-[#4f0f69]/30 hover:text-white"
+                                  : "text-gray-700 hover:bg-blue-50 hover:text-[#4f0f69]"
+                              }`}
+                            >
+                              <Gift className="w-4 h-4 mr-3 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                              <span>Vouchers</span>
                             </Link>
                           </div>
                         )}

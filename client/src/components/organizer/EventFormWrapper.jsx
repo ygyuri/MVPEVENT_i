@@ -724,9 +724,10 @@ const EventFormWrapper = ({ children, onSubmit }) => {
           { step: 1, fields: ['title', 'description'] },
           { step: 2, fields: ['venueName', 'city', 'country', 'address', 'state', 'postalCode'] },
           { step: 3, fields: ['startDate', 'endDate', 'timezone', 'dateRange'] },
-          { step: 4, fields: ['capacity', 'price', 'currency'] },
-          { step: 5, fields: ['ticketTypes', 'totalQuantity'] },
-          { step: 6, fields: ['coverImageUrl', 'galleryUrls.0'] }
+          { step: 4, fields: ['capacity', 'price', 'currency', 'ticketTypes', 'totalQuantity'] },
+          { step: 5, fields: [] },
+          { step: 6, fields: ['recurrence'] },
+          { step: 7, fields: ['coverImageUrl', 'galleryUrls'] }
         ];
 
         let targetStep = null;
@@ -752,8 +753,10 @@ const EventFormWrapper = ({ children, onSubmit }) => {
         } else if (targetStep === 4) {
           message = 'Review Pricing & Tickets: capacity/price/currency';
         } else if (targetStep === 5) {
-          message = 'Fix Ticket Types: names, prices, quantities';
+          message = 'Review Voucher settings (optional)';
         } else if (targetStep === 6) {
+          message = 'Fix Recurrence settings if invalid';
+        } else if (targetStep === 7) {
           message = 'Fix Media URLs if invalid';
         }
 

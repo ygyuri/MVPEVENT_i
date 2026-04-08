@@ -7,6 +7,7 @@ import BasicInfoStep from '../components/organizer/steps/BasicInfoStep';
 import LocationStep from '../components/organizer/steps/LocationStep';
 import ScheduleStep from '../components/organizer/steps/ScheduleStep';
 import PricingAndTicketsStep from '../components/organizer/steps/PricingAndTicketsStep';
+import VouchersStep from '../components/organizer/steps/VouchersStep';
 import RecurrenceStep from '../components/organizer/steps/RecurrenceStep';
 import MediaStep from '../components/organizer/steps/MediaStep';
 import PreviewStep from '../components/organizer/steps/PreviewStep';
@@ -219,10 +220,12 @@ const EventCreate = () => {
       case 4:
         return <PricingAndTicketsStep />;
       case 5:
-        return <RecurrenceStep />;
+        return <VouchersStep />;
       case 6:
-        return <MediaStep />;
+        return <RecurrenceStep />;
       case 7:
+        return <MediaStep />;
+      case 8:
         return <PreviewStep onSubmit={handleSubmit} />;
       default:
         return <BasicInfoStep />;

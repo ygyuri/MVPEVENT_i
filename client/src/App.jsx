@@ -27,6 +27,7 @@ import EventManagement from "./pages/EventManagement";
 import OrganizerEventPreview from "./pages/OrganizerEventPreview";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import OrganizerCommissionSetup from "./pages/OrganizerCommissionSetup";
+import VouchersPage from "./pages/VouchersPage";
 import AffiliateAnalytics from "./pages/AffiliateAnalytics";
 import ReferralLinksManager from "./pages/ReferralLinksManager";
 import UserPreferences from "./pages/UserPreferences";
@@ -120,6 +121,10 @@ function App() {
                   <Route
                     path="/organizer/analytics"
                     element={<AnalyticsDashboard />}
+                  />
+                  <Route
+                    path="/organizer/vouchers"
+                    element={<VouchersPage />}
                   />
                   {/* Affiliate features - temporarily hidden for production */}
                   {/* <Route path="/affiliate-analytics" element={<AffiliateAnalytics />} /> */}

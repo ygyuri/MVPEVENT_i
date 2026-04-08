@@ -965,6 +965,8 @@ router.put(
           return res
             .status(400)
             .json({ error: "Ticket quantity must be >= 0" });
+        if (t.voucherAmount !== undefined && t.voucherAmount !== null && (typeof t.voucherAmount !== "number" || t.voucherAmount < 0))
+          return res.status(400).json({ error: "Ticket voucher amount must be >= 0 when set" });
         if (
           t.salesStart &&
           t.salesEnd &&
