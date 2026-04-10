@@ -14,7 +14,9 @@ import {
   Users,
   BarChart3,
   Mail,
-  Vote
+  Vote,
+  Percent,
+  Link2
 } from 'lucide-react';
 import EnhancedButton from '../EnhancedButton';
 
@@ -70,6 +72,20 @@ const EventActions = ({
         icon: Vote,
         variant: 'secondary',
         className: 'text-[#8A4FFF] hover:text-[#b794f6] dark:text-[#c4b5fd] dark:hover:text-white'
+      });
+      actions.push({
+        key: 'commission-setup',
+        label: 'Commissions',
+        icon: Percent,
+        variant: 'secondary',
+        className: 'text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
+      });
+      actions.push({
+        key: 'affiliate-links',
+        label: 'Affiliate links',
+        icon: Link2,
+        variant: 'secondary',
+        className: 'text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
       });
     }
     

@@ -1,8 +1,22 @@
 const mongoose = require('mongoose');
 
+const agencyProgramSchema = new mongoose.Schema({
+  agency_id: { type: mongoose.Schema.Types.ObjectId, ref: 'MarketingAgency', required: true },
+  pool_pct_of_ticket: { type: Number, min: 0, max: 100, required: true },
+  sub_seller_pct_of_ticket: { type: Number, min: 0, max: 100, default: 0 },
+  head_pct_of_ticket: { type: Number, min: 0, max: 100, default: 0 }
+}, { _id: false });
+
 const eventCommissionConfigSchema = new mongoose.Schema({
   event_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
   organizer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+
+  /** Per-agency caps and head/sub split (percent of ticket). sub + head must equal pool per program. */
+  agency_programs: { type: [agencyProgramSchema], default: [] },
+  /** Simple affiliates (no agency program): % of ticket when flat_affiliate_pct_of_ticket is set; else legacy affiliate_commission_rate */
+  flat_affiliate_pct_of_ticket: { type: Number, min: 0, max: 100, default: null },
+  /** When true (default), waterfall uses Event.commissionRate for platform slice in previews/reporting */
+  use_event_commission_for_waterfall: { type: Boolean, default: true },
 
   platform_fee_type: { type: String, enum: ['percentage', 'fixed', 'hybrid'], default: 'percentage' },
   platform_fee_percentage: { type: Number, min: 0, max: 100, default: 5.0 },

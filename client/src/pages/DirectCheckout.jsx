@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar,
@@ -17,19 +17,34 @@ import {
   Shield,
 } from "lucide-react";
 import api from "../utils/api";
+import { toast } from "react-hot-toast";
 import { useTheme } from "../contexts/ThemeContext";
 import { Helmet } from "react-helmet-async";
 import payheroLogo from "../assets/payhero-logo.png";
 import tajilabsLogo from "../assets/tajilabs-logo-horizontal.png";
 import FeaturedEventsMasonry from "../components/FeaturedEventsMasonry";
 import LoadingOverlay from "../components/shared/LoadingOverlay";
+import { setAuthToken, getCurrentUser } from "../store/slices/authSlice";
 
 const DirectCheckout = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isDarkMode } = useTheme();
-  const referralCode = searchParams.get("ref") || "";
+  const [referralCodeInput, setReferralCodeInput] = useState("");
+
+  useEffect(() => {
+    setReferralCodeInput(searchParams.get("ref") || "");
+  }, [slug, searchParams]);
+
+  const referralCodeEffective = (
+    referralCodeInput.trim() ||
+    searchParams.get("ref") ||
+    ""
+  )
+    .trim()
+    .toUpperCase();
+  const dispatch = useDispatch();
   const { user: authUser, isAuthenticated } = useSelector((s) => s.auth);
 
   // State
@@ -221,7 +236,9 @@ const DirectCheckout = () => {
         setLoading(true);
         setError(null);
 
-        const params = referralCode ? `?ref=${referralCode}` : "";
+        const params = referralCodeEffective
+          ? `?ref=${encodeURIComponent(referralCodeEffective)}`
+          : "";
         const response = await api.get(`/api/events/${slug}/checkout${params}`);
 
         const eventData = response.data.event;
@@ -275,7 +292,7 @@ const DirectCheckout = () => {
     };
 
     fetchEventData();
-  }, [slug, referralCode]);
+  }, [slug, referralCodeEffective]);
 
   // Pre-fill checkout from logged-in profile so tickets attach to the same account as Wallet
   useEffect(() => {
@@ -461,7 +478,7 @@ const DirectCheckout = () => {
         lastName: lastName,
         email: formData.email.trim().toLowerCase(),
         phone: fullPhone, // Send full phone with country code
-        ...(referralCode && { referralCode }),
+        ...(referralCodeEffective && { referralCode: referralCodeEffective }),
       };
 
       const response = await api.post(
@@ -474,6 +491,20 @@ const DirectCheckout = () => {
         const d = response.data.data || {};
         const orderId = d.orderId;
         const skippedPayment = d.skippedPayment;
+
+        // Completed checkout (e.g. dev skip or free ticket): log in as ticket owner
+        if (d.tokens?.accessToken) {
+          localStorage.setItem("authToken", d.tokens.accessToken);
+          localStorage.setItem("refreshToken", d.tokens.refreshToken);
+          dispatch(setAuthToken(d.tokens.accessToken));
+          dispatch(getCurrentUser());
+        }
+
+        if (skippedPayment) {
+          toast.success("Order placed successfully. Opening your wallet…");
+        } else {
+          toast.success("Order created. Continue to payment to complete your purchase.");
+        }
 
         setTimeout(() => {
           if (skippedPayment) {
@@ -1103,6 +1134,46 @@ const DirectCheckout = () => {
                         >
                           Your Information
                         </h3>
+                      </div>
+
+                      <div className="mb-6">
+                        <label
+                          className={`block text-sm font-semibold mb-2 ${
+                            isDarkMode ? "text-gray-200" : "text-gray-800"
+                          }`}
+                        >
+                          Referral / affiliate code{" "}
+                          <span
+                            className={`font-normal ${
+                              isDarkMode ? "text-gray-500" : "text-gray-500"
+                            }`}
+                          >
+                            (optional)
+                          </span>
+                        </label>
+                        <input
+                          type="text"
+                          value={referralCodeInput}
+                          onChange={(e) =>
+                            setReferralCodeInput(e.target.value.toUpperCase())
+                          }
+                          placeholder="e.g. RL-ABC123"
+                          autoComplete="off"
+                          className={`w-full px-4 py-3 border-2 rounded-lg font-mono text-sm tracking-wide ${
+                            isDarkMode
+                              ? "bg-gray-900/50 border-gray-600 text-white focus:border-[#4f0f69]"
+                              : "bg-gray-50 border-gray-300 text-gray-900 focus:border-[#4f0f69]"
+                          } focus:ring-2 focus:ring-[#4f0f69]/20`}
+                        />
+                        <p
+                          className={`mt-1.5 text-xs ${
+                            isDarkMode ? "text-gray-500" : "text-gray-500"
+                          }`}
+                        >
+                          Overrides the link&apos;s{" "}
+                          <code className="text-[11px]">?ref=</code> if you type a
+                          code. Leave blank to use the URL only.
+                        </p>
                       </div>
 
                       <div ref={formRefs.fullName}>

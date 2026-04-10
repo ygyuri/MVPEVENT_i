@@ -27,6 +27,9 @@ import EventManagement from "./pages/EventManagement";
 import OrganizerEventPreview from "./pages/OrganizerEventPreview";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import OrganizerCommissionSetup from "./pages/OrganizerCommissionSetup";
+import AdminCommissionSetupPage from "./pages/AdminCommissionSetupPage";
+import OrganizerEventAffiliates from "./pages/OrganizerEventAffiliates";
+import OrganizerMarketingPartners from "./pages/OrganizerMarketingPartners";
 import AffiliateAnalytics from "./pages/AffiliateAnalytics";
 import ReferralLinksManager from "./pages/ReferralLinksManager";
 import UserPreferences from "./pages/UserPreferences";
@@ -47,6 +50,7 @@ import { getCurrentUser } from "./store/slices/authSlice";
 import ErrorBoundary from "./components/shared/ErrorBoundary";
 import { ToastProvider } from "./components/shared/Toast";
 import ScrollToTop from "./components/shared/ScrollToTop";
+import { Toaster } from "react-hot-toast";
 
 function App() {
   const dispatch = useDispatch();
@@ -64,6 +68,17 @@ function App() {
     <ErrorBoundary>
       <ToastProvider>
         <ThemeProvider>
+          <Toaster
+            position="top-center"
+            containerStyle={{ zIndex: 100000 }}
+            toastOptions={{
+              duration: 4500,
+              className: "text-sm",
+              style: {
+                maxWidth: "min(100vw - 24px, 28rem)"
+              }
+            }}
+          />
           <ModernBackground />
           <div className="min-h-screen theme-transition relative">
             <div className="relative z-10">
@@ -116,6 +131,18 @@ function App() {
                   <Route
                     path="/organizer/events/:eventId/commission-setup"
                     element={<OrganizerCommissionSetup />}
+                  />
+                  <Route
+                    path="/organizer/events/:eventId/affiliates"
+                    element={<OrganizerEventAffiliates />}
+                  />
+                  <Route
+                    path="/organizer/marketing"
+                    element={<OrganizerMarketingPartners />}
+                  />
+                  <Route
+                    path="/admin/events/:eventId/commission-setup"
+                    element={<AdminCommissionSetupPage />}
                   />
                   <Route
                     path="/organizer/analytics"

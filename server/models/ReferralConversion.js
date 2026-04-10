@@ -1,14 +1,23 @@
 const mongoose = require('mongoose');
 
 const referralConversionSchema = new mongoose.Schema({
-  click_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ReferralClick', required: true },
+  click_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ReferralClick', default: null },
   link_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ReferralLink', required: true },
+  attribution_source: {
+    type: String,
+    enum: ['link_click', 'manual_code'],
+    default: 'link_click'
+  },
   event_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
   ticket_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Ticket', required: true },
 
   affiliate_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AffiliateMarketer', default: null },
   agency_id: { type: mongoose.Schema.Types.ObjectId, ref: 'MarketingAgency', default: null },
-  attribution_model_used: { type: String, enum: ['last_click', 'first_click', 'linear'], default: 'last_click' },
+  attribution_model_used: {
+    type: String,
+    enum: ['last_click', 'first_click', 'linear', 'manual_code'],
+    default: 'last_click'
+  },
   attributed_clicks: { type: mongoose.Schema.Types.Mixed },
 
   customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

@@ -26,19 +26,23 @@ function validateReferralCode(code) {
   return true;
 }
 
+async function assignUniqueReferralCode(firstName) {
+  for (let i = 0; i < 24; i++) {
+    const code = generateReferralCode(firstName);
+    const exists = await AffiliateMarketer.findOne({ referral_code: code }).select('_id').lean();
+    if (!exists) return code;
+  }
+  throw err(500, 'Could not assign a unique referral code');
+}
+
 class AffiliateService {
   async createAffiliateByAgency(agencyId, payload) {
     const agency = await MarketingAgency.findById(agencyId);
     if (!agency) throw err(404, 'Agency not found');
     if (isDisposable(payload.email)) throw err(400, 'Disposable emails not allowed');
 
-    const referral_code = payload.referral_code && validateReferralCode(payload.referral_code)
-      ? payload.referral_code
-      : generateReferralCode(payload.first_name);
-
-    // Ensure unique referral code globally
-    const exists = await AffiliateMarketer.findOne({ referral_code });
-    if (exists) throw err(409, 'Referral code already exists');
+    // Organizer-created marketers always get a server-generated unique code (no client override).
+    const referral_code = await assignUniqueReferralCode(payload.first_name);
 
     const affiliate = await AffiliateMarketer.create({
       user_id: payload.user_id || null,
@@ -51,7 +55,7 @@ class AffiliateService {
       affiliate_tier: payload.affiliate_tier || 'tier_1',
       parent_affiliate_id: payload.parent_affiliate_id || null,
       minimum_payout_threshold: payload.minimum_payout_threshold || 50,
-      status: 'pending_approval'
+      status: payload.status === 'pending_approval' ? 'pending_approval' : 'active'
     });
     return affiliate;
   }
@@ -87,7 +91,7 @@ class AffiliateService {
     if (status) q.status = status;
     const skip = (Math.max(1, page) - 1) * Math.min(100, limit);
     const [items, total] = await Promise.all([
-      AffiliateMarketer.find(q).sort({ createdAt: -1 }).skip(skip).limit(Math.min(100, limit)),
+      AffiliateMarketer.find(q).sort({ createdAt: -1 }).skip(skip).limit(Math.min(100, limit)).lean(),
       AffiliateMarketer.countDocuments(q)
     ]);
     return { items, total, page: Number(page), limit: Number(limit) };

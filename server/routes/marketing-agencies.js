@@ -25,7 +25,8 @@ router.post('/marketing-agencies', verifyToken, requireRole(['organizer','admin'
   body('address').optional().isString(),
   body('tax_id').optional().isString().isLength({ min: 3, max: 50 }),
   body('payment_method').optional().isIn(['bank_transfer','paypal','stripe','crypto']),
-  body('payment_details').optional().isObject()
+  body('payment_details').optional().isObject(),
+  body('payout_paypal_email').optional().isEmail()
 ], async (req, res) => {
   const v = handleValidation(req, res); if (v) return v;
   try {

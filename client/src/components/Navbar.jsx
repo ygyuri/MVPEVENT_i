@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Star,
   Shield,
+  Megaphone,
 } from "lucide-react";
 import { ThemeToggle, useTheme } from "../contexts/ThemeContext";
 import CurrencySelector from "./CurrencySelector";
@@ -502,6 +503,18 @@ const Navbar = ({ onOpenAuthModal }) => {
                               <Shield className="w-4 h-4 mr-3 flex-shrink-0 group-hover:scale-110 transition-transform" />
                               <span>QR Scanner</span>
                             </Link>
+                            <Link
+                              to="/organizer/marketing"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className={`flex items-center px-4 py-3 mx-1 my-0.5 text-sm font-medium rounded-xl transition-all duration-200 group ${
+                                isDarkMode
+                                  ? "text-gray-300 hover:bg-[#4f0f69]/30 hover:text-white"
+                                  : "text-gray-700 hover:bg-blue-50 hover:text-[#4f0f69]"
+                              }`}
+                            >
+                              <Megaphone className="w-4 h-4 mr-3 flex-shrink-0 group-hover:scale-110 transition-transform" />
+                              <span>Marketing partners</span>
+                            </Link>
                           </div>
                         )}
 
@@ -813,6 +826,18 @@ const Navbar = ({ onOpenAuthModal }) => {
                           >
                             <Shield className="w-5 h-5 mr-3" />
                             QR Scanner
+                          </Link>
+                          <Link
+                            to="/organizer/marketing"
+                            className={`flex items-center px-4 py-4 rounded-xl transition-all duration-200 font-medium text-sm min-h-[48px] ${
+                              isDarkMode
+                                ? "text-gray-300 active:bg-[#4f0f69]/40 hover:bg-[#4f0f69]/30"
+                                : "text-gray-600 active:bg-gray-100 hover:bg-gray-50"
+                            }`}
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            <Megaphone className="w-5 h-5 mr-3" />
+                            Marketing partners
                           </Link>
                         </motion.div>
                       ) : null}

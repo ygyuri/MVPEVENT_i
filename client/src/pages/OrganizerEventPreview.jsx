@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useCallback, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import {
   ArrowLeft,
@@ -14,8 +14,11 @@ import {
   X,
   Trash2,
   BarChart3,
-  FileDown
+  FileDown,
+  Link2,
+  Percent
 } from 'lucide-react';
+import api from '../utils/api';
 import EnhancedButton from '../components/EnhancedButton';
 import EventStatusBadge from '../components/organizer/EventStatusBadge';
 import LoadingOverlay from '../components/shared/LoadingOverlay';
@@ -39,6 +42,8 @@ const OrganizerEventPreview = () => {
   const [financeLoading, setFinanceLoading] = useState(false);
   const [financeError, setFinanceError] = useState(null);
   const [salesPdfLoading, setSalesPdfLoading] = useState(false);
+  const [affiliatePerf, setAffiliatePerf] = useState(null);
+  const [affiliatePerfLoading, setAffiliatePerfLoading] = useState(false);
 
   const { currentEvent, loading, error } = useSelector((state) => state.organizer);
 
@@ -71,6 +76,25 @@ const OrganizerEventPreview = () => {
       }
     })();
 
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!eventId) return;
+    (async () => {
+      try {
+        setAffiliatePerfLoading(true);
+        const res = await api.get(`/api/organizer/events/${eventId}/affiliate-performance`);
+        if (!cancelled) setAffiliatePerf(res.data?.data || null);
+      } catch {
+        if (!cancelled) setAffiliatePerf(null);
+      } finally {
+        if (!cancelled) setAffiliatePerfLoading(false);
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -222,6 +246,22 @@ const OrganizerEventPreview = () => {
               onClick={() => navigate(`/events/${eventId}/polls`)}
             >
               Polls
+            </EnhancedButton>
+            <EnhancedButton
+              variant="secondary"
+              size="sm"
+              icon={Percent}
+              onClick={() => navigate(`/organizer/events/${eventId}/commission-setup`)}
+            >
+              Commissions
+            </EnhancedButton>
+            <EnhancedButton
+              variant="secondary"
+              size="sm"
+              icon={Link2}
+              onClick={() => navigate(`/organizer/events/${eventId}/affiliates`)}
+            >
+              Affiliate links
             </EnhancedButton>
             <EnhancedButton
               variant="secondary"
@@ -383,6 +423,83 @@ const OrganizerEventPreview = () => {
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className="mt-6 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/40 dark:bg-gray-900/20 backdrop-blur-sm p-4">
+              <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  Affiliate performance (paid orders)
+                </h2>
+                {affiliatePerf?.event_commission_rate != null && (
+                  <span className="text-xs text-gray-500">
+                    Event fee {affiliatePerf.event_commission_rate}% · estimates from your rules
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                One row per marketer / referral code from completed checkouts (
+                <Link
+                  to={`/organizer/events/${eventId}/affiliates`}
+                  className="text-violet-600 dark:text-violet-400 hover:underline"
+                >
+                  manage links
+                </Link>
+                ).
+              </p>
+              {affiliatePerfLoading && (
+                <p className="text-xs text-gray-500">Loading…</p>
+              )}
+              {!affiliatePerfLoading && (!affiliatePerf?.rows || affiliatePerf.rows.length === 0) && (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No attributed paid orders yet. Share{' '}
+                  <Link
+                    to={`/organizer/events/${eventId}/affiliates`}
+                    className="text-violet-600 dark:text-violet-400 font-medium hover:underline"
+                  >
+                    affiliate links
+                  </Link>{' '}
+                  or ask buyers to enter a referral code at checkout; results show here after payment completes.
+                </p>
+              )}
+              {!affiliatePerfLoading && affiliatePerf?.rows?.length > 0 && (
+                <div className="overflow-x-auto mt-2">
+                  <table className="w-full text-xs sm:text-sm">
+                    <thead>
+                      <tr className="text-left text-gray-500 border-b border-gray-200/60 dark:border-gray-600/60">
+                        <th className="py-2 pr-2">Marketer</th>
+                        <th className="py-2 pr-2">Code</th>
+                        <th className="py-2 pr-2">Tickets</th>
+                        <th className="py-2 pr-2">Attributed</th>
+                        <th className="py-2">Est. commission</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {affiliatePerf.rows.map((row) => (
+                        <tr
+                          key={row.referral_code || row.affiliate_id}
+                          className="border-b border-gray-100 dark:border-gray-700/50"
+                        >
+                          <td className="py-2 pr-2 text-gray-900 dark:text-white">
+                            {row.marketer
+                              ? `${row.marketer.first_name || ''} ${row.marketer.last_name || ''}`.trim()
+                              : '—'}
+                          </td>
+                          <td className="py-2 pr-2 font-mono text-[11px]">{row.referral_code || '—'}</td>
+                          <td className="py-2 pr-2">{row.tickets_sold}</td>
+                          <td className="py-2 pr-2">
+                            {event?.pricing?.currency || 'KES'}{' '}
+                            {Math.round(row.gross_attributed || 0).toLocaleString()}
+                          </td>
+                          <td className="py-2">
+                            {event?.pricing?.currency || 'KES'}{' '}
+                            {Math.round(row.estimated_commission_total || 0).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">

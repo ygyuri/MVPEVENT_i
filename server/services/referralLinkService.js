@@ -36,7 +36,7 @@ class ReferralLinkService {
   async create({ eventId, affiliateId, agencyId, referral_code, utm, campaign_name, custom_landing_page_url, expires_at, max_uses }) {
     const event = await Event.findById(eventId);
     assert(event && event.status === 'published', 'Event not found or not published', 404);
-    assert(!(affiliateId && agencyId), 'Either affiliateId or agencyId required, not both');
+    assert(affiliateId || agencyId, 'affiliateId and/or agencyId required');
     if (affiliateId) {
       const aff = await AffiliateMarketer.findById(affiliateId);
       assert(aff, 'Affiliate not found', 404);
@@ -74,6 +74,24 @@ class ReferralLinkService {
     assert(aff, 'Affiliate profile not found', 404);
     const items = await ReferralLink.find({ affiliate_id: aff._id }).sort({ createdAt: -1 });
     return items;
+  }
+
+  async listForEventOrganizer({ eventId, userId, isAdmin }) {
+    const event = await Event.findById(eventId);
+    assert(event, 'Event not found', 404);
+    if (!isAdmin && String(event.organizer) !== String(userId)) {
+      const e = new Error('ACCESS_DENIED');
+      e.statusCode = 403;
+      throw e;
+    }
+    return ReferralLink.find({
+      event_id: eventId,
+      deleted_at: null
+    })
+      .sort({ createdAt: -1 })
+      .populate('affiliate_id', 'first_name last_name email referral_code')
+      .populate('agency_id', 'agency_name agency_email')
+      .lean();
   }
 
   async getPreview(linkId) {

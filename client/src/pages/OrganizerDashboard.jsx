@@ -16,6 +16,7 @@ import {
   Ticket,
   DollarSign,
   ShoppingBag,
+  Megaphone,
 } from "lucide-react";
 import EnhancedButton from "../components/EnhancedButton";
 import EventStatusBadge from "../components/organizer/EventStatusBadge";
@@ -316,6 +317,13 @@ const OrganizerDashboard = () => {
             <p className="text-gray-600 dark:text-gray-400 mt-2">
               Manage your events and track your performance
             </p>
+            <Link
+              to="/organizer/marketing"
+              className="inline-flex items-center gap-2 mt-3 text-sm font-medium text-violet-700 dark:text-violet-300 hover:text-violet-900 dark:hover:text-violet-100"
+            >
+              <Megaphone className="w-4 h-4" />
+              Marketing partners & affiliates
+            </Link>
           </div>
 
           <Link to="/organizer/events/create">

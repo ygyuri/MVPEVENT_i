@@ -296,6 +296,14 @@ const EventManagement = () => {
           navigate(`/events/${eventId}/polls`);
           break;
 
+        case 'commission-setup':
+          navigate(`/organizer/events/${eventId}/commission-setup`);
+          break;
+
+        case 'affiliate-links':
+          navigate(`/organizer/events/${eventId}/affiliates`);
+          break;
+
         case 'bulk-resend':
           setBulkResendEventId(eventId);
           setShowBulkResendModal(true);

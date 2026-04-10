@@ -5,6 +5,18 @@ const commissionService = require('../services/commissionService');
 
 const router = express.Router();
 
+function commissionConfigErrorResponse(e) {
+  const msg = e?.message || 'Failed to save commission settings';
+  if (e?.name === 'CastError' || /Cast to ObjectId|BSONError/i.test(msg)) {
+    return {
+      status: 400,
+      error:
+        'Invalid or empty agency ID. Set Primary agency to "None" if you are not using one, and pick an agency for each program row.'
+    };
+  }
+  return { status: e.statusCode || 500, error: msg };
+}
+
 const handleValidation = (req, res) => {
   const { validationResult } = require('express-validator');
   const errors = validationResult(req);
@@ -38,14 +50,21 @@ router.post('/events/:eventId/commission-config', verifyToken, requireRole(['org
   body('attribution_window_days').optional().isInt({ min: 1, max: 365 }),
   body('payout_frequency').optional().isIn(['immediate','daily','weekly','monthly','manual']),
   body('payout_delay_days').optional().isInt({ min: 0, max: 180 }),
-  body('minimum_payout_amount').optional().isFloat({ min: 0 })
+  body('minimum_payout_amount').optional().isFloat({ min: 0 }),
+  body('agency_programs').optional().isArray(),
+  body('flat_affiliate_pct_of_ticket').optional().isFloat({ min: 0, max: 100 }),
+  body('use_event_commission_for_waterfall').optional().isBoolean(),
+  body('event_commission_rate').optional().isFloat({ min: 0, max: 100 }),
+  body('forceByAdmin').optional().isBoolean()
 ], async (req, res) => {
   const v = handleValidation(req, res); if (v) return v;
   try {
-    const cfg = await commissionService.setConfig(req.params.eventId, req.user._id, req.body);
+    const isAdmin = req.user.role === 'admin';
+    const cfg = await commissionService.setConfig(req.params.eventId, req.user._id, req.body, { isAdmin });
     res.status(201).json({ ok: true, config: cfg });
   } catch (e) {
-    res.status(e.statusCode || 500).json({ ok: false, error: e.message });
+    const { status, error } = commissionConfigErrorResponse(e);
+    res.status(status).json({ ok: false, error });
   }
 });
 
@@ -53,8 +72,15 @@ router.post('/events/:eventId/commission-config', verifyToken, requireRole(['org
 router.get('/events/:eventId/commission-config', verifyToken, requireRole(['organizer','admin']), async (req, res) => {
   try {
     const cfg = await commissionService.getConfig(req.params.eventId);
-    if (!cfg) return res.status(404).json({ ok: false, error: 'NOT_FOUND' });
-    res.json({ ok: true, config: cfg });
+    const Event = require('../models/Event');
+    const event = await Event.findById(req.params.eventId).select('commissionRate title').lean();
+    if (!event) return res.status(404).json({ ok: false, error: 'EVENT_NOT_FOUND' });
+    res.json({
+      ok: true,
+      config: cfg,
+      event_commission_rate: event?.commissionRate ?? null,
+      event_title: event?.title ?? null
+    });
   } catch (e) {
     res.status(e.statusCode || 500).json({ ok: false, error: e.message });
   }
@@ -63,20 +89,26 @@ router.get('/events/:eventId/commission-config', verifyToken, requireRole(['orga
 // PATCH /api/events/:eventId/commission-config
 router.patch('/events/:eventId/commission-config', verifyToken, requireRole(['organizer','admin']), async (req, res) => {
   try {
-    const cfg = await commissionService.setConfig(req.params.eventId, req.user._id, req.body);
+    const isAdmin = req.user.role === 'admin';
+    const cfg = await commissionService.setConfig(req.params.eventId, req.user._id, req.body, { isAdmin });
     res.json({ ok: true, config: cfg });
   } catch (e) {
-    res.status(e.statusCode || 500).json({ ok: false, error: e.message });
+    const { status, error } = commissionConfigErrorResponse(e);
+    res.status(status).json({ ok: false, error });
   }
 });
 
 // POST /api/events/:eventId/commission-config/preview
 router.post('/events/:eventId/commission-config/preview', verifyToken, requireRole(['organizer','admin']), [
-  body('ticket_price').isFloat({ min: 0.01 })
+  body('ticket_price').isFloat({ min: 0.01 }),
+  body('scenario').optional().isIn(['flat', 'agency_sub', 'agency_head'])
 ], async (req, res) => {
   const v = handleValidation(req, res); if (v) return v;
   try {
-    const breakdown = await commissionService.preview(req.params.eventId, req.user._id, req.body);
+    const breakdown = await commissionService.preview(req.params.eventId, req.user._id, {
+      ticket_price: req.body.ticket_price,
+      scenario: req.body.scenario || 'flat'
+    });
     res.json({ ok: true, breakdown });
   } catch (e) {
     res.status(e.statusCode || 500).json({ ok: false, error: e.message });

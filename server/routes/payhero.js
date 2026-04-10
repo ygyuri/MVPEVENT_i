@@ -1,18 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const crypto = require("crypto");
-const QRCode = require("qrcode");
 const payheroService = require("../services/payheroService");
-const emailService = require("../services/emailService");
-const enhancedEmailService = require("../services/enhancedEmailService");
-const mergedTicketReceiptService = require("../services/mergedTicketReceiptService");
+const { fulfillPaidDirectOrder } = require("../services/paidDirectOrderFulfillmentService");
 const orderStatusNotifier = require("../services/orderStatusNotifier");
 const payheroResultMapper = require("../services/payheroResultMapper");
-const ticketService = require("../services/ticketService");
 const Order = require("../models/Order");
 const Ticket = require("../models/Ticket");
-const User = require("../models/User");
-const Event = require("../models/Event");
 const ReferralClick = require("../models/ReferralClick");
 const ReferralConversion = require("../models/ReferralConversion");
 const EventCommissionConfig = require("../models/EventCommissionConfig");
@@ -437,163 +430,7 @@ router.post(
 
       // ========== ENHANCED PROCESSING FOR SUCCESSFUL PAYMENTS ==========
       if (paymentStatus === "completed") {
-        // ===== STEP 1: Generate QR Codes for All Tickets =====
-        // Use ticketService.issueQr() - same format as wallet for consistency and better scanning
-        // Scanner supports both old and new formats, so existing tickets still work
-        try {
-          const tickets = await Ticket.find({ orderId: order._id });
-          console.log(
-            `🎫 Processing ${tickets.length} tickets for QR generation...`
-          );
-
-          for (const ticket of tickets) {
-            try {
-              // Use ticketService.issueQr() - same format as wallet (scannable and secure)
-              const qrResult = await ticketService.issueQr(ticket._id.toString(), {
-                rotate: false, // Don't rotate, just generate initial QR
-              });
-
-              // Generate QR code image for emails - optimized for easy scanning
-              const qrCodeDataURL = await QRCode.toDataURL(qrResult.qr, {
-                errorCorrectionLevel: "M", // Medium error correction - easier to scan than "H"
-                type: "image/png",
-                width: 400, // Larger size for better scanning
-                margin: 4, // Larger margin for better scanning
-                color: {
-                  dark: "#000000", // Pure black for maximum contrast
-                  light: "#FFFFFF", // Pure white for maximum contrast
-                },
-              });
-
-              // Store QR code data
-              ticket.qrCode = qrResult.qr; // New format string (same as wallet)
-              ticket.qrCodeUrl = qrCodeDataURL; // High quality image for email
-
-              // ticket.qr is already set by ticketService.issueQr()
-              // Includes: nonce, issuedAt, expiresAt, signature
-
-              await ticket.save();
-              console.log(
-                `✅ QR code generated for ticket: ${ticket.ticketNumber} (wallet format, high quality)`
-              );
-            } catch (ticketQrError) {
-              console.error(
-                `❌ Failed to generate QR for ticket ${ticket.ticketNumber}:`,
-                ticketQrError
-              );
-              // Continue with other tickets
-            }
-          }
-
-          console.log(
-            `✅ All ${tickets.length} QR codes generated successfully`
-          );
-        } catch (qrError) {
-          console.error("❌ QR code generation failed:", qrError);
-          // Don't fail the callback, but log the error
-        }
-
-        // ===== STEP 2: Handle New User Welcome Email (Idempotent) =====
-        if (order.isGuestOrder && order.customer.userId) {
-          try {
-            const user = await User.findById(order.customer.userId).select(
-              "+tempPassword"
-            );
-
-            // Idempotency check: Only send welcome email once
-            if (
-              user &&
-              user.accountStatus === "pending_activation" &&
-              user.tempPassword &&
-              !user.welcomeEmailSent
-            ) {
-              // Send welcome email with credentials
-              await emailService.sendAccountCreationEmail({
-                email: user.email,
-                firstName: user.firstName,
-                tempPassword: user.tempPassword,
-                orderNumber: order.orderNumber,
-              });
-
-              // Mark welcome email as sent (idempotency flag)
-              user.welcomeEmailSent = true;
-              await user.save();
-
-              console.log("✅ Welcome email sent to new user:", user.email);
-            } else if (user?.welcomeEmailSent) {
-              console.log("ℹ️  Welcome email already sent to:", user.email);
-            }
-          } catch (emailError) {
-            console.error("❌ Failed to send welcome email:", emailError);
-          }
-        }
-
-        // ===== STEP 3: Send Ticket Email with Payment Receipt =====
-        // IMPORTANT: Only send emails if order is paid AND tickets exist
-        try {
-          // Fetch tickets with populated event data
-          const tickets = await Ticket.find({ orderId: order._id }).populate(
-            "eventId",
-            "title dates location"
-          );
-
-          // CRITICAL: Only send email if tickets exist and order is paid
-          if (!tickets || tickets.length === 0) {
-            console.warn(
-              `⚠️  No tickets found for order ${order.orderNumber}. Email will not be sent.`
-            );
-            console.warn(
-              `⚠️  Order status: ${order.status}, Payment status: ${order.paymentStatus}`
-            );
-            // Don't throw error - just log and continue
-          } else if (
-            order.paymentStatus !== "completed" &&
-            order.paymentStatus !== "paid"
-          ) {
-            console.warn(
-              `⚠️  Order ${order.orderNumber} is not fully paid. Email will not be sent.`
-            );
-            console.warn(`⚠️  Payment status: ${order.paymentStatus}`);
-          } else {
-            // Verify we have customer email
-            if (!order.customer?.email) {
-              console.warn(
-                `⚠️  No customer email for order ${order.orderNumber}. Email cannot be sent.`
-              );
-            } else {
-              // Fetch full event data for email
-              const event = await Event.findById(
-                order.items[0]?.eventId || tickets[0]?.eventId
-              );
-
-              // Use existing emailService for reliability (it has working SMTP config)
-              // Send ticket email which now includes payment info
-              await emailService.sendTicketEmail({
-                order,
-                tickets,
-                customerEmail: order.customer.email,
-                customerName:
-                  `${order.customer.firstName || ""} ${
-                    order.customer.lastName || ""
-                  }`.trim() ||
-                  order.customer.name ||
-                  "Customer",
-              });
-
-              console.log(
-                `✅ Ticket email with payment receipt sent successfully to: ${order.customer.email} (${tickets.length} tickets)`
-              );
-            }
-          }
-        } catch (emailError) {
-          console.error("❌ Failed to send ticket email:", emailError);
-          console.error(
-            "❌ Error details:",
-            emailError.message,
-            emailError.stack
-          );
-          // Log but don't fail callback - payment was successful
-        }
+        await fulfillPaidDirectOrder(order);
 
         // ===== STEP 4: Process Affiliate Conversion =====
         if (order.hasAffiliateTracking()) {

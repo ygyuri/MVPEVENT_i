@@ -41,6 +41,7 @@ describe('Commission Example 1 Breakdown', () => {
     });
     token = makeAuth(organizer._id);
     await createSession(organizer._id, token);
+    await Event.findByIdAndUpdate(event._id, { commissionRate: 5 });
   });
 
   afterAll(async () => {
@@ -54,8 +55,6 @@ describe('Commission Example 1 Breakdown', () => {
       .post(`/api/events/${event._id}/commission-config`)
       .set('Authorization', `Bearer ${token}`)
       .send({
-        platform_fee_type: 'percentage',
-        platform_fee_percentage: 5,
         primary_agency_commission_type: 'percentage',
         primary_agency_commission_rate: 40,
         affiliate_commission_enabled: true,

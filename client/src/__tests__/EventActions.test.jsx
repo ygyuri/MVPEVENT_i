@@ -55,6 +55,8 @@ describe('EventActions', () => {
     expect(screen.getByText('View Event')).toBeInTheDocument();
     expect(screen.getByText('Edit Event')).toBeInTheDocument();
     expect(screen.getByText('Event polls')).toBeInTheDocument();
+    expect(screen.getByText('Commissions')).toBeInTheDocument();
+    expect(screen.getByText('Affiliate links')).toBeInTheDocument();
     expect(screen.getByText('Publish Event')).toBeInTheDocument();
   });
 
@@ -64,6 +66,8 @@ describe('EventActions', () => {
     expect(screen.getByText('View Event')).toBeInTheDocument();
     expect(screen.getByText('Edit Event')).toBeInTheDocument();
     expect(screen.getByText('Event polls')).toBeInTheDocument();
+    expect(screen.getByText('Commissions')).toBeInTheDocument();
+    expect(screen.getByText('Affiliate links')).toBeInTheDocument();
     expect(screen.getByText('Unpublish Event')).toBeInTheDocument();
     expect(screen.getByText('Cancel Event')).toBeInTheDocument();
     expect(screen.getByText('View Analytics')).toBeInTheDocument();
@@ -75,6 +79,8 @@ describe('EventActions', () => {
     render(<EventActions event={cancelledEvent} onAction={mockOnAction} />);
     expect(screen.getByText('View Event')).toBeInTheDocument();
     expect(screen.getByText('Event polls')).toBeInTheDocument();
+    expect(screen.getByText('Commissions')).toBeInTheDocument();
+    expect(screen.getByText('Affiliate links')).toBeInTheDocument();
     expect(screen.getByText('Publish Event')).toBeInTheDocument();
     expect(screen.getByText('Delete Event')).toBeInTheDocument();
   });

@@ -27,7 +27,8 @@ router.post('/agency/affiliates', verifyToken, requireRole(['organizer','admin']
   body('email').isEmail(),
   body('phone').optional().isString(),
   body('affiliate_tier').optional().isIn(['tier_1','tier_2','tier_3']),
-  body('referral_code').optional().isString()
+  body('parent_affiliate_id').optional().isString(),
+  body('status').optional().isIn(['active', 'pending_approval'])
 ], async (req, res) => {
   const v = handleValidation(req, res); if (v) return v;
   try {

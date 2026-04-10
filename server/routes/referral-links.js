@@ -15,6 +15,24 @@ const handleValidation = (req, res) => {
   return false;
 };
 
+// GET /api/organizer/events/:eventId/referral-links — organizer/admin lists links for an event
+router.get('/organizer/events/:eventId/referral-links', verifyToken, requireRole(['organizer', 'admin']), [
+  param('eventId').isString()
+], async (req, res) => {
+  const v = handleValidation(req, res); if (v) return v;
+  try {
+    const isAdmin = req.user.role === 'admin';
+    const links = await referralLinkService.listForEventOrganizer({
+      eventId: req.params.eventId,
+      userId: req.user._id,
+      isAdmin
+    });
+    res.json({ ok: true, links });
+  } catch (e) {
+    res.status(e.statusCode || 500).json({ ok: false, error: e.message });
+  }
+});
+
 // POST /api/events/:eventId/referral-links
 router.post('/events/:eventId/referral-links', verifyToken, requireRole(['affiliate','organizer','admin']), [
   param('eventId').isString(),

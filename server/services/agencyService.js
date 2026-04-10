@@ -21,7 +21,24 @@ class AgencyService {
       assert(String(parent.organizer_id) === String(organizerId), 'Parent agency must belong to same organizer', 403);
     }
 
-    // Create pending agency by default
+    const payoutEmail = (payload.payout_paypal_email || '').trim().toLowerCase();
+    let payment_method = payload.payment_method;
+    let payment_details = payload.payment_details;
+    let status = 'pending_approval';
+
+    if (payoutEmail) {
+      assert(/.+@.+\..+/.test(payoutEmail), 'Invalid payout PayPal email');
+      payment_method = 'paypal';
+      payment_details = { email: payoutEmail };
+      status = 'active';
+    } else if (payment_method && payment_details && typeof payment_details === 'object') {
+      if (payment_method === 'paypal') {
+        const em = payment_details.email;
+        assert(em && /.+@.+\..+/.test(String(em)), 'Invalid PayPal email in payment_details');
+      }
+      status = 'active';
+    }
+
     const agency = await MarketingAgency.create({
       organizer_id: organizerId,
       agency_name: payload.agency_name,
@@ -32,9 +49,9 @@ class AgencyService {
       phone: payload.phone,
       address: payload.address,
       tax_id: payload.tax_id,
-      payment_method: payload.payment_method,
-      payment_details: payload.payment_details,
-      status: 'pending_approval'
+      payment_method,
+      payment_details,
+      status
     });
 
     return agency;

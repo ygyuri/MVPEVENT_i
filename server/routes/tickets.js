@@ -1,9 +1,12 @@
 const express = require("express");
 const { body, param, query, validationResult } = require("express-validator");
+const jwt = require("jsonwebtoken");
+const Session = require("../models/Session");
 const {
   verifyToken,
   requireRole,
   optionalAuth,
+  JWT_SECRET,
 } = require("../middleware/auth");
 const rateLimit = require("express-rate-limit");
 const crypto = require("crypto");
@@ -17,7 +20,7 @@ const ReferralLink = require("../models/ReferralLink");
 const ticketService = require("../services/ticketService");
 const conversionService = require("../services/conversionService");
 const payheroService = require("../services/payheroService");
-const emailService = require("../services/emailService");
+const { fulfillPaidDirectOrder } = require("../services/paidDirectOrderFulfillmentService");
 // Rate limiting
 const qrIssueLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -40,6 +43,22 @@ const purchaseLimiter = rateLimit({
 });
 
 const router = express.Router();
+
+/** Persist session like /api/auth/login so verifyToken accepts the access token. */
+async function createCheckoutSession(userId, req) {
+  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: "1h" });
+  const refreshToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: "7d" });
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await new Session({
+    userId,
+    sessionToken: accessToken,
+    refreshToken,
+    expiresAt,
+    userAgent: req.get("User-Agent"),
+    ipAddress: req.ip || req.connection?.remoteAddress,
+  }).save();
+  return { accessToken, refreshToken };
+}
 
 // Helper: standard validation handler
 function handleValidation(req, res) {
@@ -294,20 +313,21 @@ router.post(
         console.log("✅ Existing user found:", { userId: user._id, email });
       }
 
-      // Wallet lists tickets by JWT user. If checkout used a different email than the
-      // logged-in account, tickets were previously attached to the form-email user — so
-      // "My Tickets" looked empty. Always attribute ownership to the session user when present.
+      // optionalAuth may set req.user from any valid token (stale session, wrong tab).
+      // Only treat the session as the buyer when its email matches checkout; otherwise
+      // keep the user resolved from the form (new account or existing customer by email).
       if (req.user) {
         const authEmail = (req.user.email || "").toLowerCase().trim();
-        if (authEmail !== emailLower) {
+        if (authEmail === emailLower) {
+          user = req.user;
+          isNewUser = false;
+          tempPassword = null;
+        } else {
           console.log(
-            "🎫 direct-purchase: attributing order/tickets to logged-in user (form email differed)",
+            "🎫 direct-purchase: session email differs from checkout; using account for form email",
             { formEmail: emailLower, authUserId: req.user._id, authEmail }
           );
         }
-        user = req.user;
-        isNewUser = false;
-        tempPassword = null;
       }
 
       // ========== STEP 3: Handle Affiliate Tracking ==========
@@ -530,6 +550,28 @@ router.post(
           zeroTotalPurchase,
           totalAmount,
         });
+
+        if (affiliateData.referralCode) {
+          for (const t of tickets) {
+            try {
+              await conversionService.processConversionManualForTicket(t);
+            } catch (convErr) {
+              console.warn(
+                "Manual affiliate conversion skipped:",
+                convErr?.message
+              );
+            }
+          }
+        }
+
+        try {
+          await fulfillPaidDirectOrder(order);
+        } catch (fulfillErr) {
+          console.error(
+            "❌ Post-payment fulfillment (QR + emails) failed:",
+            fulfillErr
+          );
+        }
       } else {
         try {
           // Validate and format phone number
@@ -592,19 +634,37 @@ router.post(
         }
       }
 
-      // ========== STEP 8: Welcome Email ==========
-      // NOTE: Welcome email is sent AFTER payment confirmation in payhero.js callback
-      // to avoid sending credentials before payment is complete
-      // For local development, you can manually trigger payment callback to test emails
-      if (isNewUser && tempPassword) {
+      // ========== STEP 8: Emails ==========
+      // PayHero path: welcome + ticket emails run in payhero callback via fulfillPaidDirectOrder.
+      // Dev skip / zero-total: same fulfillment runs above when skipPayhero.
+      if (isNewUser && tempPassword && !skipPayhero) {
         console.log(
-          "ℹ️  Welcome email will be sent after payment confirmation"
+          "ℹ️  Welcome email will be sent after payment confirmation (PayHero callback)"
         );
         console.log("📧 Email will be sent to:", email);
         console.log("🔑 Temporary password generated:", tempPassword);
       }
 
       // ========== STEP 9: Return Success Response ==========
+      let tokens = null;
+      let authUserPayload = null;
+      if (skipPayhero) {
+        const issued = await createCheckoutSession(user._id, req);
+        tokens = {
+          accessToken: issued.accessToken,
+          refreshToken: issued.refreshToken,
+        };
+        authUserPayload = {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          name: user.name,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+        };
+      }
+
       res.status(201).json({
         success: true,
         message: skipPayhero
@@ -624,6 +684,7 @@ router.post(
           status: order.status,
           paymentStatus: order.paymentStatus,
           skippedPayment: !!skipPayhero,
+          ...(tokens && { tokens, user: authUserPayload }),
         },
       });
     } catch (error) {
