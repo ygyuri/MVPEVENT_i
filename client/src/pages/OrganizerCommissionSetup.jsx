@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { ArrowLeft, Layers, Percent, Users, Link2, Wallet } from 'lucide-react';
+import { ArrowLeft, Percent, Users, Link2, Building2 } from 'lucide-react';
 import api from '../utils/api';
 
 const currency = (n) =>
@@ -29,6 +29,16 @@ function mapProgramsForApi(programs) {
   return mapProgramsFromApi(programs);
 }
 
+function mapIndependentRatesForApi(rates) {
+  if (!Array.isArray(rates)) return [];
+  return rates
+    .filter((r) => r.affiliate_id && String(r.affiliate_id).trim())
+    .map((r) => ({
+      affiliate_id: String(r.affiliate_id).trim(),
+      pct_of_ticket: Number(r.pct_of_ticket) || 0
+    }));
+}
+
 const defaultConfig = () => ({
     platform_fee_type: 'percentage',
     platform_fee_percentage: 5,
@@ -45,6 +55,7 @@ const defaultConfig = () => ({
     affiliate_commission_base: 'organizer_revenue',
   flat_affiliate_pct_of_ticket: null,
   agency_programs: [],
+  independent_marketer_rates: [],
   use_event_commission_for_waterfall: true,
     enable_multi_tier: false,
     tier_2_commission_rate: 0,
@@ -61,19 +72,14 @@ const defaultConfig = () => ({
 const glass =
   'rounded-2xl border border-gray-200/70 dark:border-white/10 bg-white/50 dark:bg-gray-900/30 backdrop-blur-md shadow-sm';
 
-const readOnlyFieldClass =
-  'px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-gray-100 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300 text-sm cursor-not-allowed w-full max-w-xs';
-
 const saveBtnClass =
   'px-6 py-2.5 rounded-xl bg-[#4f0f69] text-white font-medium hover:bg-[#6b1a8a] disabled:opacity-50';
 
 const TAB_SAVE_SUCCESS = {
-  waterfall: 'Waterfall settings saved',
+  platform: 'Platform fee saved',
   agencies: 'Agency programs saved',
-  flat: 'Flat affiliate settings saved',
-  attribution: 'Attribution rules saved',
-  payout: 'Payout settings saved',
-  primary: 'Primary agency settings saved',
+  independent: 'Independent marketer settings saved',
+  rules: 'Rules saved',
   preview: 'Commission configuration saved'
 };
 
@@ -106,20 +112,29 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState('waterfall');
+  const [tab, setTab] = useState('agencies');
   const [config, setConfig] = useState(defaultConfig);
   const [eventCommissionRate, setEventCommissionRate] = useState(6);
   const [eventTitle, setEventTitle] = useState('');
   const [agencies, setAgencies] = useState([]);
+  const [soloMarketers, setSoloMarketers] = useState([]);
   const [programErrors, setProgramErrors] = useState([]);
+  const [newSolo, setNewSolo] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    pct_of_ticket: 10
+  });
+  const [creatingSolo, setCreatingSolo] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     let ok = false;
     try {
-      const [cfgRes, agRes] = await Promise.all([
+      const [cfgRes, agRes, soloRes] = await Promise.all([
         api.get(`/api/events/${eventId}/commission-config`),
-        api.get('/api/organizer/marketing-agencies')
+        api.get('/api/organizer/marketing-agencies'),
+        api.get('/api/organizer/independent-marketers').catch(() => ({ data: { items: [] } }))
       ]);
       const { config: c, event_commission_rate: ecr, event_title: et } = cfgRes.data || {};
       if (ecr != null) setEventCommissionRate(Number(ecr));
@@ -135,10 +150,17 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
           ...commissionFields
         } = c;
         setConfig((prev) => {
+          const ind = Array.isArray(c.independent_marketer_rates)
+            ? c.independent_marketer_rates.map((r) => ({
+                affiliate_id: r.affiliate_id != null ? String(r.affiliate_id) : '',
+                pct_of_ticket: Number(r.pct_of_ticket) || 0
+              }))
+            : [];
           const next = {
             ...prev,
             ...commissionFields,
-            agency_programs: mapProgramsFromApi(c.agency_programs)
+            agency_programs: mapProgramsFromApi(c.agency_programs),
+            independent_marketer_rates: ind
           };
           const pa = next.primary_agency_id;
           next.primary_agency_id =
@@ -149,6 +171,7 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
         setConfig(defaultConfig());
       }
       setAgencies(agRes.data?.items || agRes.data?.payouts || []);
+      setSoloMarketers(soloRes.data?.items || []);
       ok = true;
     } catch (e) {
       if (e.response?.status === 404 && e.response?.data?.error === 'EVENT_NOT_FOUND') {
@@ -193,11 +216,7 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
         : 0;
     const platform_fee = mockPrice * (Number(platformPct) / 100);
     const organizer_revenue = mockPrice - platform_fee;
-    const primary_agency = config.primary_agency_id
-      ? config.primary_agency_commission_type === 'percentage'
-        ? mockPrice * (config.primary_agency_commission_rate / 100)
-        : config.primary_agency_commission_fixed
-      : 0;
+    const primary_agency = 0;
 
     const firstProg = (config.agency_programs || [])[0];
     let affiliate = 0;
@@ -205,6 +224,9 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
     if (firstProg) {
       affiliate = mockPrice * ((Number(firstProg.sub_seller_pct_of_ticket) || 0) / 100);
       headExtra = mockPrice * ((Number(firstProg.head_pct_of_ticket) || 0) / 100);
+    } else if ((config.independent_marketer_rates || []).length > 0) {
+      const r0 = config.independent_marketer_rates[0];
+      affiliate = mockPrice * ((Number(r0.pct_of_ticket) || 0) / 100);
     } else if (config.affiliate_commission_enabled) {
       const flat =
         config.flat_affiliate_pct_of_ticket != null
@@ -261,8 +283,11 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
       } = config;
       const payload = {
         ...commissionRest,
-        primary_agency_id: normalizePrimaryAgencyForApi(config.primary_agency_id),
+        primary_agency_id: canEditPlatformFee
+          ? normalizePrimaryAgencyForApi(config.primary_agency_id)
+          : null,
         agency_programs: mapProgramsForApi(config.agency_programs),
+        independent_marketer_rates: mapIndependentRatesForApi(config.independent_marketer_rates),
         ...(canEditPlatformFee ? { event_commission_rate: eventCommissionRate } : {})
       };
       await api.patch(`/api/events/${eventId}/commission-config`, payload);
@@ -292,7 +317,8 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
       >
         {!compact && (
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Saves waterfall, agency programs, primary agency, flat rules, attribution, and payouts together.
+            Saves agency programs, independent marketer rates, and referral rules (platform fee stays on the event;
+            see preview below).
           </p>
         )}
         <button
@@ -327,6 +353,69 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
       ...prev,
       agency_programs: (prev.agency_programs || []).filter((_, i) => i !== idx)
     }));
+  };
+
+  const updateIndependentPct = (affiliateId, pct) => {
+    const id = String(affiliateId);
+    setConfig((prev) => {
+      const rows = [...(prev.independent_marketer_rates || [])];
+      const i = rows.findIndex((r) => String(r.affiliate_id) === id);
+      if (i >= 0) rows[i] = { ...rows[i], pct_of_ticket: Number(pct) || 0 };
+      else rows.push({ affiliate_id: id, pct_of_ticket: Number(pct) || 0 });
+      return { ...prev, independent_marketer_rates: rows };
+    });
+  };
+
+  const removeIndependentRate = (affiliateId) => {
+    const id = String(affiliateId);
+    setConfig((prev) => ({
+      ...prev,
+      independent_marketer_rates: (prev.independent_marketer_rates || []).filter(
+        (r) => String(r.affiliate_id) !== id
+      )
+    }));
+  };
+
+  const pctForSolo = (affiliateId) => {
+    const row = (config.independent_marketer_rates || []).find(
+      (r) => String(r.affiliate_id) === String(affiliateId)
+    );
+    return row ? row.pct_of_ticket : '';
+  };
+
+  const addSoloMarketer = async (e) => {
+    e.preventDefault();
+    if (!newSolo.first_name.trim() || !newSolo.last_name.trim() || !newSolo.email.trim()) {
+      toast.error('First name, last name, and email are required');
+      return;
+    }
+    setCreatingSolo(true);
+    try {
+      const res = await api.post('/api/organizer/independent-marketers', {
+        first_name: newSolo.first_name.trim(),
+        last_name: newSolo.last_name.trim(),
+        email: newSolo.email.trim().toLowerCase()
+      });
+      const aff = res.data?.affiliate;
+      if (!aff?._id) throw new Error('No affiliate returned');
+      const pct = Number(newSolo.pct_of_ticket) || 0;
+      const nextRates = [
+        ...mapIndependentRatesForApi(config.independent_marketer_rates),
+        { affiliate_id: String(aff._id), pct_of_ticket: pct }
+      ];
+      await api.patch(`/api/events/${eventId}/commission-config`, {
+        independent_marketer_rates: nextRates
+      });
+      toast.success(
+        `${aff.first_name} added · ${aff.referral_code}. Generate their tracking link on Affiliate links.`
+      );
+      setNewSolo({ first_name: '', last_name: '', email: '', pct_of_ticket: 10 });
+      await load();
+    } catch (err) {
+      toast.error(formatCommissionApiError(err, 'Could not add independent marketer'));
+    } finally {
+      setCreatingSolo(false);
+    }
   };
 
   if (loading) {
@@ -364,18 +453,80 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
         Manage agencies and head/sub marketers in{' '}
         <Link to="/organizer/marketing" className="text-violet-600 dark:text-violet-400 font-medium hover:underline">
-          Marketing partners
+          Pick event → marketing hub
         </Link>
-        .
+        . Add <strong>independent marketers</strong> on the next tab, then open{' '}
+        <Link
+          to={`/organizer/events/${eventId}/marketing?tab=links`}
+          className="text-violet-600 dark:text-violet-400 font-medium hover:underline"
+        >
+          Affiliate links
+        </Link>{' '}
+        to generate checkout URLs. The preview at the bottom uses your event&apos;s platform fee (admins can change
+        that in admin mode).
       </p>
 
+      {canEditPlatformFee && (
+        <div className={`${glass} p-5 sm:p-6 mb-6`}>
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Platform fee (admin)</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 mb-4">
+            Shown to buyers as the platform share. Organizers configure partners and splits on the other tabs; this
+            slice is edited only in admin mode.
+          </p>
+          <label className="flex flex-col sm:flex-row sm:items-center gap-2 max-w-md mb-3">
+            <span className="text-sm text-gray-700 dark:text-gray-300">Event commission % (ticket)</span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={0.1}
+              value={eventCommissionRate}
+              onChange={(e) => setEventCommissionRate(Number(e.target.value))}
+              className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40 max-w-xs"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-3">
+            <input
+              type="checkbox"
+              checked={config.use_event_commission_for_waterfall}
+              onChange={(e) =>
+                setConfig({ ...config, use_event_commission_for_waterfall: e.target.checked })
+              }
+            />
+            Use event commission % in commission math (recommended)
+          </label>
+          {!config.use_event_commission_for_waterfall && (
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
+              <select
+                value={config.platform_fee_type}
+                onChange={(e) => setConfig({ ...config, platform_fee_type: e.target.value })}
+                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40"
+              >
+                <option value="percentage">Percentage</option>
+                <option value="fixed">Fixed</option>
+                <option value="hybrid">Hybrid</option>
+              </select>
+              <input
+                type="number"
+                value={config.platform_fee_percentage}
+                onChange={(e) =>
+                  setConfig({ ...config, platform_fee_percentage: Number(e.target.value) })
+                }
+                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40"
+                placeholder="Platform %"
+              />
+            </div>
+          )}
+          {renderSaveConfigurationBar({ successToastSection: 'platform' })}
+        </div>
+      )}
+
+      {/* Main tabs: no separate "Waterfall" — preview at bottom shows platform + splits in one place. */}
       <div className="flex flex-wrap gap-2 mb-6">
         {[
-          { id: 'waterfall', label: 'Waterfall', icon: Layers },
           { id: 'agencies', label: 'Agency programs', icon: Users },
-          { id: 'flat', label: 'Flat affiliates', icon: Percent },
-          { id: 'attribution', label: 'Attribution', icon: Link2 },
-          { id: 'payout', label: 'Payouts', icon: Wallet }
+          { id: 'independent', label: 'Independent marketers', icon: Percent },
+          { id: 'rules', label: 'Rules', icon: Link2 }
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -394,106 +545,45 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
       </div>
 
       <div className={`${glass} p-5 sm:p-6 mb-6`}>
-        {tab === 'waterfall' && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Waterfall</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Defines how each ticket is split starting with the platform share, then organizer revenue, primary agency,
-              and affiliate slices. Previews below use these rules.
-            </p>
-            <h3 className="text-base font-medium text-gray-900 dark:text-white pt-2">Platform fee (event)</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Shown to buyers as the platform share.{' '}
-              {canEditPlatformFee
-                ? 'You can set the event commission % and how it feeds the waterfall.'
-                : 'Only a platform admin can change this percentage; you can still configure agencies and affiliates around it.'}
-            </p>
-            <label className="flex flex-col sm:flex-row sm:items-center gap-2 max-w-md">
-              <span className="text-sm text-gray-700 dark:text-gray-300">Event commission % (ticket)</span>
-              {canEditPlatformFee ? (
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.1}
-                  value={eventCommissionRate}
-                  onChange={(e) => setEventCommissionRate(Number(e.target.value))}
-                  className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40 max-w-xs"
-                />
-              ) : (
-                <input
-                  type="text"
-                  readOnly
-                  tabIndex={-1}
-                  value={String(eventCommissionRate)}
-                  className={readOnlyFieldClass}
-                  aria-readonly="true"
-                />
-              )}
-            </label>
-            <label className={`flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 ${!canEditPlatformFee ? 'opacity-90' : ''}`}>
-              <input
-                type="checkbox"
-                disabled={!canEditPlatformFee}
-                checked={config.use_event_commission_for_waterfall}
-                onChange={(e) =>
-                  setConfig({ ...config, use_event_commission_for_waterfall: e.target.checked })
-                }
-              />
-              Use event commission % for affiliate waterfall (recommended)
-            </label>
-            {!config.use_event_commission_for_waterfall && (
-              <div className="pt-2 space-y-2">
-                {canEditPlatformFee ? (
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <select
-                      value={config.platform_fee_type}
-                      onChange={(e) => setConfig({ ...config, platform_fee_type: e.target.value })}
-                      className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40"
-                    >
-                      <option value="percentage">Percentage</option>
-                      <option value="fixed">Fixed</option>
-                      <option value="hybrid">Hybrid</option>
-                    </select>
-                    <input
-                      type="number"
-                      value={config.platform_fee_percentage}
-                      onChange={(e) =>
-                        setConfig({ ...config, platform_fee_percentage: Number(e.target.value) })
-                      }
-                      className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40"
-                      placeholder="Platform %"
-                    />
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 rounded-xl border border-dashed border-gray-200 dark:border-white/15 p-3">
-                    Custom platform fee mode is on ({config.platform_fee_type}, {config.platform_fee_percentage}% configured).
-                    Contact an admin to change these settings.
-                  </p>
-                )}
-              </div>
-            )}
-            {renderSaveConfigurationBar()}
-          </div>
-        )}
-
         {tab === 'agencies' && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
+            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+              <div className="space-y-2 max-w-3xl">
                 <h2 className="text-lg font-medium text-gray-900 dark:text-white">Agency programs</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Link each marketing partner to a program: a pool % of the ticket, split between the sub-seller (who
-                  shared the link) and the head marketer. Add programs in <strong>Marketing partners</strong> first.
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  For each <strong>marketing partner</strong> you already added (a lead marketer or &quot;agency&quot;
+                  with a team): set how much of each ticket goes to that partner&apos;s <strong>pool</strong>, then how
+                  that pool splits between the <strong>person who shared the link (sub)</strong> and the{' '}
+                  <strong>team lead (head)</strong>. Sub + head percentages must add up to the pool.
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Don&apos;t have the partner in the list yet? Add them first—same place where you create head marketers
+                  and sub-promoters.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={addProgram}
-                className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-medium hover:bg-violet-500"
-              >
-                Add program
-              </button>
+              <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                <Link
+                  to={`/organizer/events/${eventId}/marketing`}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border-2 border-violet-600 text-violet-700 dark:text-violet-300 bg-violet-50/80 dark:bg-violet-950/40 text-sm font-medium hover:bg-violet-100/80 dark:hover:bg-violet-900/30"
+                >
+                  <Building2 className="w-4 h-4" />
+                  Open marketing hub (partners)
+                </Link>
+                <Link
+                  to={`/organizer/events/${eventId}/marketing?tab=links`}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#4f0f69] text-white text-sm font-medium hover:bg-[#6b1a8a]"
+                >
+                  <Link2 className="w-4 h-4" />
+                  Affiliate links
+                </Link>
+                <button
+                  type="button"
+                  onClick={addProgram}
+                  className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-medium hover:bg-violet-500"
+                >
+                  Add program row
+                </button>
+              </div>
             </div>
             {programErrors.length > 0 && (
               <ul className="text-sm text-red-600 dark:text-red-400 list-disc pl-5">
@@ -515,7 +605,10 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
               (Affiliate performance).
             </p>
             {(config.agency_programs || []).length === 0 && (
-              <p className="text-sm text-gray-500">No agency programs — flat affiliate rules apply.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No program rows yet—use <strong>Independent marketers</strong> for solo promoters, or add a row here
+                once you have an agency team (head / sub splits).
+              </p>
             )}
             <div className="space-y-4">
               {(config.agency_programs || []).map((p, idx) => (
@@ -587,89 +680,141 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
           </div>
         )}
 
-        {tab === 'flat' && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Flat affiliates</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Fallback when a sale is not tied to an agency program: a straight commission for individual affiliates,
-              as a % of the ticket or of organizer revenue (or agency revenue if you use a primary agency).
-            </p>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={config.affiliate_commission_enabled}
-                onChange={(e) =>
-                  setConfig({ ...config, affiliate_commission_enabled: e.target.checked })
-                }
-              />
-              Enable legacy / flat affiliate commission
-            </label>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">
-                Flat % of ticket (optional — overrides base below when set)
-              </label>
-              <input
-                type="number"
-                value={config.flat_affiliate_pct_of_ticket ?? ''}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    flat_affiliate_pct_of_ticket: e.target.value === '' ? null : Number(e.target.value)
-                  })
-                }
-                placeholder="e.g. 15"
-                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40 max-w-xs"
-              />
-            </div>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <select
-                value={config.affiliate_commission_base}
-                onChange={(e) => setConfig({ ...config, affiliate_commission_base: e.target.value })}
-                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40"
+        {tab === 'independent' && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-medium text-gray-900 dark:text-white">Independent marketers</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 max-w-2xl">
+                  Solo promoters <strong>not</strong> tied to an agency. Each gets a <strong>unique referral code</strong>.
+                  Set their <strong>% of each ticket</strong> for this event, then create tracking links.
+                </p>
+              </div>
+              <Link
+                to={`/organizer/events/${eventId}/marketing?tab=links`}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#4f0f69] text-white text-sm font-medium hover:bg-[#6b1a8a] shrink-0"
               >
-                <option value="ticket_price">Base: ticket price</option>
-                <option value="organizer_revenue">Base: organizer revenue</option>
-                <option value="agency_revenue">Base: agency revenue</option>
-            </select>
-              <input
-                type="number"
-                value={config.affiliate_commission_rate}
-                onChange={(e) =>
-                  setConfig({ ...config, affiliate_commission_rate: Number(e.target.value) })
-                }
-                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40"
-                placeholder="% when flat field empty"
-              />
+                <Link2 className="w-4 h-4" />
+                Affiliate links
+              </Link>
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={config.enable_multi_tier}
-                onChange={(e) => setConfig({ ...config, enable_multi_tier: e.target.checked })}
-              />
-              Upline % of seller commission (legacy multi-tier)
-            </label>
-            {config.enable_multi_tier && (
-              <input
-                type="number"
-                value={config.tier_2_commission_rate || 0}
-                onChange={(e) =>
-                  setConfig({ ...config, tier_2_commission_rate: Number(e.target.value) })
-                }
-                className="px-3 py-2 rounded-xl border max-w-xs"
-                placeholder="Upline %"
-              />
-            )}
-            {renderSaveConfigurationBar()}
-            </div>
-          )}
 
-        {tab === 'attribution' && (
+            <div className="rounded-xl border border-violet-200/80 dark:border-violet-800/50 bg-violet-50/50 dark:bg-violet-950/25 px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+              After you set percentages, open <strong>Affiliate links</strong> to generate checkout URLs with{' '}
+              <code className="text-xs bg-black/5 dark:bg-white/10 px-1 rounded">?ref=</code> for each person.
+            </div>
+
+            <div className={`${glass} p-5 sm:p-6`}>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">Add independent marketer</h3>
+              <form onSubmit={addSoloMarketer} className="grid sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+                <input
+                  required
+                  placeholder="First name *"
+                  value={newSolo.first_name}
+                  onChange={(e) => setNewSolo({ ...newSolo, first_name: e.target.value })}
+                  className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/90 dark:bg-gray-900/50 text-sm"
+                />
+                <input
+                  required
+                  placeholder="Last name *"
+                  value={newSolo.last_name}
+                  onChange={(e) => setNewSolo({ ...newSolo, last_name: e.target.value })}
+                  className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/90 dark:bg-gray-900/50 text-sm"
+                />
+                <input
+                  required
+                  type="email"
+                  placeholder="Email *"
+                  value={newSolo.email}
+                  onChange={(e) => setNewSolo({ ...newSolo, email: e.target.value })}
+                  className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/90 dark:bg-gray-900/50 text-sm sm:col-span-2"
+                />
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">% of ticket (this event)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={newSolo.pct_of_ticket}
+                    onChange={(e) =>
+                      setNewSolo({ ...newSolo, pct_of_ticket: Number(e.target.value) })
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/90 dark:bg-gray-900/50 text-sm"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={creatingSolo}
+                  className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-medium hover:bg-violet-500 disabled:opacity-50"
+                >
+                  {creatingSolo ? 'Adding…' : 'Add & save %'}
+                </button>
+              </form>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Saves the person and their rate for this event in one step. Adjust % for anyone below, then{' '}
+                <strong>Save configuration</strong>.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">Rates for this event</h3>
+              {soloMarketers.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No independent marketers yet. Use the form above to add the first one.
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {soloMarketers.map((m) => (
+                    <li
+                      key={m._id}
+                      className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-gray-200/80 dark:border-white/10 p-4 bg-white/40 dark:bg-gray-950/20"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {m.first_name} {m.last_name}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">{m.email}</p>
+                        <p className="text-xs text-violet-600 dark:text-violet-400 mt-1 font-mono">
+                          {m.referral_code}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-gray-500 whitespace-nowrap">% of ticket</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.1}
+                          value={pctForSolo(m._id) === '' ? '' : pctForSolo(m._id)}
+                          placeholder="0"
+                          onChange={(e) => updateIndependentPct(m._id, e.target.value)}
+                          className="w-24 px-2 py-2 rounded-lg border border-gray-200 dark:border-white/15 bg-white/90 dark:bg-gray-900/50 text-sm"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeIndependentRate(m._id)}
+                        className="text-sm text-red-600 hover:underline shrink-0"
+                      >
+                        Remove from event
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {renderSaveConfigurationBar({ successToastSection: 'independent' })}
+          </div>
+        )}
+
+        {tab === 'rules' && (
           <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Attribution</h2>
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Rules</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Rules for which referral link earns credit (last vs first click, etc.), how long clicks stay valid, and
-              whether self-referrals or duplicate conversions are allowed.
+              Which referral link earns credit (last vs first click, etc.), how long clicks stay valid, and whether
+              self-referrals or duplicate conversions are allowed.
             </p>
             <div className="grid sm:grid-cols-2 gap-3">
               <select
@@ -714,107 +859,22 @@ export default function OrganizerCommissionSetup({ adminMode = false }) {
               />
               Allow duplicate conversions
             </label>
-            {renderSaveConfigurationBar()}
+            {renderSaveConfigurationBar({ successToastSection: 'rules' })}
           </div>
         )}
-
-        {tab === 'payout' && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Payouts</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Cadence for paying affiliates (immediate, weekly, manual, etc.), optional delay after a sale, and minimum
-              balance before a payout runs.
-            </p>
-          <div className="grid sm:grid-cols-3 gap-3">
-              <select
-                value={config.payout_frequency}
-                onChange={(e) => setConfig({ ...config, payout_frequency: e.target.value })}
-                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40"
-              >
-              <option value="immediate">Immediate</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="manual">Manual</option>
-            </select>
-              <input
-                type="number"
-                value={config.payout_delay_days}
-                onChange={(e) =>
-                  setConfig({ ...config, payout_delay_days: Number(e.target.value) })
-                }
-                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40"
-                placeholder="Delay days"
-              />
-              <input
-                type="number"
-                value={config.minimum_payout_amount}
-                onChange={(e) =>
-                  setConfig({ ...config, minimum_payout_amount: Number(e.target.value) })
-                }
-                className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40"
-                placeholder="Minimum"
-              />
-            </div>
-            {renderSaveConfigurationBar()}
-          </div>
-        )}
-      </div>
-
-      <div className={`${glass} p-5 sm:p-6 mb-6`}>
-        <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Primary agency (optional)</h2>
-        <div className="grid sm:grid-cols-3 gap-3">
-          <select
-            value={config.primary_agency_id || ''}
-            onChange={(e) => setConfig({ ...config, primary_agency_id: e.target.value })}
-            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40"
-          >
-            <option value="">None</option>
-            {agencies.map((a) => (
-              <option key={a._id} value={a._id}>
-                {a.agency_name || a.agency_email}
-              </option>
-            ))}
-          </select>
-          <select
-            value={config.primary_agency_commission_type}
-            onChange={(e) =>
-              setConfig({ ...config, primary_agency_commission_type: e.target.value })
-            }
-            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40"
-          >
-            <option value="percentage">Percentage</option>
-            <option value="fixed">Fixed</option>
-          </select>
-          <input
-            type="number"
-            value={
-              config.primary_agency_commission_type === 'percentage'
-                ? config.primary_agency_commission_rate
-                : config.primary_agency_commission_fixed
-            }
-            onChange={(e) =>
-              setConfig({
-                ...config,
-                [config.primary_agency_commission_type === 'percentage'
-                  ? 'primary_agency_commission_rate'
-                  : 'primary_agency_commission_fixed']: Number(e.target.value)
-              })
-            }
-            className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/15 bg-white/80 dark:bg-gray-900/40"
-          />
-        </div>
-        {renderSaveConfigurationBar({ successToastSection: 'primary' })}
       </div>
 
       <div className={`${glass} p-5 sm:p-6`}>
         <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Quick preview ($100 ticket)</h2>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          Example only. Platform line uses the event&apos;s commission % when enabled in config (admins can change that
+          in admin mode above).
+        </p>
         <pre className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 overflow-x-auto whitespace-pre-wrap bg-black/5 dark:bg-white/5 rounded-xl p-4">
           {`Ticket: $${mockPrice.toFixed(2)}
-├ Platform (${config.use_event_commission_for_waterfall ? `${eventCommissionRate}% (event)` : 'config'}): -$${preview.platform_fee.toFixed(2)}
+├ Platform / event fee (${config.use_event_commission_for_waterfall ? `${eventCommissionRate}%` : 'advanced'}): -$${preview.platform_fee.toFixed(2)}
 └ Organizer revenue: $${preview.organizer_revenue.toFixed(2)}
-   ├ Primary agency: -$${preview.primary_agency.toFixed(2)}
-   ├ Affiliate / sub: -$${preview.affiliate.toFixed(2)}
+   ├ Sub / independent marketer: -$${preview.affiliate.toFixed(2)}
    ${preview.headExtra > 0 ? `├ Head (agency pool): -$${preview.headExtra.toFixed(2)}\n   ` : ''}${config.enable_multi_tier && preview.tier2 > 0 ? `├ Upline: -$${preview.tier2.toFixed(2)}\n   ` : ''}└ Your net: $${preview.net.toFixed(2)} (${preview.netPct}%)`}
           </pre>
         {renderSaveConfigurationBar({ compact: true, successToastSection: 'preview' })}

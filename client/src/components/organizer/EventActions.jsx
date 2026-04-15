@@ -75,7 +75,7 @@ const EventActions = ({
       });
       actions.push({
         key: 'commission-setup',
-        label: 'Commissions',
+        label: 'Marketing & affiliates',
         icon: Percent,
         variant: 'secondary',
         className: 'text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'

@@ -7,12 +7,19 @@ const agencyProgramSchema = new mongoose.Schema({
   head_pct_of_ticket: { type: Number, min: 0, max: 100, default: 0 }
 }, { _id: false });
 
+const independentMarketerRateSchema = new mongoose.Schema({
+  affiliate_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AffiliateMarketer', required: true },
+  pct_of_ticket: { type: Number, min: 0, max: 100, required: true }
+}, { _id: false });
+
 const eventCommissionConfigSchema = new mongoose.Schema({
   event_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
   organizer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 
   /** Per-agency caps and head/sub split (percent of ticket). sub + head must equal pool per program. */
   agency_programs: { type: [agencyProgramSchema], default: [] },
+  /** Solo marketers (no agency): commission % of ticket per AffiliateMarketer id. */
+  independent_marketer_rates: { type: [independentMarketerRateSchema], default: [] },
   /** Simple affiliates (no agency program): % of ticket when flat_affiliate_pct_of_ticket is set; else legacy affiliate_commission_rate */
   flat_affiliate_pct_of_ticket: { type: Number, min: 0, max: 100, default: null },
   /** When true (default), waterfall uses Event.commissionRate for platform slice in previews/reporting */

@@ -131,4 +131,47 @@ describe('affiliateSplitCalculator', () => {
     expect(out.affiliate_commission).toBe(15);
     expect(out.split_mode).toBe('flat');
   });
+
+  test('primary agency commission is zero when primary_agency_id is unset', () => {
+    const cfg = {
+      use_event_commission_for_waterfall: true,
+      primary_agency_id: null,
+      primary_agency_commission_type: 'percentage',
+      primary_agency_commission_rate: 25,
+      affiliate_commission_enabled: true,
+      affiliate_commission_type: 'percentage',
+      affiliate_commission_rate: 10,
+      affiliate_commission_base: 'organizer_revenue'
+    };
+    const out = computeTicketAffiliateSplit({
+      ticketPrice: 100,
+      eventCommissionRate: 6,
+      cfg,
+      link: { affiliate_id: new mongoose.Types.ObjectId(), agency_id: null },
+      marketer: null
+    });
+    expect(out.primary_agency_commission).toBe(0);
+    expect(out.split_mode).toBe('flat');
+  });
+
+  test('independent_marketer_rates: pct of ticket for matching link affiliate', () => {
+    const affId = new mongoose.Types.ObjectId();
+    const cfg = {
+      use_event_commission_for_waterfall: true,
+      primary_agency_id: null,
+      affiliate_commission_enabled: true,
+      affiliate_commission_rate: 99,
+      independent_marketer_rates: [{ affiliate_id: affId, pct_of_ticket: 12 }]
+    };
+    const out = computeTicketAffiliateSplit({
+      ticketPrice: 100,
+      eventCommissionRate: 6,
+      cfg,
+      link: { affiliate_id: affId, agency_id: null },
+      marketer: { agency_id: null, parent_affiliate_id: null }
+    });
+    expect(out.split_mode).toBe('independent_marketer');
+    expect(out.affiliate_commission).toBe(12);
+    expect(out.tier_2_affiliate_commission).toBeNull();
+  });
 });

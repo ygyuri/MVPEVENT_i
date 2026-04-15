@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 
 const affiliateMarketerSchema = new mongoose.Schema({
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  /** Set when an organizer creates a solo / independent marketer (no agency). */
+  organizer_creator_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   agency_id: { type: mongoose.Schema.Types.ObjectId, ref: 'MarketingAgency', default: null },
   first_name: { type: String, required: true, trim: true, maxlength: 100 },
   last_name: { type: String, required: true, trim: true, maxlength: 100 },
@@ -25,6 +27,7 @@ const affiliateMarketerSchema = new mongoose.Schema({
 affiliateMarketerSchema.index({ email: 1 }, { unique: true });
 affiliateMarketerSchema.index({ referral_code: 1 }, { unique: true });
 affiliateMarketerSchema.index({ agency_id: 1, status: 1 });
+affiliateMarketerSchema.index({ organizer_creator_id: 1, agency_id: 1 });
 affiliateMarketerSchema.index({ parent_affiliate_id: 1 });
 
 module.exports = mongoose.models.AffiliateMarketer || mongoose.model('AffiliateMarketer', affiliateMarketerSchema);

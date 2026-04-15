@@ -274,11 +274,11 @@ const EventDetails = () => {
                       </Link>
                       {(user?.role === 'organizer' || user?._id === currentEvent.organizer?._id || user?.id === currentEvent.organizer?._id) && (
                         <Link
-                          to={`/organizer/events/${currentEvent.id}/commission-setup`}
+                          to={`/organizer/events/${currentEvent.id}/marketing`}
                           className={`text-xs px-2 py-1 rounded-full ${isDarkMode ? 'bg-indigo-900/40 text-indigo-300 hover:bg-indigo-900/60' : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'} transition-colors`}
-                          title="Configure commissions for this event"
+                          title="Marketing hub: partners, links, and commission rules"
                         >
-                          Commission Setup
+                          Marketing hub
                         </Link>
                       )}
                     </div>

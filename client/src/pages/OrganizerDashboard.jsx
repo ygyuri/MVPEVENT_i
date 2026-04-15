@@ -322,7 +322,7 @@ const OrganizerDashboard = () => {
               className="inline-flex items-center gap-2 mt-3 text-sm font-medium text-violet-700 dark:text-violet-300 hover:text-violet-900 dark:hover:text-violet-100"
             >
               <Megaphone className="w-4 h-4" />
-              Marketing partners & affiliates
+              Event marketing hub
             </Link>
           </div>
 

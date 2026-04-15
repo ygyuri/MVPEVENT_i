@@ -28,8 +28,12 @@ import OrganizerEventPreview from "./pages/OrganizerEventPreview";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import OrganizerCommissionSetup from "./pages/OrganizerCommissionSetup";
 import AdminCommissionSetupPage from "./pages/AdminCommissionSetupPage";
-import OrganizerEventAffiliates from "./pages/OrganizerEventAffiliates";
+import OrganizerEventMarketingHub from "./pages/OrganizerEventMarketingHub";
 import OrganizerMarketingPartners from "./pages/OrganizerMarketingPartners";
+import {
+  RedirectToEventMarketingHub,
+  RedirectToEventMarketingLinks
+} from "./pages/organizerPromoteRedirects";
 import AffiliateAnalytics from "./pages/AffiliateAnalytics";
 import ReferralLinksManager from "./pages/ReferralLinksManager";
 import UserPreferences from "./pages/UserPreferences";
@@ -129,12 +133,16 @@ function App() {
                     element={<EventQRSettings />}
                   />
                   <Route
+                    path="/organizer/events/:eventId/marketing"
+                    element={<OrganizerEventMarketingHub />}
+                  />
+                  <Route
                     path="/organizer/events/:eventId/commission-setup"
-                    element={<OrganizerCommissionSetup />}
+                    element={<RedirectToEventMarketingHub />}
                   />
                   <Route
                     path="/organizer/events/:eventId/affiliates"
-                    element={<OrganizerEventAffiliates />}
+                    element={<RedirectToEventMarketingLinks />}
                   />
                   <Route
                     path="/organizer/marketing"

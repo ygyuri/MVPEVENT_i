@@ -1,15 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { ArrowLeft, Link2, Copy, Plus } from 'lucide-react';
-import api from '../utils/api';
+import { Link2, Copy, Plus } from 'lucide-react';
+import api from '../../../utils/api';
 
 const glass =
   'rounded-2xl border border-gray-200/70 dark:border-white/10 bg-white/50 dark:bg-gray-900/30 backdrop-blur-md shadow-sm';
 
-export default function OrganizerEventAffiliates() {
-  const { eventId } = useParams();
-  const navigate = useNavigate();
+export default function AffiliateLinksStep({ eventId }) {
   const [loading, setLoading] = useState(true);
   const [links, setLinks] = useState([]);
   const [agencies, setAgencies] = useState([]);
@@ -25,16 +23,22 @@ export default function OrganizerEventAffiliates() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [linksRes, agRes, evRes] = await Promise.all([
+      const [linksRes, agRes, evRes, soloRes] = await Promise.all([
         api.get(`/api/organizer/events/${eventId}/referral-links`),
         api.get('/api/organizer/marketing-agencies'),
-        api.get(`/api/organizer/events/${eventId}`)
+        api.get(`/api/organizer/events/${eventId}`),
+        api.get('/api/organizer/independent-marketers').catch(() => ({ data: { items: [] } }))
       ]);
       setLinks(linksRes.data?.links || []);
       const ag = agRes.data?.items || agRes.data?.payouts || [];
       setAgencies(ag);
       const ev = evRes.data?.data || evRes.data?.event || evRes.data;
       setEventSlug(ev?.slug || '');
+
+      const independents = (soloRes.data?.items || []).map((m) => ({
+        ...m,
+        _agencyName: 'Independent marketer'
+      }));
 
       const acc = [];
       for (const a of ag) {
@@ -49,11 +53,11 @@ export default function OrganizerEventAffiliates() {
             });
           });
         } catch {
-          /* skip agency */
+          /* skip */
         }
       }
-      setAllMarketers(acc);
-    } catch (e) {
+      setAllMarketers([...independents, ...acc]);
+    } catch {
       toast.error('Failed to load affiliates & links');
     } finally {
       setLoading(false);
@@ -65,11 +69,13 @@ export default function OrganizerEventAffiliates() {
   }, [load]);
 
   const onPickMarketer = (id) => {
-    const m = allMarketers.find((x) => String(x._id) === String(id));
-    setForm({
-      ...form,
-      affiliateId: id,
-      agencyId: m?.agency_id ? String(m.agency_id) : ''
+    setForm((prev) => {
+      const m = allMarketers.find((x) => String(x._id) === String(id));
+      return {
+        ...prev,
+        affiliateId: id,
+        agencyId: m?.agency_id ? String(m.agency_id) : ''
+      };
     });
   };
 
@@ -100,7 +106,7 @@ export default function OrganizerEventAffiliates() {
         agencyId: form.agencyId || undefined,
         campaign_name: form.campaign_name || undefined
       });
-      toast.success('Affiliate link created. Track sales by referral code on the event overview.');
+      toast.success('Affiliate link created.');
       setForm({ affiliateId: '', agencyId: '', campaign_name: '' });
       await load();
     } catch (err) {
@@ -112,51 +118,41 @@ export default function OrganizerEventAffiliates() {
 
   if (loading) {
     return (
-      <div className="min-h-[40vh] flex items-center justify-center text-gray-500">Loading…</div>
+      <div className="min-h-[30vh] flex items-center justify-center text-gray-500">Loading links…</div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-4 sm:p-6">
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mb-4"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back
-      </button>
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-        <Link2 className="w-7 h-7 text-violet-600" />
-        Affiliate links
-      </h1>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-        Generate unique tracking links. Checkout URLs include <code className="text-xs bg-black/5 dark:bg-white/10 px-1 rounded">?ref=CODE</code> or buyers can enter the code on the checkout form.
-      </p>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 rounded-xl border border-gray-200/80 dark:border-white/10 bg-white/40 dark:bg-gray-950/20 px-4 py-3">
-        <strong className="text-gray-900 dark:text-white">Where to see what each link earned:</strong> open your{' '}
-        <Link to={`/organizer/events/${eventId}`} className="text-violet-600 dark:text-violet-400 font-medium hover:underline">
-          event overview
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <Link2 className="w-6 h-6 text-violet-600" />
+          Step 3 · Affiliate links
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Generate unique tracking URLs with <code className="text-xs bg-black/5 dark:bg-white/10 px-1 rounded">?ref=</code>.
+        </p>
+      </div>
+
+      <p className="text-sm text-gray-600 dark:text-gray-400 rounded-xl border border-gray-200/80 dark:border-white/10 bg-white/40 dark:bg-gray-950/20 px-4 py-3">
+        <strong className="text-gray-900 dark:text-white">Performance:</strong>{' '}
+        <Link
+          to={`/organizer/events/${eventId}`}
+          className="text-violet-600 dark:text-violet-400 font-medium hover:underline"
+        >
+          Event overview
         </Link>{' '}
-        and scroll to <strong>Affiliate performance (paid orders)</strong>. Each row is a marketer/referral code with
-        tickets sold, attributed gross, and estimated commission.
-      </p>
-      <p className="text-sm text-violet-800 dark:text-violet-200/90 mb-6 rounded-xl border border-violet-200/80 dark:border-violet-800/50 bg-violet-50/80 dark:bg-violet-950/30 px-4 py-3">
-        Need an agency or marketers first?{' '}
-        <Link to="/organizer/marketing" className="font-semibold text-violet-700 dark:text-violet-300 hover:underline">
-          Open Marketing partners
-        </Link>
-        .
+        → Affiliate performance.
       </p>
 
-      <div className={`${glass} p-5 mb-8`}>
-        <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+      <div className={`${glass} p-5 mb-4`}>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
           <Plus className="w-5 h-5" />
           New link
-        </h2>
+        </h3>
         {allMarketers.length === 0 && (
           <p className="text-sm text-amber-600 dark:text-amber-400 mb-4">
-            No affiliate marketers found under your marketing agencies. Add affiliates under an agency first.
+            Add marketers in Step 1 or Step 2 first.
           </p>
         )}
         <form onSubmit={createLink} className="grid sm:grid-cols-2 gap-4">
@@ -177,9 +173,7 @@ export default function OrganizerEventAffiliates() {
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs text-gray-500 block mb-1">
-              Agency on link (auto-filled; used for commission program matching)
-            </label>
+            <label className="text-xs text-gray-500 block mb-1">Agency on link</label>
             <select
               value={form.agencyId}
               onChange={(e) => setForm({ ...form, agencyId: e.target.value })}
@@ -215,12 +209,12 @@ export default function OrganizerEventAffiliates() {
 
       <div className={`${glass} overflow-hidden`}>
         <div className="px-5 py-4 border-b border-gray-200/60 dark:border-white/10">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Existing links</h2>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">Existing links</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200/50 dark:border-white/10">
+              <tr className="text-left text-gray-500 border-b border-gray-200/50 dark:border-white/10">
                 <th className="px-4 py-3 font-medium">Code</th>
                 <th className="px-4 py-3 font-medium">Marketer</th>
                 <th className="px-4 py-3 font-medium">Agency</th>

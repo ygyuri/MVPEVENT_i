@@ -33,6 +33,27 @@ import {
 } from '../store/slices/organizerSlice';
 import { dateUtils } from '../utils/eventHelpers';
 
+function agencyDisplayName(agencies, agencyId) {
+  if (agencyId == null || String(agencyId).trim() === '') return null;
+  const a = (agencies || []).find((x) => String(x._id) === String(agencyId));
+  return a?.agency_name || a?.agency_email || null;
+}
+
+function sampleTicketUnitPrice(ev) {
+  if (!ev?.pricing || ev.pricing.isFree) return null;
+  const main = Number(ev.pricing.price);
+  if (main > 0) return main;
+  const tt = (ev.pricing.ticketTypes || []).find(
+    (t) => !t.isFree && Number(t.price) > 0
+  );
+  return tt ? Number(tt.price) : null;
+}
+
+function formatMoney(currencyCode, amount) {
+  const c = currencyCode || 'KES';
+  return `${c} ${Math.round(amount || 0).toLocaleString()}`;
+}
+
 const OrganizerEventPreview = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -44,6 +65,8 @@ const OrganizerEventPreview = () => {
   const [salesPdfLoading, setSalesPdfLoading] = useState(false);
   const [affiliatePerf, setAffiliatePerf] = useState(null);
   const [affiliatePerfLoading, setAffiliatePerfLoading] = useState(false);
+  const [commissionBundle, setCommissionBundle] = useState(null);
+  const [commissionBundleLoading, setCommissionBundleLoading] = useState(false);
 
   const { currentEvent, loading, error } = useSelector((state) => state.organizer);
 
@@ -100,11 +123,118 @@ const OrganizerEventPreview = () => {
     };
   }, [eventId]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!eventId) return;
+    (async () => {
+      try {
+        setCommissionBundleLoading(true);
+        const [cfgRes, agRes, soloRes] = await Promise.all([
+          api.get(`/api/events/${eventId}/commission-config`),
+          api.get('/api/organizer/marketing-agencies'),
+          api.get('/api/organizer/independent-marketers').catch(() => ({ data: { items: [] } }))
+        ]);
+        if (cancelled) return;
+        setCommissionBundle({
+          config: cfgRes.data?.config || null,
+          event_commission_rate: cfgRes.data?.event_commission_rate ?? null,
+          agencies: agRes.data?.items || agRes.data?.payouts || [],
+          soloMarketers: soloRes.data?.items || []
+        });
+      } catch {
+        if (!cancelled) setCommissionBundle(null);
+      } finally {
+        if (!cancelled) setCommissionBundleLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+
   const event = useMemo(() => {
     if (!currentEvent) return null;
     if (currentEvent._id === eventId) return currentEvent;
     return currentEvent;
   }, [currentEvent, eventId]);
+
+  const commissionSummary = useMemo(() => {
+    if (!commissionBundle) return null;
+    const cfg = commissionBundle.config || {};
+    const cur = event?.pricing?.currency || 'KES';
+    const sample = sampleTicketUnitPrice(event);
+    const useSample = sample != null && sample > 0;
+    const exampleUnit = useSample ? sample : 100;
+    const platformPct =
+      cfg.use_event_commission_for_waterfall !== false &&
+      commissionBundle?.event_commission_rate != null
+        ? Number(commissionBundle.event_commission_rate)
+        : cfg.platform_fee_type === 'percentage'
+          ? Number(cfg.platform_fee_percentage) || 0
+          : null;
+
+    const agenciesList = commissionBundle?.agencies || [];
+
+    const programs = (cfg.agency_programs || [])
+      .filter((p) => p.agency_id)
+      .map((p) => {
+        const pool = Number(p.pool_pct_of_ticket) || 0;
+        const sub = Number(p.sub_seller_pct_of_ticket) || 0;
+        const head = Number(p.head_pct_of_ticket) || 0;
+        return {
+          agencyId: String(p.agency_id),
+          agencyLabel:
+            agencyDisplayName(agenciesList, p.agency_id) || 'Marketing partner',
+          pool,
+          sub,
+          head,
+          examplePool: (exampleUnit * pool) / 100,
+          exampleSub: (exampleUnit * sub) / 100,
+          exampleHead: (exampleUnit * head) / 100
+        };
+      });
+
+    const soloById = new Map(
+      (commissionBundle?.soloMarketers || []).map((m) => [String(m._id), m])
+    );
+    const independents = (cfg.independent_marketer_rates || [])
+      .filter((r) => r.affiliate_id)
+      .map((r) => {
+        const id = String(r.affiliate_id);
+        const m = soloById.get(id);
+        const pct = Number(r.pct_of_ticket) || 0;
+        return {
+          affiliateId: id,
+          name: m
+            ? `${m.first_name || ''} ${m.last_name || ''}`.trim() || m.email
+            : 'Independent marketer',
+          code: m?.referral_code || '—',
+          pct,
+          example: (exampleUnit * pct) / 100
+        };
+      });
+
+    const hasStructure = programs.length > 0 || independents.length > 0;
+    const legacyFlat =
+      !hasStructure &&
+      cfg.flat_affiliate_pct_of_ticket != null &&
+      Number(cfg.flat_affiliate_pct_of_ticket) > 0;
+
+    return {
+      cur,
+      sample,
+      useSample,
+      exampleUnit,
+      platformPct,
+      programs,
+      independents,
+      hasStructure,
+      legacyFlat: legacyFlat ? Number(cfg.flat_affiliate_pct_of_ticket) : null,
+      legacyFlatExample: legacyFlat
+        ? (exampleUnit * Number(cfg.flat_affiliate_pct_of_ticket)) / 100
+        : null
+    };
+  }, [commissionBundle, event]);
 
   const handleDownloadSalesReportPdf = useCallback(async () => {
     if (!eventId) return;
@@ -251,15 +381,15 @@ const OrganizerEventPreview = () => {
               variant="secondary"
               size="sm"
               icon={Percent}
-              onClick={() => navigate(`/organizer/events/${eventId}/commission-setup`)}
+              onClick={() => navigate(`/organizer/events/${eventId}/marketing`)}
             >
-              Commissions
+              Marketing &amp; affiliates
             </EnhancedButton>
             <EnhancedButton
               variant="secondary"
               size="sm"
               icon={Link2}
-              onClick={() => navigate(`/organizer/events/${eventId}/affiliates`)}
+              onClick={() => navigate(`/organizer/events/${eventId}/marketing?tab=links`)}
             >
               Affiliate links
             </EnhancedButton>
@@ -425,6 +555,138 @@ const OrganizerEventPreview = () => {
               </div>
             </div>
 
+            <div className="mt-6 rounded-xl border border-violet-200/70 dark:border-violet-900/40 bg-violet-50/30 dark:bg-violet-950/20 backdrop-blur-sm p-4">
+              <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  Affiliate payout structure (from commission config)
+                </h2>
+                <Link
+                  to={`/organizer/events/${eventId}/marketing`}
+                  className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline"
+                >
+                  Edit in marketing hub
+                </Link>
+              </div>
+              {commissionBundleLoading && (
+                <p className="text-xs text-gray-500">Loading commission settings…</p>
+              )}
+              {!commissionBundleLoading && !commissionBundle && (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Commission settings could not be loaded. Open{' '}
+                  <Link
+                    to={`/organizer/events/${eventId}/marketing`}
+                    className="text-violet-600 dark:text-violet-400 font-medium hover:underline"
+                  >
+                    Affiliate &amp; commissions
+                  </Link>{' '}
+                  to configure agency programs and independent marketers.
+                </p>
+              )}
+              {!commissionBundleLoading && commissionSummary && (
+                <>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                    Percentages are <strong>of each ticket</strong> (before your net). Example amounts use{' '}
+                    {commissionSummary.useSample ? (
+                      <>
+                        your listed ticket price{' '}
+                        <strong>
+                          {commissionSummary.cur} {commissionSummary.sample?.toLocaleString()}
+                        </strong>
+                      </>
+                    ) : (
+                      <>
+                        a <strong>{commissionSummary.cur} 100</strong> placeholder (set a ticket price for accurate
+                        examples)
+                      </>
+                    )}
+                    {commissionSummary.platformPct != null && (
+                      <> · platform / event fee {commissionSummary.platformPct}% applied first in live checkout math</>
+                    )}
+                    .
+                  </p>
+                  {!commissionSummary.hasStructure && !commissionSummary.legacyFlat && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No agency program or independent marketer rates on this event yet. Add them under{' '}
+                      <Link
+                        to={`/organizer/events/${eventId}/marketing`}
+                        className="text-violet-600 dark:text-violet-400 font-medium hover:underline"
+                      >
+                        Marketing hub
+                      </Link>
+                      .
+                    </p>
+                  )}
+                  {commissionSummary.legacyFlat != null && (
+                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                      <strong>Legacy flat referrer:</strong> {commissionSummary.legacyFlat}% of ticket (~
+                      {formatMoney(commissionSummary.cur, commissionSummary.legacyFlatExample)} per ticket at the
+                      example price).
+                    </p>
+                  )}
+                  {commissionSummary.programs.length > 0 && (
+                    <div className="space-y-3 mb-3">
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        Agency programs
+                      </h3>
+                      {commissionSummary.programs.map((p) => (
+                        <div
+                          key={p.agencyId}
+                          className="rounded-lg border border-gray-200/70 dark:border-gray-600/60 bg-white/50 dark:bg-gray-900/30 p-3 text-sm"
+                        >
+                          <div className="font-medium text-gray-900 dark:text-white">{p.agencyLabel}</div>
+                          <ul className="mt-2 space-y-1 text-gray-600 dark:text-gray-300 text-xs sm:text-sm">
+                            <li>
+                              <strong>Pool</strong> {p.pool}% of ticket (~
+                              {formatMoney(commissionSummary.cur, p.examplePool)} per ticket)
+                            </li>
+                            <li>
+                              <strong>Sub</strong> (marketer who shared the link): {p.sub}% (~
+                              {formatMoney(commissionSummary.cur, p.exampleSub)})
+                            </li>
+                            <li>
+                              <strong>Head</strong> (team lead): {p.head}% (~
+                              {formatMoney(commissionSummary.cur, p.exampleHead)})
+                            </li>
+                            <li className="text-gray-500 dark:text-gray-400 pt-1">
+                              If the head sells directly (no sub under them), they receive the{' '}
+                              <strong>full pool</strong> ({p.pool}%, ~
+                              {formatMoney(commissionSummary.cur, p.examplePool)}).
+                            </li>
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {commissionSummary.independents.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        Independent marketers
+                      </h3>
+                      <ul className="space-y-2">
+                        {commissionSummary.independents.map((row) => (
+                          <li
+                            key={row.affiliateId}
+                            className="rounded-lg border border-gray-200/70 dark:border-gray-600/60 bg-white/50 dark:bg-gray-900/30 px-3 py-2 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1"
+                          >
+                            <span className="text-gray-900 dark:text-white">
+                              {row.name}{' '}
+                              <span className="font-mono text-xs text-violet-600 dark:text-violet-400">
+                                {row.code}
+                              </span>
+                            </span>
+                            <span className="text-gray-600 dark:text-gray-300">
+                              <strong>{row.pct}%</strong> of ticket (~
+                              {formatMoney(commissionSummary.cur, row.example)} per ticket)
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
             <div className="mt-6 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white/40 dark:bg-gray-900/20 backdrop-blur-sm p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
                 <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
@@ -439,7 +701,7 @@ const OrganizerEventPreview = () => {
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                 One row per marketer / referral code from completed checkouts (
                 <Link
-                  to={`/organizer/events/${eventId}/affiliates`}
+                  to={`/organizer/events/${eventId}/marketing?tab=links`}
                   className="text-violet-600 dark:text-violet-400 hover:underline"
                 >
                   manage links
@@ -453,7 +715,7 @@ const OrganizerEventPreview = () => {
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   No attributed paid orders yet. Share{' '}
                   <Link
-                    to={`/organizer/events/${eventId}/affiliates`}
+                    to={`/organizer/events/${eventId}/marketing?tab=links`}
                     className="text-violet-600 dark:text-violet-400 font-medium hover:underline"
                   >
                     affiliate links
@@ -470,11 +732,19 @@ const OrganizerEventPreview = () => {
                         <th className="py-2 pr-2">Code</th>
                         <th className="py-2 pr-2">Tickets</th>
                         <th className="py-2 pr-2">Attributed</th>
-                        <th className="py-2">Est. commission</th>
+                        <th className="py-2 pr-2">Sub (est.)</th>
+                        <th className="py-2 pr-2">Head (est.)</th>
+                        <th className="py-2">Total (est.)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {affiliatePerf.rows.map((row) => (
+                      {affiliatePerf.rows.map((row) => {
+                        const subEst = row.estimated_sub_commission ?? 0;
+                        const headEst = row.estimated_head_commission ?? 0;
+                        const totalEst = row.estimated_commission_total ?? 0;
+                        const isAgencySplit = headEst > 0;
+                        const subDisplay = isAgencySplit ? subEst : totalEst;
+                        return (
                         <tr
                           key={row.referral_code || row.affiliate_id}
                           className="border-b border-gray-100 dark:border-gray-700/50"
@@ -490,12 +760,21 @@ const OrganizerEventPreview = () => {
                             {event?.pricing?.currency || 'KES'}{' '}
                             {Math.round(row.gross_attributed || 0).toLocaleString()}
                           </td>
+                          <td className="py-2 pr-2">
+                            {event?.pricing?.currency || 'KES'}{' '}
+                            {Math.round(subDisplay).toLocaleString()}
+                          </td>
+                          <td className="py-2 pr-2">
+                            {event?.pricing?.currency || 'KES'}{' '}
+                            {Math.round(headEst).toLocaleString()}
+                          </td>
                           <td className="py-2">
                             {event?.pricing?.currency || 'KES'}{' '}
-                            {Math.round(row.estimated_commission_total || 0).toLocaleString()}
+                            {Math.round(totalEst).toLocaleString()}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -2,6 +2,7 @@ const express = require('express');
 const { body, param, query, validationResult } = require('express-validator');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const agencyService = require('../services/agencyService');
+const affiliateService = require('../services/affiliateService');
 
 const router = express.Router();
 
@@ -101,6 +102,38 @@ router.delete('/marketing-agencies/:agencyId', verifyToken, requireRole(['organi
     res.status(e.statusCode || 500).json({ ok: false, error: e.message });
   }
 });
+
+// GET /api/organizer/independent-marketers — solo marketers you created (no agency)
+router.get('/independent-marketers', verifyToken, requireRole(['organizer', 'admin']), async (req, res) => {
+  try {
+    const data = await affiliateService.listIndependentsByOrganizer(req.user._id);
+    res.json({ ok: true, ...data });
+  } catch (e) {
+    res.status(e.statusCode || 500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/organizer/independent-marketers
+router.post(
+  '/independent-marketers',
+  verifyToken,
+  requireRole(['organizer', 'admin']),
+  [
+    body('first_name').isString().trim().isLength({ min: 1, max: 100 }),
+    body('last_name').isString().trim().isLength({ min: 1, max: 100 }),
+    body('email').isEmail()
+  ],
+  async (req, res) => {
+    const v = handleValidation(req, res);
+    if (v) return v;
+    try {
+      const affiliate = await affiliateService.createIndependentByOrganizer(req.user._id, req.body);
+      res.status(201).json({ ok: true, affiliate });
+    } catch (e) {
+      res.status(e.statusCode || 500).json({ ok: false, error: e.message });
+    }
+  }
+);
 
 // POST /api/organizer/marketing-agencies/:agencyId/approve
 router.post('/marketing-agencies/:agencyId/approve', verifyToken, requireRole(['organizer','admin']), [

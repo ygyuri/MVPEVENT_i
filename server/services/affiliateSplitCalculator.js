@@ -102,17 +102,27 @@ function computeTicketAffiliateSplit({
 
   const organizer_revenue = Number((price - platform_fee).toFixed(2));
 
-  const primary_agency_commission = pctOrFixed(
-    price,
-    cfg.primary_agency_commission_type,
-    cfg.primary_agency_commission_rate,
-    cfg.primary_agency_commission_fixed
-  );
+  const primary_agency_commission = cfg.primary_agency_id
+    ? pctOrFixed(
+        price,
+        cfg.primary_agency_commission_type,
+        cfg.primary_agency_commission_rate,
+        cfg.primary_agency_commission_fixed
+      )
+    : 0;
 
   const program = findAgencyProgram(cfg, link, marketer);
   let affiliate_commission = 0;
   let tier_2_affiliate_commission = null;
   let split_mode = 'legacy';
+
+  /** Independent path: no agency on the marketer (or marketer record missing). */
+  const eligibleIndependent =
+    link?.affiliate_id &&
+    (!marketer ||
+      marketer.agency_id == null ||
+      marketer.agency_id === undefined ||
+      String(marketer.agency_id) === '');
 
   if (program && link?.affiliate_id) {
     split_mode = marketer?.parent_affiliate_id ? 'agency_sub_seller' : 'agency_direct';
@@ -127,7 +137,27 @@ function computeTicketAffiliateSplit({
       affiliate_commission = Number(((price * poolPct) / 100).toFixed(2));
       tier_2_affiliate_commission = null;
     }
-  } else if (cfg.affiliate_commission_enabled && link?.affiliate_id) {
+  } else if (
+    eligibleIndependent &&
+    Array.isArray(cfg.independent_marketer_rates) &&
+    cfg.independent_marketer_rates.length > 0
+  ) {
+    const row = cfg.independent_marketer_rates.find(
+      (r) => r.affiliate_id && String(r.affiliate_id) === String(link.affiliate_id)
+    );
+    if (row != null && row.pct_of_ticket != null) {
+      split_mode = 'independent_marketer';
+      affiliate_commission = Number(
+        ((price * (Number(row.pct_of_ticket) || 0)) / 100).toFixed(2)
+      );
+    }
+  }
+
+  if (
+    split_mode === 'legacy' &&
+    cfg.affiliate_commission_enabled &&
+    link?.affiliate_id
+  ) {
     split_mode = 'flat';
     if (cfg.flat_affiliate_pct_of_ticket != null) {
       affiliate_commission = Number(

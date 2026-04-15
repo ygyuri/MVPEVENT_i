@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Event = require('../models/Event');
 const EventCommissionConfig = require('../models/EventCommissionConfig');
+const AffiliateMarketer = require('../models/AffiliateMarketer');
 const {
   validateAgencyPrograms,
   computeTicketAffiliateSplit
@@ -46,6 +47,46 @@ function normalizeAgencyProgramsForPersistence(programs) {
     });
   }
   return out;
+}
+
+function normalizeIndependentMarketerRatesForPersistence(rates) {
+  if (!Array.isArray(rates)) return [];
+  const out = [];
+  for (let i = 0; i < rates.length; i++) {
+    const r = rates[i];
+    const aid = r.affiliate_id != null ? String(r.affiliate_id).trim() : '';
+    const pct = Number(r.pct_of_ticket);
+    if (!aid || !mongoose.Types.ObjectId.isValid(aid)) continue;
+    if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+      const err = new Error(`Independent marketer ${i + 1}: commission % must be 0–100`);
+      err.statusCode = 400;
+      throw err;
+    }
+    out.push({
+      affiliate_id: new mongoose.Types.ObjectId(aid),
+      pct_of_ticket: pct
+    });
+  }
+  return out;
+}
+
+async function assertIndependentRatesOwnedByOrganizer(organizerId, rates) {
+  if (!rates?.length) return;
+  const ids = rates.map((r) => r.affiliate_id).filter(Boolean);
+  if (ids.length === 0) return;
+  const n = await AffiliateMarketer.countDocuments({
+    _id: { $in: ids },
+    organizer_creator_id: organizerId,
+    agency_id: null,
+    deleted_at: null
+  });
+  if (n !== ids.length) {
+    const err = new Error(
+      'Each independent marketer rate must reference a solo marketer you created (Marketing partners → independent list).'
+    );
+    err.statusCode = 400;
+    throw err;
+  }
 }
 
 function normalizePrimaryAgencyId(value) {
@@ -98,6 +139,17 @@ function validateWaterfallTotals(cfg, eventCommissionRate) {
         : 0;
   if (flatPct + platformPct > 100 + 0.05) {
     const err = new Error('Flat affiliate % plus platform % cannot exceed 100%');
+    err.statusCode = 400;
+    throw err;
+  }
+  const maxIndPct = (cfg.independent_marketer_rates || []).reduce(
+    (m, r) => Math.max(m, Number(r.pct_of_ticket) || 0),
+    0
+  );
+  if (maxIndPct + platformPct > 100 + 0.05) {
+    const err = new Error(
+      'Independent marketer commission % (max per person) plus platform % cannot exceed 100%'
+    );
     err.statusCode = 400;
     throw err;
   }
@@ -165,11 +217,24 @@ class CommissionService {
     delete merged._id;
     delete merged.__v;
 
-    merged.primary_agency_id = normalizePrimaryAgencyId(merged.primary_agency_id);
+    if (!isAdminUser) {
+      merged.primary_agency_id = null;
+      merged.primary_agency_commission_rate = 0;
+      merged.primary_agency_commission_fixed = 0;
+    } else {
+      merged.primary_agency_id = normalizePrimaryAgencyId(merged.primary_agency_id);
+    }
 
     if (merged.agency_programs != null) {
       merged.agency_programs = normalizeAgencyProgramsForPersistence(merged.agency_programs);
       validateAgencyPrograms(merged.agency_programs);
+    }
+
+    if (merged.independent_marketer_rates != null) {
+      merged.independent_marketer_rates = normalizeIndependentMarketerRatesForPersistence(
+        merged.independent_marketer_rates
+      );
+      await assertIndependentRatesOwnedByOrganizer(event.organizer, merged.independent_marketer_rates);
     }
 
     const eventCommissionRate =

@@ -297,11 +297,11 @@ const EventManagement = () => {
           break;
 
         case 'commission-setup':
-          navigate(`/organizer/events/${eventId}/commission-setup`);
+          navigate(`/organizer/events/${eventId}/marketing`);
           break;
 
         case 'affiliate-links':
-          navigate(`/organizer/events/${eventId}/affiliates`);
+          navigate(`/organizer/events/${eventId}/marketing?tab=links`);
           break;
 
         case 'bulk-resend':

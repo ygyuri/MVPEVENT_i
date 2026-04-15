@@ -513,7 +513,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                               }`}
                             >
                               <Megaphone className="w-4 h-4 mr-3 flex-shrink-0 group-hover:scale-110 transition-transform" />
-                              <span>Marketing partners</span>
+                              <span>Event marketing</span>
                             </Link>
                           </div>
                         )}
@@ -837,7 +837,7 @@ const Navbar = ({ onOpenAuthModal }) => {
                             onClick={() => setIsMenuOpen(false)}
                           >
                             <Megaphone className="w-5 h-5 mr-3" />
-                            Marketing partners
+                            Event marketing
                           </Link>
                         </motion.div>
                       ) : null}
